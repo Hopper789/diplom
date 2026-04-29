@@ -1,0 +1,6 @@
+- hosts: boinc_clients
+  tasks:
+    - name: install
+      apt:
+        name: boinc-client
+        state: present
