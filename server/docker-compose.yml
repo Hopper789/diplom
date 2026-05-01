@@ -1,0 +1,25 @@
+services:
+  mysql:
+    image: mariadb:10.11
+    container_name: boinc-mysql
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  boinc-server:
+    build: .
+    image: boinc-server-build
+    container_name: boinc-server
+    hostname: boinc-server
+    depends_on:
+      - mysql
+    volumes:
+      - ./project:/project
+    ports:
+      - "8080:80"
+    tty: true
+    stdin_open: true
+
+volumes:
+  mysql-data:
