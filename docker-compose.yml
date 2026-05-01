@@ -1,0 +1,9 @@
+services:
+  boinc-client:
+    build: .
+    image: boinc-client-runtime
+    container_name: boinc-client
+    volumes:
+      - ./boinc-data:/var/lib/boinc
+    command: boinc --dir /var/lib/boinc --allow_remote_gui_rpc
+    restart: unless-stopped

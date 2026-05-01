@@ -1,4 +1,4 @@
-FROM ubuntu
+FROM ubuntu AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -13,17 +13,6 @@ RUN apt update && apt install -y \
     libssl-dev \
     libcurl4-openssl-dev \
     zlib1g-dev \
-    freeglut3-dev \
-    libxmu-dev \
-    libxi-dev \
-    libjpeg-dev \
-    libxss-dev \
-    libwxgtk3.2-dev \
-    libwxgtk-webview3.2-dev \
-    libnotify-dev \
-    libxcb-util-dev \
-    libx11-dev \
-    libgtk-3-dev \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
@@ -35,8 +24,28 @@ WORKDIR /opt/boinc
 
 RUN ./_autosetup
 
-RUN ./configure --disable-server --enable-client --disable-manager
+RUN ./configure \
+    --disable-server \
+    --enable-client \
+    --disable-manager
 
 RUN make -j"$(nproc)"
 
-CMD ["bash"]
+
+FROM ubuntu AS runtime
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt update && apt install -y \
+    libcurl4 \
+    libssl3 \
+    zlib1g \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /boinc
+
+COPY --from=builder /opt/boinc/client/boinc /usr/local/bin/boinc
+COPY --from=builder /opt/boinc/client/boinccmd /usr/local/bin/boinccmd
+
+CMD ["boinc", "--help"]
