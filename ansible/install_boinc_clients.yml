@@ -1,6 +1,72 @@
-- hosts: boinc_clients
+- name: Install and attach BOINC clients
+  hosts: boinc_clients
+  become: true
+  gather_facts: true
+
   tasks:
-    - name: install
+    - name: Install required packages
       apt:
-        name: boinc-client
+        name:
+          - boinc-client
+          - python3
+          - python3-pip
+          - curl
         state: present
+        update_cache: true
+
+    - name: Check default BOINC data dir
+      stat:
+        path: /var/lib/boinc-client
+      register: boinc_data_dir_default
+
+    - name: Check alternate BOINC data dir
+      stat:
+        path: /var/lib/boinc
+      register: boinc_data_dir_alt
+
+    - name: Set BOINC data directory
+      set_fact:
+        boinc_data_dir: >-
+          {{
+            '/var/lib/boinc-client'
+            if boinc_data_dir_default.stat.exists
+            else (
+              '/var/lib/boinc'
+              if boinc_data_dir_alt.stat.exists
+              else '/var/lib/boinc-client'
+            )
+          }}
+
+    - name: Ensure BOINC RPC password file exists
+      copy:
+        dest: "{{ boinc_data_dir }}/gui_rpc_auth.cfg"
+        content: "{{ boinc_client_rpc_password }}\n"
+        owner: boinc
+        group: boinc
+        mode: "0640"
+
+    - name: Enable and restart boinc-client
+      systemd:
+        name: boinc-client
+        enabled: true
+        state: restarted
+
+    - name: Get BOINC project status
+      command: boinccmd --passwd {{ boinc_client_rpc_password }} --get_project_status
+      register: boinc_project_status
+      failed_when: false
+      changed_when: false
+
+    - name: Attach BOINC client to project
+      command: boinccmd --passwd {{ boinc_client_rpc_password }} --project_attach {{ boinc_project_url }} {{ boinc_account_key }}
+      when: boinc_project_url not in boinc_project_status.stdout
+      register: attach_result
+      failed_when: false
+
+    - name: Show BOINC project status
+      command: boinccmd --passwd {{ boinc_client_rpc_password }} --get_project_status
+      register: final_status
+      changed_when: false
+
+    - debug:
+        var: final_status.stdout_lines

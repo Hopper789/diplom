@@ -1,1 +1,24 @@
-boinc-data
+# generated config
+config/cluster.yml
+config/generated.env
+ansible/inventory.ini
+ansible/group_vars/all.yml
+
+# BOINC runtime data
+boinc-data/
+server/project/
+server/mysql-data/
+
+# secrets
+.env
+config.env
+
+# logs/cache
+*.log
+*.out
+*.err
+__pycache__/
+*.pyc
+
+# build artifacts
+apps/ml_grid_search/build/

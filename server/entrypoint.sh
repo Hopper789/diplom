@@ -9,25 +9,39 @@ a2enconf servername >/dev/null 2>&1 || true
 a2enmod cgi >/dev/null 2>&1 || true
 a2enmod headers >/dev/null 2>&1 || true
 
-if [ -f /project/my_project/my_project.httpd.conf ]; then
-    echo "BOINC project found. Enabling Apache config..."
+HTTPD_CONF="$(find /project -maxdepth 2 -type f -name '*.httpd.conf' 2>/dev/null | head -n1 || true)"
 
-    cp /project/my_project/my_project.httpd.conf /etc/apache2/sites-enabled/my_project.conf
+if [[ -n "$HTTPD_CONF" && -f "$HTTPD_CONF" ]]; then
+    PROJECT_DIR="$(dirname "$HTTPD_CONF")"
+    PROJECT_NAME="$(basename "$PROJECT_DIR")"
+
+    echo "BOINC project found: $PROJECT_DIR"
+    echo "Enabling Apache config..."
+
+    cp "$HTTPD_CONF" "/etc/apache2/sites-enabled/${PROJECT_NAME}.conf"
 
     chmod a+rx /project || true
-    chmod a+rx /project/my_project || true
+    chmod a+rx "$PROJECT_DIR" || true
 
-    chmod -R a+rX /project/my_project/html || true
-    chmod -R a+rX /project/my_project/cgi-bin || true
-    chmod -R a+rX /project/my_project/download || true
+    chmod -R a+rX "$PROJECT_DIR/html" || true
+    chmod -R a+rX "$PROJECT_DIR/cgi-bin" || true
+    chmod -R a+rX "$PROJECT_DIR/download" || true
+
+    # BOINC scheduler/handlers run under Apache user; ensure writable dirs.
+    for d in "$PROJECT_DIR/log_boinc-server" "$PROJECT_DIR/upload" "$PROJECT_DIR/tmp_boinc-server" "$PROJECT_DIR/html/cache"; do
+        if [[ -d "$d" ]]; then
+            chown -R www-data:www-data "$d" || true
+            chmod -R u+rwX,go+rX "$d" || true
+        fi
+    done
 
     echo "Fixing BOINC config hostname..."
-    if [ -f /project/my_project/config.xml ]; then
-        sed -i "s/<host>.*<\/host>/<host>$(hostname)<\/host>/g" /project/my_project/config.xml
+    if [[ -f "$PROJECT_DIR/config.xml" ]]; then
+        sed -i "s/<host>.*<\\/host>/<host>$(hostname)<\\/host>/g" "$PROJECT_DIR/config.xml"
     fi
 
     echo "Starting BOINC project daemons..."
-    cd /project/my_project
+    cd "$PROJECT_DIR"
     ./bin/start || true
 else
     echo "BOINC project config not found yet. Create project first."
@@ -35,4 +49,8 @@ fi
 
 apachectl configtest
 
-exec apachectl -D FOREGROUND
+# On container restart Apache pidfile may become stale; ensure a clean foreground start.
+rm -f /var/run/apache2/apache2.pid /run/apache2/apache2.pid || true
+pkill -9 apache2 >/dev/null 2>&1 || true
+
+exec apache2ctl -D FOREGROUND

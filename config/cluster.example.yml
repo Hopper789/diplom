@@ -1,0 +1,21 @@
+project:
+  name: my_project
+  port: 8080
+
+server:
+  ip: 192.168.1.10
+  user: ubuntu
+
+clients:
+  - name: node1
+    ip: 192.168.1.11
+    user: ubuntu
+  - name: node2
+    ip: 192.168.1.12
+    user: ubuntu
+
+boinc:
+  rpc_password: auto
+  account_email: auto
+  account_password: auto
+  account_name: cluster_user

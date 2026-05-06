@@ -5,7 +5,7 @@ services:
     environment:
       MARIADB_ROOT_PASSWORD: root
     volumes:
-      - mysql-data:/var/lib/mysql
+      - ./mysql-data:/var/lib/mysql
 
   boinc-server:
     build: .
@@ -17,9 +17,6 @@ services:
     volumes:
       - ./project:/project
     ports:
-      - "8080:80"
+      - "${PROJECT_PORT:-8080}:80"
     tty: true
     stdin_open: true
-
-volumes:
-  mysql-data:
