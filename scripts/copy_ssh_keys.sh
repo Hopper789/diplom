@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CLUSTER_FILE="${CLUSTER_FILE:-$ROOT_DIR/config/cluster.yml}"
+SSH_KEY="${SSH_KEY:-$HOME/.ssh/id_ed25519}"
+
+if [[ ! -f "$CLUSTER_FILE" ]]; then
+  echo "ERROR: cluster config not found: $CLUSTER_FILE"
+  echo "Create it first:"
+  echo "  cp config/cluster.example.yml config/cluster.yml"
+  exit 1
+fi
+
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "ERROR: python3 is required"
+  exit 1
+fi
+
+if ! python3 - <<'PY' >/dev/null 2>&1
+import yaml
+PY
+then
+  echo "ERROR: PyYAML is required"
+  echo "Install it with:"
+  echo "  sudo apt install -y python3-yaml"
+  echo "or:"
+  echo "  pip3 install pyyaml"
+  exit 1
+fi
+
+if [[ ! -f "$SSH_KEY" ]]; then
+  echo "SSH key not found: $SSH_KEY"
+  echo "Generating new SSH key..."
+  ssh-keygen -t ed25519 -f "$SSH_KEY" -N ""
+fi
+
+PUB_KEY="${SSH_KEY}.pub"
+
+if [[ ! -f "$PUB_KEY" ]]; then
+  echo "ERROR: public key not found: $PUB_KEY"
+  exit 1
+fi
+
+if ! command -v ssh-copy-id >/dev/null 2>&1; then
+  echo "ERROR: ssh-copy-id is required"
+  echo "Install it with:"
+  echo "  sudo apt install -y openssh-client"
+  exit 1
+fi
+
+NODES="$(
+python3 - "$CLUSTER_FILE" <<'PY'
+import sys
+import yaml
+
+path = sys.argv[1]
+
+with open(path, "r", encoding="utf-8") as f:
+    cfg = yaml.safe_load(f) or {}
+
+clients = cfg.get("clients") or []
+
+for client in clients:
+    name = client.get("name", "")
+    ip = client.get("ip")
+    user = client.get("user")
+
+    if not ip or not user:
+        continue
+
+    print(f"{name}|{user}|{ip}")
+PY
+)"
+
+if [[ -z "$NODES" ]]; then
+  echo "No clients found in $CLUSTER_FILE"
+  echo
+  echo "Expected format:"
+  echo "clients:"
+  echo "  - name: laptop"
+  echo "    ip: 192.168.1.189"
+  echo "    user: hopper"
+  exit 1
+fi
+
+echo "Using SSH key:"
+echo "  private: $SSH_KEY"
+echo "  public:  $PUB_KEY"
+echo
+
+echo "Copying SSH public key to clients from $CLUSTER_FILE..."
+echo
+
+while IFS="|" read -r NAME USER IP; do
+  [[ -z "$USER" || -z "$IP" ]] && continue
+
+  LABEL="$IP"
+  if [[ -n "$NAME" ]]; then
+    LABEL="$NAME ($IP)"
+  fi
+
+  echo "==> $LABEL as $USER"
+
+  ssh-copy-id \
+    -i "$PUB_KEY" \
+    -o StrictHostKeyChecking=accept-new \
+    "$USER@$IP"
+
+  echo
+done <<< "$NODES"
+
+echo "Done."
+echo
+echo "Now test:"
+echo "  ansible -i ansible/inventory.ini boinc_clients -m ping"

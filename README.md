@@ -3,14 +3,20 @@
 ## Quick start
 
 ```bash
+# настройка конфиг под конкретный кластер
 cp config/cluster.example.yml config/cluster.yml
 nano config/cluster.yml
 
+# запуск сервера
 ./scripts/init_config.sh
 ./scripts/server_up.sh
 
-# Open the website and create user if scripts/create_account.sh asks you to
-./scripts/create_account.sh
+# Cоздание аккаунта (вручную) и получение ключа
+http://localhost:8080/my_project/signup.php
+
+# Проверка, что в config/generated.env правильные данные. Передача ssh ключа проверка, что все ноды пингуются по 22 порту
+./scripts/copy_ssh_keys.sh 
+ansible -i ansible/inventory.ini boinc_clients -m ping
 
 # Local test client (Docker on the same machine)
 docker compose up -d --build
