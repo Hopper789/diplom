@@ -22,3 +22,5 @@ __pycache__/
 
 # build artifacts
 apps/ml_grid_search/build/
+apps/ml_grid_search/templates/
+

@@ -1,72 +1,120 @@
+---
 - name: Install and attach BOINC clients
   hosts: boinc_clients
   become: true
   gather_facts: true
 
-  tasks:
-    - name: Install required packages
-      apt:
-        name:
-          - boinc-client
-          - python3
-          - python3-pip
-          - curl
-        state: present
+  vars:
+    boinc_client_packages:
+      - boinc-client
+      - python3
+      - python3-pip
+      - curl
+      - ca-certificates
+      - procps
+      - psmisc
+
+    boinc_data_dir_candidates:
+      - /var/lib/boinc-client
+      - /var/lib/boinc
+
+  pre_tasks:
+    - name: Check supported OS family
+      ansible.builtin.assert:
+        that:
+          - ansible_os_family == "Debian"
+        fail_msg: "This playbook currently supports Debian/Ubuntu clients only."
+
+    - name: Check apt package manager
+      ansible.builtin.command: command -v apt-get
+      register: apt_check
+      changed_when: false
+
+    - name: Update apt cache
+      ansible.builtin.apt:
         update_cache: true
+        cache_valid_time: 3600
 
-    - name: Check default BOINC data dir
-      stat:
-        path: /var/lib/boinc-client
-      register: boinc_data_dir_default
+    - name: Install required client packages
+      ansible.builtin.apt:
+        name: "{{ boinc_client_packages }}"
+        state: present
 
-    - name: Check alternate BOINC data dir
-      stat:
-        path: /var/lib/boinc
-      register: boinc_data_dir_alt
+    - name: Verify required commands
+      ansible.builtin.command: "command -v {{ item }}"
+      loop:
+        - boinc
+        - boinccmd
+        - python3
+        - curl
+      changed_when: false
 
-    - name: Set BOINC data directory
-      set_fact:
-        boinc_data_dir: >-
-          {{
-            '/var/lib/boinc-client'
-            if boinc_data_dir_default.stat.exists
-            else (
-              '/var/lib/boinc'
-              if boinc_data_dir_alt.stat.exists
-              else '/var/lib/boinc-client'
-            )
-          }}
+  tasks:
+    - name: Detect BOINC data directory
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop: "{{ boinc_data_dir_candidates }}"
+      register: boinc_data_dirs
 
-    - name: Ensure BOINC RPC password file exists
-      copy:
+    - name: Set BOINC data directory fact
+      ansible.builtin.set_fact:
+        boinc_data_dir: "{{ (boinc_data_dirs.results | selectattr('stat.exists') | map(attribute='item') | list | first) | default('/var/lib/boinc-client') }}"
+
+    - name: Ensure BOINC data directory exists
+      ansible.builtin.file:
+        path: "{{ boinc_data_dir }}"
+        state: directory
+        owner: boinc
+        group: boinc
+        mode: "0755"
+
+    - name: Write BOINC GUI RPC password
+      ansible.builtin.copy:
         dest: "{{ boinc_data_dir }}/gui_rpc_auth.cfg"
         content: "{{ boinc_client_rpc_password }}\n"
         owner: boinc
         group: boinc
         mode: "0640"
 
-    - name: Enable and restart boinc-client
-      systemd:
+    - name: Enable and restart BOINC client service
+      ansible.builtin.systemd:
         name: boinc-client
         enabled: true
         state: restarted
 
+    - name: Wait for BOINC RPC to become available
+      ansible.builtin.command: "boinccmd --passwd {{ boinc_client_rpc_password }} --get_state"
+      register: boinc_state
+      changed_when: false
+      retries: 10
+      delay: 3
+      until: boinc_state.rc == 0
+
     - name: Get BOINC project status
-      command: boinccmd --passwd {{ boinc_client_rpc_password }} --get_project_status
+      ansible.builtin.command: "boinccmd --passwd {{ boinc_client_rpc_password }} --get_project_status"
       register: boinc_project_status
       failed_when: false
       changed_when: false
 
     - name: Attach BOINC client to project
-      command: boinccmd --passwd {{ boinc_client_rpc_password }} --project_attach {{ boinc_project_url }} {{ boinc_account_key }}
-      when: boinc_project_url not in boinc_project_status.stdout
+      ansible.builtin.command: "boinccmd --passwd {{ boinc_client_rpc_password }} --project_attach {{ boinc_project_url }} {{ boinc_account_key }}"
+      when:
+        - boinc_account_key | length > 0
+        - boinc_project_url not in boinc_project_status.stdout
       register: attach_result
       failed_when: false
+      changed_when: "'already attached' not in (attach_result.stdout | default(''))"
 
-    - name: Show BOINC project status
-      command: boinccmd --passwd {{ boinc_client_rpc_password }} --get_project_status
+    - name: Request project update
+      ansible.builtin.command: "boinccmd --passwd {{ boinc_client_rpc_password }} --project {{ boinc_project_url }} update"
+      failed_when: false
+      changed_when: false
+
+    - name: Show final BOINC project status
+      ansible.builtin.command: "boinccmd --passwd {{ boinc_client_rpc_password }} --get_project_status"
       register: final_status
       changed_when: false
 
-    - debug:
+    - name: Print final BOINC project status
+      ansible.builtin.debug:
         var: final_status.stdout_lines
