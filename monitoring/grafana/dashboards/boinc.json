@@ -1,0 +1,172 @@
+{
+  "uid": "boinc-cluster",
+  "title": "BOINC Cluster",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "DB up",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "boinc_db_up"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Project HTTP up",
+      "gridPos": {
+        "x": 4,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "boinc_project_http_up"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Users",
+      "gridPos": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "boinc_users_total"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Hosts",
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "boinc_hosts_total"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Workunits",
+      "gridPos": {
+        "x": 16,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "boinc_workunits_total"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Results",
+      "gridPos": {
+        "x": 20,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "boinc_results_total"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "BOINC totals",
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "boinc_hosts_total",
+          "legendFormat": "hosts"
+        },
+        {
+          "expr": "boinc_workunits_total",
+          "legendFormat": "workunits"
+        },
+        {
+          "expr": "boinc_results_total",
+          "legendFormat": "results"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Results by state",
+      "gridPos": {
+        "x": 12,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "boinc_results_by_state_total",
+          "legendFormat": "server={{server_state}} outcome={{outcome}} client={{client_state}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Container CPU usage",
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "rate(container_cpu_usage_seconds_total{name=~\"boinc-.*\"}[1m])",
+          "legendFormat": "{{name}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Container memory usage",
+      "gridPos": {
+        "x": 12,
+        "y": 12,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "container_memory_usage_bytes{name=~\"boinc-.*\"}",
+          "legendFormat": "{{name}}"
+        }
+      ]
+    }
+  ]
+}

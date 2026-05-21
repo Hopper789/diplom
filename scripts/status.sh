@@ -5,7 +5,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="$ROOT_DIR/config/generated.env"
 
 if [[ ! -f "$ENV_FILE" ]]; then
-  echo "ERROR: config/generated.env not found. Run: ./scripts/init_config.sh" >&2
+  echo "ERROR: config/generated.env not found."
+  echo "Run: ./scripts/init_config.sh"
   exit 1
 fi
 
@@ -16,6 +17,7 @@ set +a
 
 echo "== Docker containers =="
 docker ps --filter name=boinc || true
+docker ps --filter name=monitoring || true
 echo
 
 if docker ps --format '{{.Names}}' | grep -qx 'boinc-server'; then
@@ -37,6 +39,11 @@ if docker ps --format '{{.Names}}' | grep -qx 'boinc-mysql'; then
   docker exec boinc-mysql mariadb -u root -proot -D "$PROJECT_NAME" \
     -e "SELECT id, userid, domain_name, os_name, create_time FROM host;" || true
   echo
+
+  echo "== MariaDB workunits/results summary =="
+  docker exec boinc-mysql mariadb -u root -proot -D "$PROJECT_NAME" \
+    -e "SELECT COUNT(*) AS workunits FROM workunit; SELECT COUNT(*) AS results FROM result;" || true
+  echo
 else
   echo "boinc-mysql is not running."
   echo
@@ -52,4 +59,24 @@ if [[ -f "$ROOT_DIR/ansible/inventory.ini" ]]; then
     echo "ansible is not installed; skip"
     echo
   fi
+fi
+
+echo "== Monitoring =="
+if docker ps --format '{{.Names}}' | grep -qx 'boinc-prometheus'; then
+  echo "Prometheus: http://localhost:9090"
+else
+  echo "Prometheus is not running."
+fi
+
+if docker ps --format '{{.Names}}' | grep -qx 'boinc-grafana'; then
+  echo "Grafana:    http://localhost:3000"
+  echo "Login:      admin / admin"
+else
+  echo "Grafana is not running."
+fi
+
+if docker ps --format '{{.Names}}' | grep -qx 'boinc-exporter'; then
+  echo "Exporter:   http://localhost:9101/metrics"
+else
+  echo "BOINC exporter is not running."
 fi
