@@ -26,7 +26,7 @@
         fail_msg: "This playbook currently supports Debian/Ubuntu clients only."
 
     - name: Check apt package manager
-      ansible.builtin.command: command -v apt-get
+      ansible.builtin.shell: command -v apt-get
       register: apt_check
       changed_when: false
 
@@ -41,7 +41,7 @@
         state: present
 
     - name: Verify required commands
-      ansible.builtin.command: "command -v {{ item }}"
+      ansible.builtin.shell: "command -v {{ item }}"
       loop:
         - boinc
         - boinccmd

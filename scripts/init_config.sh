@@ -132,7 +132,7 @@ account_email = (
     else account_email_cfg
 )
 if account_email_cfg == "auto" and not account_email:
-    account_email = f"{account_name}@local"
+    account_email = f"{account_name}@mail.ru"
 
 account_key = existing.get("BOINC_ACCOUNT_KEY", "")
 
