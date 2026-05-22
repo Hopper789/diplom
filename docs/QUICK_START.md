@@ -15,17 +15,6 @@ nano config/cluster.yml
 http://SERVER_IP:8080/my_project/
 ```
 
-Создать одного BOINC-пользователя через Web UI.
-
-```bash
-./scripts/create_account.sh
-
-docker compose up -d --build
-./scripts/attach_local_client.sh
-
-./scripts/status.sh
-```
-
 Для реальных клиентов:
 
 ```bash

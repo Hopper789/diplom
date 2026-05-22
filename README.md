@@ -4,8 +4,8 @@
 
 - BOINC server запускается в Docker на управляющей машине;
 - BOINC clients устанавливаются на вычислительные узлы через Ansible;
-- один BOINC project account создаётся вручную через Web UI;
-- его `authenticator` используется как `BOINC_ACCOUNT_KEY` для подключения всех клиентов;
+- один BOINC project account создаётся автоматически через `scripts/create_account_db.sh` или вручную через Web UI;
+- его `authenticator` сохраняется как `BOINC_ACCOUNT_KEY` и используется для подключения всех клиентов;
 - каждый клиент регистрируется на сервере как отдельный `host`.
 
 ## Документация
@@ -15,5 +15,6 @@
 - [Скрипты](docs/SCRIPTS.md)
 - [Сервер](docs/SERVER.md)
 - [Клиенты и Ansible](docs/CLIENTS_ANSIBLE.md)
+- [Аккаунт BOINC и ключ подключения](docs/ACCOUNT.md)
 - [Требования](docs/REQUIREMENTS.md)
 - [Диагностика](docs/TROUBLESHOOTING.md)
