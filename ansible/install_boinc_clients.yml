@@ -1,20 +1,20 @@
 ---
-- name: Install and attach BOINC clients
+- name: Install and attach BOINC clients in Docker
   hosts: boinc_clients
   become: true
   gather_facts: true
 
   vars:
-    boinc_client_packages:
-      - boinc-client
+    boinc_client_rpc_password: "{{ boinc_client_rpc_password | default('123') }}"
+    boinc_client_data_dir: /opt/boinc-client
+    boinc_client_image: boinc/client:latest
+
+    client_packages:
+      - docker.io
+      - docker-compose-v2
       - python3
-      - python3-pip
       - curl
       - ca-certificates
-      - procps
-      - psmisc
-
-    boinc_data_dir: /var/lib/boinc-client
 
   pre_tasks:
     - name: Check supported OS family
@@ -23,109 +23,72 @@
           - ansible_facts["os_family"] == "Debian"
         fail_msg: "This playbook currently supports Debian/Ubuntu clients only."
 
-    - name: Check apt package manager
-      ansible.builtin.shell: command -v apt-get
-      register: apt_check
-      changed_when: false
-
     - name: Update apt cache
       ansible.builtin.apt:
         update_cache: true
         cache_valid_time: 3600
 
-    - name: Install required client packages
+    - name: Install required packages
       ansible.builtin.apt:
-        name: "{{ boinc_client_packages }}"
+        name: "{{ client_packages }}"
         state: present
 
-    - name: Verify required commands
-      ansible.builtin.shell: "command -v {{ item }}"
-      loop:
-        - boinc
-        - boinccmd
-        - python3
-        - curl
-      changed_when: false
+    - name: Enable and start Docker
+      ansible.builtin.systemd:
+        name: docker
+        enabled: true
+        state: started
 
   tasks:
-    - name: Set BOINC data directory for Debian/Ubuntu package
-      ansible.builtin.set_fact:
-        boinc_data_dir: /var/lib/boinc-client
-
-    - name: Stop BOINC client before changing RPC config
+    - name: Stop native BOINC client if installed
       ansible.builtin.shell: |
-        systemctl stop boinc-client || true
-        pkill -9 boinc || true
+        systemctl stop boinc-client 2>/dev/null || true
+        systemctl disable boinc-client 2>/dev/null || true
+        pkill -9 boinc 2>/dev/null || true
       changed_when: false
 
-    - name: Ensure BOINC directories exist
+    - name: Ensure BOINC Docker client directory exists
       ansible.builtin.file:
-        path: "{{ item.path }}"
+        path: "{{ boinc_client_data_dir }}"
         state: directory
-        owner: "{{ item.owner }}"
-        group: "{{ item.group }}"
-        mode: "{{ item.mode }}"
-      loop:
-        - { path: "/var/lib/boinc-client", owner: "boinc", group: "boinc", mode: "0755" }
-        - { path: "/etc/boinc-client", owner: "root", group: "boinc", mode: "0755" }
+        mode: "0755"
 
-    - name: Write empty BOINC GUI RPC password
+    - name: Write Docker Compose file for BOINC client
       ansible.builtin.copy:
-        dest: "{{ item.dest }}"
-        content: ""
-        owner: "{{ item.owner }}"
-        group: boinc
-        mode: "0640"
-      loop:
-        - { dest: "/var/lib/boinc-client/gui_rpc_auth.cfg", owner: "boinc" }
-        - { dest: "/etc/boinc-client/gui_rpc_auth.cfg", owner: "root" }
+        dest: "{{ boinc_client_data_dir }}/docker-compose.yml"
+        mode: "0644"
+        content: |
+          services:
+            boinc-client:
+              image: {{ boinc_client_image }}
+              container_name: boinc-client
+              restart: unless-stopped
+              volumes:
+                - ./data:/var/lib/boinc
+              command: >
+                bash -lc "echo '{{ boinc_client_rpc_password }}' > /var/lib/boinc/gui_rpc_auth.cfg &&
+                          boinc --allow_remote_gui_rpc --dir /var/lib/boinc"
 
-    - name: Remove BOINC remote_hosts.cfg from common paths
-      ansible.builtin.file:
-        path: "{{ item }}"
-        state: absent
-      loop:
-        - /var/lib/boinc-client/remote_hosts.cfg
-        - /etc/boinc-client/remote_hosts.cfg
-
-    - name: Start BOINC client service
+    - name: Start BOINC client container
       ansible.builtin.shell: |
-        systemctl start boinc-client
+        cd "{{ boinc_client_data_dir }}"
+        docker compose up -d
+      changed_when: true
+
+    - name: Wait for BOINC client container
+      ansible.builtin.shell: |
+        docker ps --format '{{ "{{.Names}}" }}' | grep -qx boinc-client
+      register: boinc_container_check
       changed_when: false
+      retries: 20
+      delay: 3
+      until: boinc_container_check.rc == 0
 
-    - name: Wait for BOINC GUI RPC port
-      ansible.builtin.wait_for:
-        host: 127.0.0.1
-        port: 31416
-        timeout: 60
-
-    - name: Give BOINC client a few seconds after RPC port opens
-      ansible.builtin.pause:
-        seconds: 5
-
-    - name: Get BOINC project status
-      become: true
-      become_user: boinc
+    - name: Attach BOINC Docker client to project
       ansible.builtin.shell: |
-        cd "{{ boinc_data_dir }}"
-        boinccmd --host 127.0.0.1 --get_project_status
-      register: boinc_project_status
-      failed_when: false
-      changed_when: false
-
-    - name: Print BOINC project status before attach
-      ansible.builtin.debug:
-        var: boinc_project_status.stdout_lines
-
-    - name: Attach BOINC client to project
-      become: true
-      become_user: boinc
-      ansible.builtin.shell: |
-        cd "{{ boinc_data_dir }}"
-        boinccmd --host 127.0.0.1 --project_attach "{{ boinc_project_url }}" "{{ boinc_account_key }}"
-      when:
-        - boinc_account_key | length > 0
-        - boinc_project_url not in boinc_project_status.stdout
+        docker exec boinc-client \
+          boinccmd --passwd "{{ boinc_client_rpc_password }}" \
+          --project_attach "{{ boinc_project_url }}" "{{ boinc_account_key }}"
       register: attach_result
       failed_when: false
       changed_when: "'already attached' not in (attach_result.stdout | default(''))"
@@ -133,26 +96,23 @@
     - name: Print attach result
       ansible.builtin.debug:
         msg:
-          rc: "{{ attach_result.rc | default('n/a') }}"
+          rc: "{{ attach_result.rc }}"
           stdout: "{{ attach_result.stdout_lines | default([]) }}"
           stderr: "{{ attach_result.stderr_lines | default([]) }}"
-      when: attach_result is defined
 
     - name: Request project update
-      become: true
-      become_user: boinc
       ansible.builtin.shell: |
-        cd "{{ boinc_data_dir }}"
-        boinccmd --host 127.0.0.1 --project "{{ boinc_project_url }}" update
+        docker exec boinc-client \
+          boinccmd --passwd "{{ boinc_client_rpc_password }}" \
+          --project "{{ boinc_project_url }}" update
       failed_when: false
       changed_when: false
 
     - name: Show final BOINC project status
-      become: true
-      become_user: boinc
       ansible.builtin.shell: |
-        cd "{{ boinc_data_dir }}"
-        boinccmd --host 127.0.0.1 --get_project_status
+        docker exec boinc-client \
+          boinccmd --passwd "{{ boinc_client_rpc_password }}" \
+          --get_project_status
       register: final_status
       failed_when: false
       changed_when: false
@@ -160,6 +120,6 @@
     - name: Print final BOINC project status
       ansible.builtin.debug:
         msg:
-          rc: "{{ final_status.rc | default('n/a') }}"
+          rc: "{{ final_status.rc }}"
           stdout: "{{ final_status.stdout_lines | default([]) }}"
           stderr: "{{ final_status.stderr_lines | default([]) }}"
