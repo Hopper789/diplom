@@ -19,3 +19,16 @@
 - [Аккаунт BOINC и ключ подключения](docs/ACCOUNT.md)
 - [Требования](docs/REQUIREMENTS.md)
 - [Диагностика](docs/TROUBLESHOOTING.md)
+
+## Quick start
+
+```bash
+git clone https://github.com/Hopper789/diplom
+cd diplom
+
+cp config/cluster.example.yml config/cluster.yml
+nano config/cluster.yml
+
+./scripts/quickstart.sh --ask-become-pass
+./scripts/run_experiment.sh --ask-become-pass
+```
