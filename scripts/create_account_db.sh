@@ -54,15 +54,19 @@ echo "Username: $USERNAME"
 EXISTING_ROW="$(
   docker exec boinc-mysql \
     mariadb -u root -proot "$PROJECT_NAME" -N -B \
-    -e "SELECT id, authenticator FROM user WHERE email_addr='${EMAIL}' LIMIT 1;" \
+    -e "SELECT id, email_addr, name, authenticator FROM user WHERE email_addr='${EMAIL}' OR name='${USERNAME}' LIMIT 1;" \
     2>/dev/null || true
 )"
 
 if [[ -n "$EXISTING_ROW" ]]; then
   USER_ID="$(echo "$EXISTING_ROW" | awk '{print $1}')"
-  ACCOUNT_KEY="$(echo "$EXISTING_ROW" | awk '{print $2}')"
+  FOUND_EMAIL="$(echo "$EXISTING_ROW" | awk '{print $2}')"
+  FOUND_NAME="$(echo "$EXISTING_ROW" | awk '{print $3}')"
+  ACCOUNT_KEY="$(echo "$EXISTING_ROW" | awk '{print $4}')"
   echo "Account already exists."
   echo "User ID: $USER_ID"
+  echo "Email:   $FOUND_EMAIL"
+  echo "Name:    $FOUND_NAME"
 else
   echo "Account does not exist. Creating..."
 

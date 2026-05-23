@@ -27,7 +27,7 @@ rm -rf "$ROOT_DIR/server/project"
 rm -rf "$ROOT_DIR/server/mysql-data"
 mkdir -p "$ROOT_DIR/server/project"
 
-echo "Removing dangling BOINC containers if any..."
+echo "Removing dangling BOINC server containers if any..."
 docker rm -f boinc-server boinc-mysql 2>/dev/null || true
 
 echo "Removing generated runtime configs..."
@@ -42,3 +42,5 @@ echo
 echo "Next steps:"
 echo "  ./scripts/init_config.sh"
 echo "  ./scripts/server_up.sh"
+echo "  ./scripts/create_account_db.sh"
+echo "  ./scripts/deploy_clients.sh --ask-become-pass"

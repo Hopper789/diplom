@@ -14,16 +14,26 @@ ansible/install_boinc_clients.yml
 boinc_clients
 ```
 
-Он должен:
+Текущая схема не использует системный `boinc-client` как service. Вместо этого на каждом вычислительном узле запускается Docker-контейнер:
 
-1. проверить доступность Python;
-2. проверить наличие пакетного менеджера;
-3. установить системные пакеты;
-4. установить `boinc-client`;
-5. записать RPC-пароль;
-6. запустить и включить сервис `boinc-client`;
-7. подключить клиент к BOINC project;
-8. вывести статус клиента.
+```text
+boinc-client
+```
+
+Это сделано для воспроизводимости и чтобы не зависеть от версии `boinc-client` в конкретном дистрибутиве.
+
+Playbook:
+
+1. проверяет Debian/Ubuntu family;
+2. проверяет наличие нужных BOINC-переменных;
+3. устанавливает Docker и базовые пакеты;
+4. останавливает и отключает нативный `boinc-client`, если он был установлен;
+5. создаёт директорию `/opt/boinc-client`;
+6. генерирует Dockerfile и `docker-compose.yml` для BOINC client;
+7. пересоздаёт контейнер `boinc-client`;
+8. ждёт готовности BOINC RPC внутри контейнера;
+9. подключает контейнер к BOINC project;
+10. выводит статус проекта.
 
 ## Inventory
 
@@ -91,22 +101,16 @@ ansible -i ansible/inventory.ini boinc_clients -m ping
 ansible -i ansible/inventory.ini boinc_clients -m ping --ask-pass
 ```
 
-## Деплой
-
-```bash
-./scripts/deploy_clients.sh
-```
-
-С sudo-паролем:
+## Деплой клиентов
 
 ```bash
 ./scripts/deploy_clients.sh --ask-become-pass
 ```
 
-С SSH-паролем и sudo-паролем:
+Если sudo без пароля уже настроен:
 
 ```bash
-./scripts/deploy_clients.sh --ask-pass --ask-become-pass
+./scripts/deploy_clients.sh
 ```
 
 ## Проверка после деплоя
@@ -128,12 +132,25 @@ docker exec -it boinc-mysql \
 На клиенте:
 
 ```bash
-boinccmd --get_project_status
+sudo docker ps
+sudo docker logs --tail 100 boinc-client
+sudo docker exec -it boinc-client \
+  boinccmd --passwd "RPC_PASSWORD" \
+  --get_project_status
 ```
 
-Если нужен RPC-пароль:
+## Выдача задач клиентам
+
+После создания workunits можно запросить обновление проекта на клиентах:
 
 ```bash
-sudo cat /var/lib/boinc-client/gui_rpc_auth.cfg
-boinccmd --passwd "RPC_PASSWORD" --get_project_status
+ANSIBLE_EXTRA_ARGS="--ask-become-pass" apps/ml_grid_search/run_task.sh boinc
+```
+
+Или вручную:
+
+```bash
+ansible -i ansible/inventory.ini boinc_clients -b --ask-become-pass -m shell -a '
+docker exec boinc-client boinccmd --passwd "RPC_PASSWORD" --project "PROJECT_URL" update
+'
 ```

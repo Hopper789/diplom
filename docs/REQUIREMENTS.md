@@ -64,31 +64,27 @@ sudo usermod -aG docker "$USER"
 
 ## Клиентские машины
 
-На client nodes нужны:
+На client nodes изначально нужны:
 
 ```text
 Linux
 SSH server
 sudo
 Python 3
-apt или другой пакетный менеджер
-boinc-client
-curl
-python3-pip
-ca-certificates
+apt
 ```
 
 Ansible playbook устанавливает на клиентах:
 
 ```text
-boinc-client
+docker.io
+docker-compose-v2
 python3
-python3-pip
 curl
 ca-certificates
-procps
-psmisc
 ```
+
+BOINC client запускается на клиентских узлах в Docker-контейнере `boinc-client`.
 
 ## Установка SSH-сервера на клиенте Ubuntu
 

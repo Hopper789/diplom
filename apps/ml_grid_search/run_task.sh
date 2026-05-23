@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 ENV_FILE="$ROOT_DIR/config/generated.env"
+EXPERIMENT_ENV_FILE="$ROOT_DIR/config/experiment.env"
 
 if [[ -f "$EXPERIMENT_ENV_FILE" ]]; then
   set -a
@@ -11,22 +12,10 @@ if [[ -f "$EXPERIMENT_ENV_FILE" ]]; then
   set +a
 fi
 
-APP_NAME="ml_grid_search"
-APP_VERSION="${APP_VERSION:-1.04}"
-PLATFORM="${PLATFORM:-x86_64-pc-linux-gnu}"
-BIN_NAME="${APP_NAME}_${APP_VERSION}_${PLATFORM}"
-
 APP_NAME="${APP_NAME:-ml_grid_search}"
 APP_VERSION="${APP_VERSION:-1.04}"
 PLATFORM="${PLATFORM:-x86_64-pc-linux-gnu}"
-
-EXPERIMENT_WALL_SECONDS="${EXPERIMENT_WALL_SECONDS:-180}"
-EXPERIMENT_CORES="${EXPERIMENT_CORES:-12}"
-TASK_SECONDS="${TASK_SECONDS:-8}"
-TASK_COUNT="${TASK_COUNT:-}"
-
-TASK_DATASET_SIZE="${TASK_DATASET_SIZE:-500}"
-TASK_SEED_BASE="${TASK_SEED_BASE:-1000}"
+BIN_NAME="${APP_NAME}_${APP_VERSION}_${PLATFORM}"
 
 SRC_CPP="$ROOT_DIR/apps/ml_grid_search/ml_grid_search.cpp"
 TPL_IN="$ROOT_DIR/apps/ml_grid_search/templates/ml_grid_search_in"
@@ -34,7 +23,53 @@ TPL_OUT="$ROOT_DIR/apps/ml_grid_search/templates/ml_grid_search_out"
 BUILD_DIR="$ROOT_DIR/apps/ml_grid_search/build"
 
 MODE="${1:-boinc}"
+
+EXPERIMENT_WALL_SECONDS="${EXPERIMENT_WALL_SECONDS:-180}"
+EXPERIMENT_CORES="${EXPERIMENT_CORES:-12}"
+TASK_SECONDS="${TASK_SECONDS:-8}"
+TASK_COUNT="${TASK_COUNT:-}"
+TASK_DATASET_SIZE="${TASK_DATASET_SIZE:-500}"
+TASK_SEED_BASE="${TASK_SEED_BASE:-1000}"
+
+ANSIBLE_EXTRA_ARGS="${ANSIBLE_EXTRA_ARGS:-}"
+
 mkdir -p "$BUILD_DIR"
+
+require_generated_env() {
+  if [[ ! -f "$ENV_FILE" ]]; then
+    echo "ERROR: config/generated.env not found."
+    echo "Run:"
+    echo "  ./scripts/init_config.sh"
+    exit 1
+  fi
+
+  set -a
+  # shellcheck disable=SC1090
+  source "$ENV_FILE"
+  set +a
+
+  : "${PROJECT_NAME:?PROJECT_NAME is empty}"
+  : "${BOINC_PROJECT_URL:?BOINC_PROJECT_URL is empty}"
+  : "${BOINC_CLIENT_RPC_PASSWORD:?BOINC_CLIENT_RPC_PASSWORD is empty}"
+}
+
+calc_task_count() {
+  if [[ -n "$TASK_COUNT" ]]; then
+    echo "$TASK_COUNT"
+    return
+  fi
+
+  python3 - "$EXPERIMENT_WALL_SECONDS" "$EXPERIMENT_CORES" "$TASK_SECONDS" <<'PY'
+import math
+import sys
+
+wall = float(sys.argv[1])
+cores = max(1, int(float(sys.argv[2])))
+task_seconds = max(1.0, float(sys.argv[3]))
+
+print(max(1, math.ceil(wall * cores / task_seconds)))
+PY
+}
 
 compile_local() {
   echo "Building $BIN_NAME locally..."
@@ -43,7 +78,9 @@ compile_local() {
 
 compile_boinc() {
   echo "Building $BIN_NAME inside boinc-server with BOINC API..."
+
   docker cp "$SRC_CPP" "boinc-server:/tmp/${APP_NAME}.cpp"
+
   docker exec boinc-server bash -lc "
     mkdir -p '/project/$PROJECT_NAME/apps/$APP_NAME/$APP_VERSION/$PLATFORM'
     g++ -O2 -std=c++17 \
@@ -55,121 +92,116 @@ compile_boinc() {
   "
 }
 
-calc_task_count() {
-  if [[ -n "$TASK_COUNT" ]]; then
-    echo "$TASK_COUNT"
-    return
-  fi
-  python3 - "$EXPERIMENT_WALL_SECONDS" "$EXPERIMENT_CORES" "$TASK_SECONDS" <<'PY'
-import math
-import sys
-wall = float(sys.argv[1])
-cores = max(1, int(float(sys.argv[2])))
-task_seconds = max(1.0, float(sys.argv[3]))
-print(max(1, math.ceil(wall * cores / task_seconds)))
-PY
-}
-
-lambda_for_task() {
-  python3 - "$1" <<'PY'
-import sys
-i = int(sys.argv[1])
-grid = [0, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1, 3, 10]
-print(grid[(i - 1) % len(grid)])
-PY
-}
-
-run_local() {
-  compile_local
-  tmpdir="$(mktemp -d)"
-  trap 'rm -rf "$tmpdir"' EXIT
-  task_count="$(calc_task_count)"
-  echo "Running local synthetic workload: TASK_COUNT=$task_count TASK_SECONDS=$TASK_SECONDS"
-  start_ts="$(date +%s)"
-  for task_id in $(seq 1 "$task_count"); do
-    lambda="$(lambda_for_task "$task_id")"
-    seed=$((1000 + task_id))
-    cat >"$tmpdir/in" <<EOT
- task_id=$task_id
- lambda=$lambda
- seed=$seed
- n=500
- target_seconds=$TASK_SECONDS
-EOT
-    "$BUILD_DIR/$BIN_NAME" "$tmpdir/in" "$tmpdir/out" >/dev/null
-    tail -n 1 "$tmpdir/out"
-  done
-  end_ts="$(date +%s)"
-  echo "Local run elapsed: $((end_ts - start_ts)) seconds"
-}
-
-run_boinc() {
-  if [[ ! -f "$ENV_FILE" ]]; then
-    echo "ERROR: config/generated.env not found. Run: ./scripts/init_config.sh" >&2
-    exit 1
-  fi
-
-  set -a
-  # shellcheck disable=SC1090
-  source "$ENV_FILE"
-  set +a
-
+ensure_server_running() {
   if ! docker ps --format '{{.Names}}' | grep -qx 'boinc-server'; then
-    echo "ERROR: boinc-server container is not running. Run: ./scripts/server_up.sh" >&2
+    echo "ERROR: boinc-server container is not running."
+    echo "Run:"
+    echo "  ./scripts/server_up.sh"
     exit 1
   fi
 
   if ! docker ps --format '{{.Names}}' | grep -qx 'boinc-mysql'; then
-    echo "ERROR: boinc-mysql container is not running. Run: ./scripts/server_up.sh" >&2
+    echo "ERROR: boinc-mysql container is not running."
+    echo "Run:"
+    echo "  ./scripts/server_up.sh"
+    exit 1
+  fi
+}
+
+ensure_templates() {
+  if [[ ! -f "$TPL_IN" ]]; then
+    echo "ERROR: input template not found: $TPL_IN"
     exit 1
   fi
 
-  task_count="$(calc_task_count)"
+  if [[ ! -f "$TPL_OUT" ]]; then
+    echo "ERROR: output template not found: $TPL_OUT"
+    exit 1
+  fi
+}
 
+declare_app_in_project_xml() {
+  echo "Ensuring app is declared in project.xml..."
+
+  docker exec boinc-server bash -lc "
+    cd '/project/$PROJECT_NAME'
+
+    if ! grep -q '<name>$APP_NAME</name>' project.xml; then
+      python3 - <<'PY'
+from pathlib import Path
+
+app_name = '$APP_NAME'
+friendly_name = 'ML grid search'
+
+path = Path('project.xml')
+text = path.read_text()
+
+insert = f'''
+    <app>
+        <name>{app_name}</name>
+        <user_friendly_name>{friendly_name}</user_friendly_name>
+    </app>
+'''
+
+if f'<name>{app_name}</name>' not in text:
+    text = text.replace('</boinc>', insert + '\\n</boinc>')
+
+path.write_text(text)
+PY
+    fi
+  "
+}
+
+deploy_app_to_server() {
   echo "Deploying BOINC app and templates..."
   echo "  PROJECT_NAME=$PROJECT_NAME"
   echo "  APP_NAME=$APP_NAME"
   echo "  APP_VERSION=$APP_VERSION"
-  echo "  TASK_COUNT=$task_count"
-  echo "  TASK_SECONDS=$TASK_SECONDS"
-  echo "  EXPERIMENT_WALL_SECONDS=$EXPERIMENT_WALL_SECONDS"
-  echo "  EXPERIMENT_CORES=$EXPERIMENT_CORES"
+  echo "  PLATFORM=$PLATFORM"
 
-  docker exec boinc-server bash -lc "mkdir -p '/project/$PROJECT_NAME/apps/$APP_NAME/$APP_VERSION/$PLATFORM' '/project/$PROJECT_NAME/templates' '/project/$PROJECT_NAME/work_inputs'"
+  docker exec boinc-server bash -lc "
+    mkdir -p \
+      '/project/$PROJECT_NAME/apps/$APP_NAME/$APP_VERSION/$PLATFORM' \
+      '/project/$PROJECT_NAME/templates' \
+      '/project/$PROJECT_NAME/work_inputs'
+  "
 
   compile_boinc
 
   docker cp "$TPL_IN" "boinc-server:/project/$PROJECT_NAME/templates/${APP_NAME}_in"
   docker cp "$TPL_OUT" "boinc-server:/project/$PROJECT_NAME/templates/${APP_NAME}_out"
 
-  echo "Ensuring app is declared in project.xml..."
-  docker exec boinc-server bash -lc "
-    cd '/project/$PROJECT_NAME'
-    if ! grep -q '<name>$APP_NAME</name>' project.xml; then
-      python3 - <<'PY'
-from pathlib import Path
-path = Path('project.xml')
-text = path.read_text()
-insert = '''
-    <app>
-        <name>ml_grid_search</name>
-        <user_friendly_name>ML grid search</user_friendly_name>
-    </app>
-'''
-text = text.replace('</boinc>', insert + '\n</boinc>')
-path.write_text(text)
-PY
-    fi
-  "
+  declare_app_in_project_xml
 
   docker exec boinc-server bash -lc "cd '/project/$PROJECT_NAME' && ./bin/xadd"
   docker exec boinc-server bash -lc "cd '/project/$PROJECT_NAME' && ./bin/update_versions --noconfirm"
+}
 
-  echo "Creating many small workunits..."
+create_workunits() {
+  local task_count
+  task_count="$(calc_task_count)"
+
+  echo "Creating workunits..."
+  echo "  TASK_COUNT=$task_count"
+  echo "  TASK_SECONDS=$TASK_SECONDS"
+  echo "  TASK_DATASET_SIZE=$TASK_DATASET_SIZE"
+  echo "  TASK_SEED_BASE=$TASK_SEED_BASE"
+  echo "  EXPERIMENT_WALL_SECONDS=$EXPERIMENT_WALL_SECONDS"
+  echo "  EXPERIMENT_CORES=$EXPERIMENT_CORES"
+
+  local run_id
   run_id="$(date +%s)"
 
   for task_id in $(seq 1 "$task_count"); do
-    lambda="$(lambda_for_task "$task_id")"
+    lambda="$(
+      python3 - "$task_id" <<'PY'
+import sys
+i = int(sys.argv[1])
+grid = [0, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1, 3, 10]
+print(grid[(i - 1) % len(grid)])
+PY
+    )"
+
     seed=$((TASK_SEED_BASE + task_id))
     task_tag="$(printf '%04d' "$task_id")"
     lambda_tag="${lambda//./p}"
@@ -178,37 +210,159 @@ PY
 
     docker exec boinc-server bash -lc "
       cd '/project/$PROJECT_NAME'
-      cat > 'work_inputs/$in_name' <<EOT
- task_id=$task_id
- lambda=$lambda
- seed=$seed
- n=$TASK_DATASET_SIZEs
- target_seconds=$TASK_SECONDS
-EOT
+
+      cat > 'work_inputs/$in_name' <<EOF
+task_id=$task_id
+lambda=$lambda
+seed=$seed
+n=$TASK_DATASET_SIZE
+target_seconds=$TASK_SECONDS
+EOF
+
       ./bin/stage_file_native --copy 'work_inputs/$in_name'
       ./bin/create_work --appname '$APP_NAME' --wu_name '$wu_name' '$in_name'
     "
   done
 
   docker exec boinc-server bash -lc "cd '/project/$PROJECT_NAME' && touch reread_db"
+}
+
+update_real_clients() {
+  if [[ ! -f "$ROOT_DIR/ansible/inventory.ini" ]]; then
+    echo "ansible/inventory.ini not found; skip client update."
+    return 0
+  fi
+
+  if ! command -v ansible >/dev/null 2>&1; then
+    echo "ansible is not installed; skip client update."
+    return 0
+  fi
 
   echo
-  echo "Created workunits:"
+  echo "Requesting project update on real BOINC clients..."
+  echo "If sudo password is required, run with:"
+  echo "  ANSIBLE_EXTRA_ARGS='--ask-become-pass' apps/ml_grid_search/run_task.sh boinc"
+  echo
+
+  # shellcheck disable=SC2086
+  ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b $ANSIBLE_EXTRA_ARGS -m shell -a "
+    docker exec boinc-client \
+      boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' \
+      --project '$BOINC_PROJECT_URL' update
+  " || true
+}
+
+show_server_summary() {
+  echo
+  echo "Server DB summary:"
   docker exec boinc-mysql mariadb -u root -proot -D "$PROJECT_NAME" -e "
     SELECT COUNT(*) AS hosts FROM host;
     SELECT COUNT(*) AS workunits FROM workunit;
     SELECT COUNT(*) AS results FROM result;
     SELECT id, name, appid, create_time FROM workunit ORDER BY id DESC LIMIT 10;
+    SELECT id, workunitid, server_state, outcome, client_state, hostid FROM result ORDER BY id DESC LIMIT 10;
   "
+}
+
+show_client_summary() {
+  if [[ ! -f "$ROOT_DIR/ansible/inventory.ini" ]]; then
+    return 0
+  fi
+
+  if ! command -v ansible >/dev/null 2>&1; then
+    return 0
+  fi
 
   echo
+  echo "Client task summary:"
+
+  # shellcheck disable=SC2086
+  ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b $ANSIBLE_EXTRA_ARGS -m shell -a "
+    docker exec boinc-client \
+      boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' \
+      --get_task_summary
+  " || true
+
+  echo
+  echo "Client project status:"
+
+  # shellcheck disable=SC2086
+  ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b $ANSIBLE_EXTRA_ARGS -m shell -a "
+    docker exec boinc-client \
+      boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' \
+      --get_project_status
+  " || true
+}
+
+run_boinc() {
+  require_generated_env
+  ensure_server_running
+  ensure_templates
+
+  deploy_app_to_server
+  create_workunits
+  update_real_clients
+  show_server_summary
+  show_client_summary
+
+  echo
+  echo "Experiment submitted."
   echo "Watch progress:"
   echo "  ./scripts/status.sh"
   echo "  http://localhost:3000  # Grafana, if monitoring is enabled"
 }
 
+run_local() {
+  compile_local
+
+  tmpdir="$(mktemp -d)"
+  trap 'rm -rf "$tmpdir"' EXIT
+
+  task_count="$(calc_task_count)"
+
+  echo "Running local synthetic workload:"
+  echo "  TASK_COUNT=$task_count"
+  echo "  TASK_SECONDS=$TASK_SECONDS"
+
+  start_ts="$(date +%s)"
+
+  for task_id in $(seq 1 "$task_count"); do
+    lambda="$(
+      python3 - "$task_id" <<'PY'
+import sys
+i = int(sys.argv[1])
+grid = [0, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1, 3, 10]
+print(grid[(i - 1) % len(grid)])
+PY
+    )"
+
+    seed=$((TASK_SEED_BASE + task_id))
+
+    cat >"$tmpdir/in" <<EOF
+task_id=$task_id
+lambda=$lambda
+seed=$seed
+n=$TASK_DATASET_SIZE
+target_seconds=$TASK_SECONDS
+EOF
+
+    "$BUILD_DIR/$BIN_NAME" "$tmpdir/in" "$tmpdir/out" >/dev/null
+    tail -n 1 "$tmpdir/out"
+  done
+
+  end_ts="$(date +%s)"
+  echo "Local run elapsed: $((end_ts - start_ts)) seconds"
+}
+
 case "$MODE" in
-  local) run_local ;;
-  boinc) run_boinc ;;
-  *) echo "Usage: $0 [local|boinc]" >&2; exit 2 ;;
+  boinc)
+    run_boinc
+    ;;
+  local)
+    run_local
+    ;;
+  *)
+    echo "Usage: $0 [boinc|local]" >&2
+    exit 2
+    ;;
 esac

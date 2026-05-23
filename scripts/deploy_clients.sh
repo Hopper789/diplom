@@ -14,7 +14,7 @@ fi
 source "$ENV_FILE"
 
 if [[ -z "${BOINC_ACCOUNT_KEY:-}" ]]; then
-  echo "ERROR: BOINC_ACCOUNT_KEY is empty. Run: ./scripts/create_account.sh"
+  echo "ERROR: BOINC_ACCOUNT_KEY is empty. Run: ./scripts/create_account_db.sh"
   exit 1
 fi
 
