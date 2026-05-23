@@ -14,15 +14,13 @@
       - procps
       - psmisc
 
-    boinc_data_dir_candidates:
-      - /var/lib/boinc-client
-      - /var/lib/boinc
+    boinc_data_dir: /var/lib/boinc-client
 
   pre_tasks:
     - name: Check supported OS family
       ansible.builtin.assert:
         that:
-          - ansible_os_family == "Debian"
+          - ansible_facts["os_family"] == "Debian"
         fail_msg: "This playbook currently supports Debian/Ubuntu clients only."
 
     - name: Check apt package manager
@@ -50,11 +48,7 @@
       changed_when: false
 
   tasks:
-    - name: Set BOINC data directory for Debian/Ubuntu package
-      ansible.builtin.set_fact:
-        boinc_data_dir: /var/lib/boinc-client
-
-    - name: Stop BOINC client before changing RPC password
+    - name: Stop BOINC client before changing RPC config
       ansible.builtin.systemd:
         name: boinc-client
         state: stopped
@@ -64,31 +58,43 @@
       ansible.builtin.shell: pkill -9 boinc || true
       changed_when: false
 
-    - name: Ensure BOINC data directory exists
+    - name: Ensure BOINC directories exist
       ansible.builtin.file:
-        path: "{{ boinc_data_dir }}"
+        path: "{{ item.path }}"
         state: directory
-        owner: boinc
-        group: boinc
-        mode: "0755"
+        owner: "{{ item.owner }}"
+        group: "{{ item.group }}"
+        mode: "{{ item.mode }}"
+      loop:
+        - { path: "/var/lib/boinc-client", owner: "boinc", group: "boinc", mode: "0755" }
+        - { path: "/var/lib/boinc", owner: "boinc", group: "boinc", mode: "0755" }
+        - { path: "/etc/boinc-client", owner: "root", group: "boinc", mode: "0755" }
 
-    - name: Write BOINC GUI RPC password
+    - name: Write empty BOINC GUI RPC password to common paths
       ansible.builtin.copy:
-        dest: "{{ boinc_data_dir }}/gui_rpc_auth.cfg"
-        content: "{{ boinc_client_rpc_password }}\n"
-        owner: boinc
+        dest: "{{ item.dest }}"
+        content: ""
+        owner: "{{ item.owner }}"
         group: boinc
         mode: "0640"
+      loop:
+        - { dest: "/var/lib/boinc-client/gui_rpc_auth.cfg", owner: "boinc" }
+        - { dest: "/var/lib/boinc/gui_rpc_auth.cfg", owner: "boinc" }
+        - { dest: "/etc/boinc-client/gui_rpc_auth.cfg", owner: "root" }
 
-    - name: Allow BOINC RPC from localhost
+    - name: Allow BOINC RPC from localhost in common paths
       ansible.builtin.copy:
-        dest: "{{ boinc_data_dir }}/remote_hosts.cfg"
+        dest: "{{ item.dest }}"
         content: |
           127.0.0.1
           localhost
-        owner: boinc
+        owner: "{{ item.owner }}"
         group: boinc
         mode: "0640"
+      loop:
+        - { dest: "/var/lib/boinc-client/remote_hosts.cfg", owner: "boinc" }
+        - { dest: "/var/lib/boinc/remote_hosts.cfg", owner: "boinc" }
+        - { dest: "/etc/boinc-client/remote_hosts.cfg", owner: "root" }
 
     - name: Enable and start BOINC client service
       ansible.builtin.systemd:
@@ -101,7 +107,7 @@
       become_user: boinc
       ansible.builtin.shell: |
         cd "{{ boinc_data_dir }}"
-        boinccmd --host 127.0.0.1 --passwd "{{ boinc_client_rpc_password }}" --get_state
+        boinccmd --host 127.0.0.1 --get_state
       register: boinc_state
       changed_when: false
       retries: 20
@@ -113,7 +119,7 @@
       become_user: boinc
       ansible.builtin.shell: |
         cd "{{ boinc_data_dir }}"
-        boinccmd --host 127.0.0.1 --passwd "{{ boinc_client_rpc_password }}" --get_project_status
+        boinccmd --host 127.0.0.1 --get_project_status
       register: boinc_project_status
       failed_when: false
       changed_when: false
@@ -123,7 +129,7 @@
       become_user: boinc
       ansible.builtin.shell: |
         cd "{{ boinc_data_dir }}"
-        boinccmd --host 127.0.0.1 --passwd "{{ boinc_client_rpc_password }}" --project_attach "{{ boinc_project_url }}" "{{ boinc_account_key }}"
+        boinccmd --host 127.0.0.1 --project_attach "{{ boinc_project_url }}" "{{ boinc_account_key }}"
       when:
         - boinc_account_key | length > 0
         - boinc_project_url not in boinc_project_status.stdout
@@ -136,7 +142,7 @@
       become_user: boinc
       ansible.builtin.shell: |
         cd "{{ boinc_data_dir }}"
-        boinccmd --host 127.0.0.1 --passwd "{{ boinc_client_rpc_password }}" --project "{{ boinc_project_url }}" update
+        boinccmd --host 127.0.0.1 --project "{{ boinc_project_url }}" update
       failed_when: false
       changed_when: false
 
@@ -145,7 +151,7 @@
       become_user: boinc
       ansible.builtin.shell: |
         cd "{{ boinc_data_dir }}"
-        boinccmd --host 127.0.0.1 --passwd "{{ boinc_client_rpc_password }}" --get_project_status
+        boinccmd --host 127.0.0.1 --get_project_status
       register: final_status
       changed_when: false
 
