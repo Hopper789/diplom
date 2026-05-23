@@ -5,7 +5,6 @@
   gather_facts: true
 
   vars:
-    boinc_client_rpc_password: "{{ boinc_client_rpc_password | default('123') }}"
     boinc_client_data_dir: /opt/boinc-client
     boinc_client_image: boinc/client:latest
 
@@ -22,6 +21,17 @@
         that:
           - ansible_facts["os_family"] == "Debian"
         fail_msg: "This playbook currently supports Debian/Ubuntu clients only."
+
+    - name: Check required BOINC variables
+      ansible.builtin.assert:
+        that:
+          - boinc_project_url is defined
+          - boinc_project_url | length > 0
+          - boinc_account_key is defined
+          - boinc_account_key | length > 0
+          - boinc_client_rpc_password is defined
+          - boinc_client_rpc_password | length > 0
+        fail_msg: "Missing BOINC variables. Run ./scripts/init_config.sh and ./scripts/create_account_db.sh first."
 
     - name: Update apt cache
       ansible.builtin.apt:
