@@ -132,7 +132,10 @@
 
     - name: Print attach result
       ansible.builtin.debug:
-        var: attach_result.stdout_lines
+        msg:
+          rc: "{{ attach_result.rc | default('n/a') }}"
+          stdout: "{{ attach_result.stdout_lines | default([]) }}"
+          stderr: "{{ attach_result.stderr_lines | default([]) }}"
       when: attach_result is defined
 
     - name: Request project update
@@ -156,4 +159,7 @@
 
     - name: Print final BOINC project status
       ansible.builtin.debug:
-        var: final_status.stdout_lines
+        msg:
+          rc: "{{ final_status.rc | default('n/a') }}"
+          stdout: "{{ final_status.stdout_lines | default([]) }}"
+          stderr: "{{ final_status.stderr_lines | default([]) }}"
