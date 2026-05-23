@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
@@ -5,7 +7,6 @@
 #include <iomanip>
 #include <iostream>
 #include <map>
-#include <sstream>
 #include <string>
 #include <vector>
 
@@ -41,14 +42,11 @@ static std::map<std::string, std::string> read_kv_file(const std::string& path) 
         if (line.empty() || line.rfind("#", 0) == 0) continue;
         auto pos = line.find('=');
         if (pos == std::string::npos) continue;
-        std::string key = trim(line.substr(0, pos));
-        std::string val = trim(line.substr(pos + 1));
-        if (!key.empty()) kv[key] = val;
+        kv[trim(line.substr(0, pos))] = trim(line.substr(pos + 1));
     }
     return kv;
 }
 
-// simple deterministic RNG (LCG)
 struct LcgRng {
     uint64_t state;
     explicit LcgRng(uint64_t seed) : state(seed ? seed : 1) {}
@@ -56,9 +54,7 @@ struct LcgRng {
         state = state * 6364136223846793005ULL + 1ULL;
         return static_cast<uint32_t>(state >> 32);
     }
-    double next_uniform() {  // [0, 1)
-        return (next_u32() / 4294967296.0);
-    }
+    double next_uniform() { return next_u32() / 4294967296.0; }
 };
 
 static std::vector<double> make_dataset_x(int n) {
@@ -66,19 +62,17 @@ static std::vector<double> make_dataset_x(int n) {
     xs.reserve(n);
     for (int i = 0; i < n; i++) {
         double t = (n == 1) ? 0.0 : (static_cast<double>(i) / (n - 1));
-        // [-5, 5]
         xs.push_back(-5.0 + 10.0 * t);
     }
     return xs;
 }
 
 static std::vector<double> make_dataset_y(const std::vector<double>& xs, uint64_t seed) {
-    // y = 2*x + 1 + noise
     LcgRng rng(seed);
     std::vector<double> ys;
     ys.reserve(xs.size());
     for (double x : xs) {
-        double noise = (rng.next_uniform() - 0.5) * 0.5;  // [-0.25, 0.25)
+        double noise = (rng.next_uniform() - 0.5) * 0.5;
         ys.push_back(2.0 * x + 1.0 + noise);
     }
     return ys;
@@ -91,9 +85,6 @@ static void ridge_fit_2d(
     double& w0,
     double& w1
 ) {
-    // X = [1, x]
-    // Solve (X^T X + lambda*I) w = X^T y
-    // (regularize both terms for simplicity)
     double s00 = 0, s01 = 0, s11 = 0;
     double b0 = 0, b1 = 0;
     for (size_t i = 0; i < xs.size(); i++) {
@@ -127,16 +118,33 @@ static double mse(const std::vector<double>& xs, const std::vector<double>& ys, 
     return acc / (xs.empty() ? 1.0 : static_cast<double>(xs.size()));
 }
 
+static uint64_t cpu_burn_for_seconds(double target_seconds, uint64_t seed) {
+    if (target_seconds <= 0.0) return 0;
+    using clock = std::chrono::steady_clock;
+    auto start = clock::now();
+    volatile double sink = 0.0;
+    double x = 0.000001 * static_cast<double>((seed % 997) + 1);
+    uint64_t iterations = 0;
+    while (true) {
+        for (int i = 0; i < 20000; i++) {
+            x = std::sin(x + 0.000001) * std::cos(x + 0.000003) + std::sqrt(std::fabs(x) + 1.0);
+            sink += x * 0.0000001;
+            iterations++;
+        }
+        double elapsed = std::chrono::duration<double>(clock::now() - start).count();
+        if (elapsed >= target_seconds) break;
+    }
+    return iterations + static_cast<uint64_t>(sink * 0.0);
+}
+
 int main(int argc, char** argv) {
 #if HAVE_BOINC_API
     boinc_init();
 #endif
-
     std::string in_path = "in";
     std::string out_path = "out";
     if (argc >= 2) in_path = argv[1];
     if (argc >= 3) out_path = argv[2];
-
 #if HAVE_BOINC_API
     {
         char resolved[1024];
@@ -154,42 +162,49 @@ int main(int argc, char** argv) {
         out_path = resolved;
     }
 #endif
-
     auto kv = read_kv_file(in_path);
-    double lambda = 0.1;
-    uint64_t seed = 42;
-    if (kv.count("lambda")) lambda = std::stod(kv["lambda"]);
-    if (kv.count("seed")) seed = static_cast<uint64_t>(std::stoull(kv["seed"]));
-    int n = 50;
-    if (kv.count("n")) n = std::stoi(kv["n"]);
+    int task_id = kv.count("task_id") ? std::stoi(kv["task_id"]) : 0;
+    double lambda = kv.count("lambda") ? std::stod(kv["lambda"]) : 0.1;
+    uint64_t seed = kv.count("seed") ? static_cast<uint64_t>(std::stoull(kv["seed"])) : 42;
+    int n = kv.count("n") ? std::stoi(kv["n"]) : 500;
+    double target_seconds = kv.count("target_seconds") ? std::stod(kv["target_seconds"]) : 8.0;
     if (n <= 1) n = 2;
+    if (target_seconds < 0.0) target_seconds = 0.0;
 
+    auto started = std::chrono::steady_clock::now();
     auto xs = make_dataset_x(n);
     auto ys = make_dataset_y(xs, seed);
-
     double w0 = 0, w1 = 0;
     ridge_fit_2d(xs, ys, lambda, w0, w1);
     double loss = mse(xs, ys, w0, w1);
+    uint64_t burn_iterations = cpu_burn_for_seconds(target_seconds, seed + static_cast<uint64_t>(task_id));
+    double elapsed_seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count();
 
     std::ofstream out(out_path, std::ios::out | std::ios::trunc);
     if (!out) {
         std::cerr << "ml_grid_search: can't open output file: " << out_path << "\n";
+#if HAVE_BOINC_API
+        boinc_finish(1);
+#endif
         return 1;
     }
-
     out << std::fixed << std::setprecision(8);
     out << "{";
+    out << "\"task_id\":" << task_id << ",";
     out << "\"lambda\":" << lambda << ",";
     out << "\"seed\":" << seed << ",";
     out << "\"n\":" << n << ",";
+    out << "\"target_seconds\":" << target_seconds << ",";
+    out << "\"elapsed_seconds\":" << elapsed_seconds << ",";
+    out << "\"burn_iterations\":" << burn_iterations << ",";
     out << "\"mse\":" << loss << ",";
     out << "\"w0\":" << w0 << ",";
     out << "\"w1\":" << w1;
     out << "}\n";
-    out.flush();
     out.close();
-
-    std::cerr << "ml_grid_search: done; lambda=" << lambda << " mse=" << loss << "\n";
+    std::cerr << "ml_grid_search: done; task_id=" << task_id
+              << " target_seconds=" << target_seconds
+              << " elapsed_seconds=" << elapsed_seconds << "\n";
 #if HAVE_BOINC_API
     boinc_finish(0);
 #endif
