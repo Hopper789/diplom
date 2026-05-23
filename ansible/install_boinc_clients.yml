@@ -6,7 +6,7 @@
 
   vars:
     boinc_client_data_dir: /opt/boinc-client
-    boinc_client_image: boinc/client:latest
+    boinc_client_image: local/boinc-client:ubuntu24
 
     client_packages:
       - docker.io
@@ -63,6 +63,21 @@
         state: directory
         mode: "0755"
 
+    - name: Write BOINC client Dockerfile
+      ansible.builtin.copy:
+        dest: "{{ boinc_client_data_dir }}/Dockerfile"
+        mode: "0644"
+        content: |
+          FROM ubuntu:24.04
+
+          RUN apt-get update && \
+              apt-get install -y boinc-client ca-certificates curl && \
+              rm -rf /var/lib/apt/lists/*
+
+          RUN mkdir -p /var/lib/boinc /var/lib/boinc/slots /var/lib/boinc/projects
+
+          CMD ["boinc", "--allow_remote_gui_rpc", "--dir", "/var/lib/boinc"]
+
     - name: Write Docker Compose file for BOINC client
       ansible.builtin.copy:
         dest: "{{ boinc_client_data_dir }}/docker-compose.yml"
@@ -70,19 +85,26 @@
         content: |
           services:
             boinc-client:
+              build: .
               image: {{ boinc_client_image }}
               container_name: boinc-client
               restart: unless-stopped
               volumes:
                 - ./data:/var/lib/boinc
               command: >
-                bash -lc "echo '{{ boinc_client_rpc_password }}' > /var/lib/boinc/gui_rpc_auth.cfg &&
+                bash -lc "mkdir -p /var/lib/boinc/slots /var/lib/boinc/projects &&
+                          echo '{{ boinc_client_rpc_password }}' > /var/lib/boinc/gui_rpc_auth.cfg &&
                           boinc --allow_remote_gui_rpc --dir /var/lib/boinc"
+
+    - name: Remove old BOINC client container
+      ansible.builtin.shell: |
+        docker rm -f boinc-client 2>/dev/null || true
+      changed_when: false
 
     - name: Start BOINC client container
       ansible.builtin.shell: |
         cd "{{ boinc_client_data_dir }}"
-        docker compose up -d
+        docker compose up -d --build
       changed_when: true
 
     - name: Wait for BOINC client container
@@ -94,11 +116,40 @@
       delay: 3
       until: boinc_container_check.rc == 0
 
+    - name: Wait for BOINC RPC inside container
+      ansible.builtin.shell: |
+        docker exec boinc-client \
+          boinccmd --passwd "{{ boinc_client_rpc_password }}" \
+          --get_project_status
+      register: boinc_rpc_check
+      changed_when: false
+      retries: 30
+      delay: 3
+      until: boinc_rpc_check.rc == 0
+
+    - name: Get BOINC project status
+      ansible.builtin.shell: |
+        docker exec boinc-client \
+          boinccmd --passwd "{{ boinc_client_rpc_password }}" \
+          --get_project_status
+      register: boinc_project_status
+      failed_when: false
+      changed_when: false
+
+    - name: Print BOINC project status before attach
+      ansible.builtin.debug:
+        msg:
+          rc: "{{ boinc_project_status.rc | default('n/a') }}"
+          stdout: "{{ boinc_project_status.stdout_lines | default([]) }}"
+          stderr: "{{ boinc_project_status.stderr_lines | default([]) }}"
+
     - name: Attach BOINC Docker client to project
       ansible.builtin.shell: |
         docker exec boinc-client \
           boinccmd --passwd "{{ boinc_client_rpc_password }}" \
           --project_attach "{{ boinc_project_url }}" "{{ boinc_account_key }}"
+      when:
+        - boinc_project_url not in boinc_project_status.stdout
       register: attach_result
       failed_when: false
       changed_when: "'already attached' not in (attach_result.stdout | default(''))"
@@ -106,9 +157,15 @@
     - name: Print attach result
       ansible.builtin.debug:
         msg:
-          rc: "{{ attach_result.rc }}"
+          rc: "{{ attach_result.rc | default('n/a') }}"
           stdout: "{{ attach_result.stdout_lines | default([]) }}"
           stderr: "{{ attach_result.stderr_lines | default([]) }}"
+      when: attach_result is defined
+
+    - name: Wait after project attach
+      ansible.builtin.pause:
+        seconds: 5
+      when: attach_result is defined
 
     - name: Request project update
       ansible.builtin.shell: |
@@ -130,6 +187,6 @@
     - name: Print final BOINC project status
       ansible.builtin.debug:
         msg:
-          rc: "{{ final_status.rc }}"
+          rc: "{{ final_status.rc | default('n/a') }}"
           stdout: "{{ final_status.stdout_lines | default([]) }}"
           stderr: "{{ final_status.stderr_lines | default([]) }}"
