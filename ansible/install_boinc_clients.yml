@@ -48,14 +48,14 @@
       changed_when: false
 
   tasks:
-    - name: Stop BOINC client before changing RPC config
-      ansible.builtin.systemd:
-        name: boinc-client
-        state: stopped
-      failed_when: false
+    - name: Set BOINC data directory for Debian/Ubuntu package
+      ansible.builtin.set_fact:
+        boinc_data_dir: /var/lib/boinc-client
 
-    - name: Kill stale BOINC processes
-      ansible.builtin.shell: pkill -9 boinc || true
+    - name: Stop BOINC client before changing RPC config
+      ansible.builtin.shell: |
+        systemctl stop boinc-client || true
+        pkill -9 boinc || true
       changed_when: false
 
     - name: Ensure BOINC directories exist
@@ -67,10 +67,9 @@
         mode: "{{ item.mode }}"
       loop:
         - { path: "/var/lib/boinc-client", owner: "boinc", group: "boinc", mode: "0755" }
-        - { path: "/var/lib/boinc", owner: "boinc", group: "boinc", mode: "0755" }
         - { path: "/etc/boinc-client", owner: "root", group: "boinc", mode: "0755" }
 
-    - name: Write empty BOINC GUI RPC password to common paths
+    - name: Write empty BOINC GUI RPC password
       ansible.builtin.copy:
         dest: "{{ item.dest }}"
         content: ""
@@ -79,40 +78,30 @@
         mode: "0640"
       loop:
         - { dest: "/var/lib/boinc-client/gui_rpc_auth.cfg", owner: "boinc" }
-        - { dest: "/var/lib/boinc/gui_rpc_auth.cfg", owner: "boinc" }
         - { dest: "/etc/boinc-client/gui_rpc_auth.cfg", owner: "root" }
 
-    - name: Allow BOINC RPC from localhost in common paths
-      ansible.builtin.copy:
-        dest: "{{ item.dest }}"
-        content: |
-          127.0.0.1
-          localhost
-        owner: "{{ item.owner }}"
-        group: boinc
-        mode: "0640"
+    - name: Remove BOINC remote_hosts.cfg from common paths
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
       loop:
-        - { dest: "/var/lib/boinc-client/remote_hosts.cfg", owner: "boinc" }
-        - { dest: "/var/lib/boinc/remote_hosts.cfg", owner: "boinc" }
-        - { dest: "/etc/boinc-client/remote_hosts.cfg", owner: "root" }
+        - /var/lib/boinc-client/remote_hosts.cfg
+        - /etc/boinc-client/remote_hosts.cfg
 
-    - name: Enable and start BOINC client service
-      ansible.builtin.systemd:
-        name: boinc-client
-        enabled: true
-        state: started
-
-    - name: Wait for BOINC RPC to become available
-      become: true
-      become_user: boinc
+    - name: Start BOINC client service
       ansible.builtin.shell: |
-        cd "{{ boinc_data_dir }}"
-        boinccmd --host 127.0.0.1 --get_state
-      register: boinc_state
+        systemctl start boinc-client
       changed_when: false
-      retries: 20
-      delay: 3
-      until: boinc_state.rc == 0
+
+    - name: Wait for BOINC GUI RPC port
+      ansible.builtin.wait_for:
+        host: 127.0.0.1
+        port: 31416
+        timeout: 60
+
+    - name: Give BOINC client a few seconds after RPC port opens
+      ansible.builtin.pause:
+        seconds: 5
 
     - name: Get BOINC project status
       become: true
@@ -123,6 +112,10 @@
       register: boinc_project_status
       failed_when: false
       changed_when: false
+
+    - name: Print BOINC project status before attach
+      ansible.builtin.debug:
+        var: boinc_project_status.stdout_lines
 
     - name: Attach BOINC client to project
       become: true
@@ -136,6 +129,11 @@
       register: attach_result
       failed_when: false
       changed_when: "'already attached' not in (attach_result.stdout | default(''))"
+
+    - name: Print attach result
+      ansible.builtin.debug:
+        var: attach_result.stdout_lines
+      when: attach_result is defined
 
     - name: Request project update
       become: true
@@ -153,6 +151,7 @@
         cd "{{ boinc_data_dir }}"
         boinccmd --host 127.0.0.1 --get_project_status
       register: final_status
+      failed_when: false
       changed_when: false
 
     - name: Print final BOINC project status
