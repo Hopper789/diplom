@@ -5,11 +5,14 @@ ansible/inventory.ini
 ansible/group_vars/all.yml
 
 # BOINC runtime data
-boinc-data/
 server/project/
 server/mysql-data/
 
+# monitoring runtime
+monitoring/.env
+
 # secrets
+config/experiment.env
 .env
 config.env
 
@@ -21,6 +24,7 @@ __pycache__/
 *.pyc
 
 # build artifacts
-apps/ml_grid_search/build/
-apps/ml_grid_search/templates/
+apps/*/build/
+apps/*/templates/
 
+boinc-data
