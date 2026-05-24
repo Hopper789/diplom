@@ -154,3 +154,24 @@ ansible -i ansible/inventory.ini boinc_clients -b --ask-become-pass -m shell -a 
 docker exec boinc-client boinccmd --passwd "RPC_PASSWORD" --project "PROJECT_URL" update
 '
 ```
+
+
+## Запуск с Ansible Vault
+
+Если sudo на клиентах требует пароль, можно создать зашифрованный vault-файл:
+
+```bash
+./scripts/init_vault.sh
+```
+
+После этого разворачивать клиентов так:
+
+```bash
+./scripts/deploy_clients.sh --ask-vault-pass
+```
+
+И запускать эксперимент так:
+
+```bash
+./scripts/run_experiment.sh --ask-vault-pass
+```

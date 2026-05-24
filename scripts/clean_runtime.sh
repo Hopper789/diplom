@@ -2,9 +2,59 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ANSIBLE_EXTRA_ARGS="${ANSIBLE_EXTRA_ARGS:-}"
-
 cd "$ROOT_DIR"
+
+usage() {
+  cat <<'EOF'
+Usage: ./scripts/clean_runtime.sh [OPTIONS]
+
+Options for remote client cleanup through Ansible:
+  --ask-become-pass, -K       Ask sudo password for remote clients
+  --ask-vault-pass            Ask Ansible Vault password
+  --vault                     Shortcut for --ask-vault-pass
+  --vault-password-file FILE  Use Vault password file
+
+Examples:
+  ./scripts/clean_runtime.sh --ask-become-pass
+  ./scripts/clean_runtime.sh --ask-vault-pass
+EOF
+}
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+  usage
+  exit 0
+fi
+
+ANSIBLE_ARGS=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --ask-become-pass|-K)
+      ANSIBLE_ARGS+=(--ask-become-pass)
+      shift
+      ;;
+    --ask-vault-pass)
+      ANSIBLE_ARGS+=(--ask-vault-pass)
+      shift
+      ;;
+    --vault)
+      ANSIBLE_ARGS+=(--ask-vault-pass)
+      shift
+      ;;
+    --vault-password-file|--vault-id)
+      if [[ $# -lt 2 ]]; then
+        echo "ERROR: $1 requires an argument" >&2
+        exit 2
+      fi
+      ANSIBLE_ARGS+=("$1" "$2")
+      shift 2
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      usage
+      exit 2
+      ;;
+  esac
+done
 
 echo "Cleaning BOINC runtime data..."
 echo
@@ -27,9 +77,8 @@ if [[ -f "$ROOT_DIR/ansible/inventory.ini" ]] && command -v ansible >/dev/null 2
 
   echo "Cleaning remote BOINC client state..."
 
-  # shellcheck disable=SC2086
   ANSIBLE_HOST_KEY_CHECKING=False \
-  ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b $ANSIBLE_EXTRA_ARGS -m shell -a '
+  ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b "${ANSIBLE_ARGS[@]}" -m shell -a '
     docker rm -f boinc-client 2>/dev/null || true
     rm -rf /opt/boinc-client/data
 
@@ -87,4 +136,4 @@ echo "Next steps:"
 echo "  ./scripts/init_config.sh"
 echo "  ./scripts/server_up.sh"
 echo "  ./scripts/create_account_db.sh"
-echo "  ./scripts/deploy_clients.sh --ask-become-pass"
+echo "  ./scripts/deploy_clients.sh --ask-vault-pass"

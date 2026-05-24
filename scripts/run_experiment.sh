@@ -2,22 +2,56 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-
 cd "$ROOT_DIR"
 
-echo "== BOINC experiment runner =="
-echo
+usage() {
+  cat <<'EOF'
+Usage: ./scripts/run_experiment.sh [OPTIONS]
 
-ASK_BECOME=0
+Options passed to Ansible calls inside the experiment runner:
+  --ask-become-pass, -K       Ask sudo password for remote clients
+  --ask-vault-pass            Ask Ansible Vault password
+  --vault                     Shortcut for --ask-vault-pass
+  --vault-password-file FILE  Use Vault password file
 
-for arg in "$@"; do
-  case "$arg" in
+Examples:
+  ./scripts/run_experiment.sh --ask-become-pass
+  ./scripts/run_experiment.sh --ask-vault-pass
+  ./scripts/run_experiment.sh --vault
+EOF
+}
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+  usage
+  exit 0
+fi
+
+ANSIBLE_ARGS=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
     --ask-become-pass|-K)
-      ASK_BECOME=1
+      ANSIBLE_ARGS+=(--ask-become-pass)
+      shift
+      ;;
+    --ask-vault-pass)
+      ANSIBLE_ARGS+=(--ask-vault-pass)
+      shift
+      ;;
+    --vault)
+      ANSIBLE_ARGS+=(--ask-vault-pass)
+      shift
+      ;;
+    --vault-password-file|--vault-id)
+      if [[ $# -lt 2 ]]; then
+        echo "ERROR: $1 requires an argument" >&2
+        exit 2
+      fi
+      ANSIBLE_ARGS+=("$1" "$2")
+      shift 2
       ;;
     *)
-      echo "Unknown argument: $arg"
-      echo "Usage: ./scripts/run_experiment.sh [--ask-become-pass]"
+      echo "Unknown argument: $1" >&2
+      usage
       exit 2
       ;;
   esac
@@ -26,7 +60,9 @@ done
 if [[ ! -f "$ROOT_DIR/config/generated.env" ]]; then
   echo "ERROR: config/generated.env not found."
   echo "Run first:"
-  echo "  ./scripts/bootstrap_server.sh"
+  echo "  ./scripts/init_config.sh"
+  echo "  ./scripts/server_up.sh"
+  echo "  ./scripts/create_account_db.sh"
   exit 1
 fi
 
@@ -35,9 +71,13 @@ if [[ ! -f "$ROOT_DIR/config/experiment.env" && -f "$ROOT_DIR/config/experiment.
   cp "$ROOT_DIR/config/experiment.example.env" "$ROOT_DIR/config/experiment.env"
 fi
 
-if [[ "$ASK_BECOME" == "1" ]]; then
-  export ANSIBLE_EXTRA_ARGS="--ask-become-pass"
+if [[ ${#ANSIBLE_ARGS[@]} -gt 0 ]]; then
+  printf -v ANSIBLE_EXTRA_ARGS '%q ' "${ANSIBLE_ARGS[@]}"
+  export ANSIBLE_EXTRA_ARGS="${ANSIBLE_EXTRA_ARGS% }"
 fi
+
+echo "== BOINC experiment runner =="
+echo
 
 echo "Experiment config:"
 if [[ -f "$ROOT_DIR/config/experiment.env" ]]; then
@@ -53,10 +93,3 @@ apps/ml_grid_search/run_task.sh boinc
 echo
 echo "Status after submitting work:"
 ./scripts/status.sh || true
-
-echo
-echo "Experiment submitted."
-echo "Use monitoring or status command to watch progress:"
-echo "  ./scripts/status.sh"
-echo "  http://localhost:3000"
-

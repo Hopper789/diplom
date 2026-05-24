@@ -1,115 +1,76 @@
 # Quick start
 
-## 1. Подготовить конфигурацию
+## 1. Подготовить конфиг кластера
 
 ```bash
 cp config/cluster.example.yml config/cluster.yml
 nano config/cluster.yml
 ```
 
-## 2. Поднять BOINC server
+## 2. Обычный запуск с вводом sudo-пароля
 
 ```bash
-./scripts/clean_runtime.sh
-./scripts/init_config.sh
-./scripts/server_up.sh
+./scripts/bootstrap_server.sh
+./scripts/bootstrap_clients.sh --ask-become-pass
+./scripts/run_experiment.sh --ask-become-pass
 ```
 
-Открыть сайт проекта:
+## 3. Запуск через Ansible Vault
 
-```text
-http://SERVER_IP:8080/PROJECT_NAME/
-```
-
-Например:
-
-```text
-http://172.17.12.151:8080/my_project/
-```
-
-## 3. Создать BOINC account
-
-Основной автоматический вариант:
+Создать зашифрованный vault-файл с sudo-паролем клиентов:
 
 ```bash
-./scripts/create_account_db.sh
+./scripts/init_vault.sh
 ```
 
-Скрипт создаёт пользователя напрямую в MariaDB, получает `authenticator` и записывает его как `BOINC_ACCOUNT_KEY` в:
-
-```text
-config/generated.env
-ansible/group_vars/all.yml
-```
-
-## 4. Подготовить SSH-доступ к клиентам
+Запуск:
 
 ```bash
-./scripts/copy_ssh_keys.sh
-ansible -i ansible/inventory.ini boinc_clients -m ping
+./scripts/bootstrap_server.sh
+./scripts/bootstrap_clients.sh --ask-vault-pass
+./scripts/run_experiment.sh --ask-vault-pass
 ```
 
-Если SSH требует пароль:
+Сокращение:
 
 ```bash
-ansible -i ansible/inventory.ini boinc_clients -m ping --ask-pass
+./scripts/quickstart.sh --ask-vault-pass
+./scripts/run_experiment.sh --ask-vault-pass
 ```
 
-## 5. Развернуть BOINC clients
+## 4. Очистка перед новым прогоном
 
-BOINC clients запускаются на вычислительных узлах как Docker-контейнеры.
+С вводом sudo-пароля:
 
 ```bash
-./scripts/deploy_clients.sh --ask-become-pass
+./scripts/clean_runtime.sh --ask-become-pass
 ```
 
-Если sudo без пароля настроен заранее:
+Через Vault:
 
 ```bash
-./scripts/deploy_clients.sh
+./scripts/clean_runtime.sh --ask-vault-pass
 ```
 
-Проверка:
+После очистки:
+
+```bash
+./scripts/bootstrap_server.sh
+./scripts/bootstrap_clients.sh --ask-vault-pass
+./scripts/run_experiment.sh --ask-vault-pass
+```
+
+## 5. Проверка состояния
 
 ```bash
 ./scripts/status.sh
 ```
 
-В таблице `host` должны появиться клиенты. Это можно проверить так
+Смотреть блоки:
 
-```bash
-docker exec -it boinc-mysql \
-  mariadb -u root -proot my_project \
-  -e "SELECT id, userid, domain_name, os_name, create_time FROM host;"
-```
-
-## 6. Запустить эксперимент
-
-```bash
-ANSIBLE_EXTRA_ARGS="--ask-become-pass" apps/ml_grid_search/run_task.sh boinc
-```
-
-Если sudo без пароля:
-
-```bash
-apps/ml_grid_search/run_task.sh boinc
-```
-
-## 7. Смотреть статус
-
-```bash
-./scripts/status.sh
-```
-
-Или напрямую через БД:
-
-```bash
-docker exec -it boinc-mysql \
-  mariadb -u root -proot my_project \
-  -e "
-SELECT COUNT(*) AS hosts FROM host;
-SELECT COUNT(*) AS workunits FROM workunit;
-SELECT COUNT(*) AS results FROM result;
-SELECT id, workunitid, server_state, outcome, client_state, hostid FROM result ORDER BY id DESC LIMIT 20;
-"
+```text
+MariaDB hosts
+MariaDB workunits/results summary
+Remote BOINC client project status
+Remote BOINC client task summary
 ```

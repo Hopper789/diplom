@@ -1,0 +1,5 @@
+# Copy is not needed: use ./scripts/init_vault.sh to create encrypted vault.yml.
+# This file documents the expected variable name.
+#
+# ansible_become_password is the sudo password used on remote BOINC client nodes.
+ansible_become_password: "CHANGE_ME"
