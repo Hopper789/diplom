@@ -28,3 +28,5 @@ apps/*/build/
 apps/*/templates/
 
 boinc-data
+
+ansible/group_vars/all/vault.yml
