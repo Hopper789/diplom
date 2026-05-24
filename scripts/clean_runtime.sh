@@ -11,7 +11,24 @@ echo
 
 echo "Stopping and cleaning remote BOINC clients..."
 if [[ -f "$ROOT_DIR/ansible/inventory.ini" ]] && command -v ansible >/dev/null 2>&1; then
+  echo "Refreshing SSH known_hosts for remote clients..."
+
+  awk '
+    /^\[/ {next}
+    /^[[:space:]]*$/ {next}
+    /^[[:space:]]*#/ {next}
+    {print $1}
+  ' "$ROOT_DIR/ansible/inventory.ini" | while read -r host; do
+    if [[ -n "$host" ]]; then
+      echo "  removing old SSH host key for $host"
+      ssh-keygen -R "$host" >/dev/null 2>&1 || true
+    fi
+  done
+
+  echo "Cleaning remote BOINC client state..."
+
   # shellcheck disable=SC2086
+  ANSIBLE_HOST_KEY_CHECKING=False \
   ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b $ANSIBLE_EXTRA_ARGS -m shell -a '
     docker rm -f boinc-client 2>/dev/null || true
     rm -rf /opt/boinc-client/data
