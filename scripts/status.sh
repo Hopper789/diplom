@@ -4,6 +4,67 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="$ROOT_DIR/config/generated.env"
 
+usage() {
+  cat <<'USAGE'
+Usage: ./scripts/status.sh [OPTIONS]
+
+Options:
+  --server-only              Show only local server/database/monitoring status
+  --ask-vault-pass, --vault  Ask Ansible Vault password for remote client checks
+  --vault-password-file FILE Use Vault password file
+  --vault-id ID             Use Ansible Vault ID
+  --ask-become-pass, -K      Ask sudo password for remote clients
+
+Examples:
+  ./scripts/status.sh --server-only
+  ./scripts/status.sh --ask-vault-pass
+  ./scripts/status.sh --vault-password-file ~/.vault_pass.txt
+USAGE
+}
+
+SERVER_ONLY=0
+ANSIBLE_ARGS=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --server-only)
+      SERVER_ONLY=1
+      shift
+      ;;
+    --ask-vault-pass|--vault)
+      ANSIBLE_ARGS+=(--ask-vault-pass)
+      shift
+      ;;
+    --vault-password-file|--vault-id)
+      if [[ $# -lt 2 ]]; then
+        echo "ERROR: $1 requires an argument" >&2
+        exit 2
+      fi
+      ANSIBLE_ARGS+=("$1" "$2")
+      shift 2
+      ;;
+    --ask-become-pass|-K)
+      ANSIBLE_ARGS+=(--ask-become-pass)
+      shift
+      ;;
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      usage
+      exit 2
+      ;;
+  esac
+done
+
+if [[ -n "${ANSIBLE_EXTRA_ARGS:-}" ]]; then
+  # shellcheck disable=SC2206
+  EXTRA_FROM_ENV=(${ANSIBLE_EXTRA_ARGS})
+  ANSIBLE_ARGS+=("${EXTRA_FROM_ENV[@]}")
+fi
+
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "ERROR: config/generated.env not found."
   echo "Run:"
@@ -15,8 +76,6 @@ set -a
 # shellcheck disable=SC1090
 source "$ENV_FILE"
 set +a
-
-ANSIBLE_EXTRA_ARGS="${ANSIBLE_EXTRA_ARGS:-}"
 
 echo "== Docker containers on server =="
 docker ps --filter name=boinc || true
@@ -57,39 +116,47 @@ else
   echo
 fi
 
-if [[ -f "$ROOT_DIR/ansible/inventory.ini" ]]; then
-  if command -v ansible >/dev/null 2>&1; then
-    echo "== Ansible ping boinc_clients =="
-    # shellcheck disable=SC2086
-    ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients $ANSIBLE_EXTRA_ARGS -m ping || true
-    echo
+if [[ "$SERVER_ONLY" == "1" ]]; then
+  echo "Skip remote client checks because --server-only is enabled."
+  echo
+else
+  if [[ -f "$ROOT_DIR/ansible/inventory.ini" ]]; then
+    if command -v ansible >/dev/null 2>&1; then
+      echo "== Ansible ping boinc_clients =="
+      ANSIBLE_HOST_KEY_CHECKING=False \
+        ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients "${ANSIBLE_ARGS[@]}" -m ping || true
+      echo
 
-    echo "== Docker BOINC clients on remote nodes =="
-    # shellcheck disable=SC2086
-    ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b $ANSIBLE_EXTRA_ARGS -m shell -a "
-      docker ps --filter name=boinc-client
-    " || true
-    echo
+      echo "== Docker BOINC clients on remote nodes =="
+      ANSIBLE_HOST_KEY_CHECKING=False \
+        ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b "${ANSIBLE_ARGS[@]}" -m shell -a "
+          docker ps --filter name=boinc-client
+        " || true
+      echo
 
-    echo "== Remote BOINC client project status =="
-    # shellcheck disable=SC2086
-    ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b $ANSIBLE_EXTRA_ARGS -m shell -a "
-      docker exec boinc-client \
-        boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' \
-        --get_project_status
-    " || true
-    echo
+      echo "== Remote BOINC client project status =="
+      ANSIBLE_HOST_KEY_CHECKING=False \
+        ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b "${ANSIBLE_ARGS[@]}" -m shell -a "
+          docker exec boinc-client \
+            boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' \
+            --get_project_status
+        " || true
+      echo
 
-    echo "== Remote BOINC client task summary =="
-    # shellcheck disable=SC2086
-    ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b $ANSIBLE_EXTRA_ARGS -m shell -a "
-      docker exec boinc-client \
-        boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' \
-        --get_task_summary
-    " || true
-    echo
+      echo "== Remote BOINC client task summary =="
+      ANSIBLE_HOST_KEY_CHECKING=False \
+        ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b "${ANSIBLE_ARGS[@]}" -m shell -a "
+          docker exec boinc-client \
+            boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' \
+            --get_task_summary
+        " || true
+      echo
+    else
+      echo "ansible is not installed; skip remote client checks."
+      echo
+    fi
   else
-    echo "ansible is not installed; skip remote client checks."
+    echo "ansible/inventory.ini not found; skip remote client checks."
     echo
   fi
 fi

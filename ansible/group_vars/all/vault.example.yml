@@ -1,5 +1,5 @@
-# Copy is not needed: use ./scripts/init_vault.sh to create encrypted vault.yml.
-# This file documents the expected variable name.
+# Copy is not required. Use ./scripts/init_vault.sh to create encrypted:
+# ansible/group_vars/all/vault.yml
 #
-# ansible_become_password is the sudo password used on remote BOINC client nodes.
+# This value is used by Ansible as the sudo password on remote client nodes.
 ansible_become_password: "CHANGE_ME"

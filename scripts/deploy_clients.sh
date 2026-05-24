@@ -7,20 +7,20 @@ INVENTORY="$ROOT_DIR/ansible/inventory.ini"
 PLAYBOOK="$ROOT_DIR/ansible/install_boinc_clients.yml"
 
 usage() {
-  cat <<'EOF'
+  cat <<'USAGE'
 Usage: ./scripts/deploy_clients.sh [ANSIBLE OPTIONS]
 
 Common options:
-  --ask-become-pass, -K       Ask sudo password for remote clients
-  --ask-vault-pass            Ask Ansible Vault password
-  --vault                     Shortcut for --ask-vault-pass
-  --vault-password-file FILE  Use Vault password file
+  --ask-vault-pass, --vault  Ask Ansible Vault password
+  --vault-password-file FILE Use Vault password file
+  --vault-id ID             Use Ansible Vault ID
+  --ask-become-pass, -K      Ask sudo password for remote clients
 
 Examples:
-  ./scripts/deploy_clients.sh --ask-become-pass
   ./scripts/deploy_clients.sh --ask-vault-pass
-  ./scripts/deploy_clients.sh --vault
-EOF
+  ./scripts/deploy_clients.sh --vault-password-file ~/.vault_pass.txt
+  ./scripts/deploy_clients.sh --ask-become-pass
+USAGE
 }
 
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
@@ -49,7 +49,7 @@ fi
 ANSIBLE_ARGS=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --vault)
+    --ask-vault-pass|--vault)
       ANSIBLE_ARGS+=(--ask-vault-pass)
       shift
       ;;
@@ -61,6 +61,10 @@ while [[ $# -gt 0 ]]; do
       ANSIBLE_ARGS+=("$1" "$2")
       shift 2
       ;;
+    --ask-become-pass|-K)
+      ANSIBLE_ARGS+=(--ask-become-pass)
+      shift
+      ;;
     *)
       ANSIBLE_ARGS+=("$1")
       shift
@@ -68,6 +72,13 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ -n "${ANSIBLE_EXTRA_ARGS:-}" ]]; then
+  # shellcheck disable=SC2206
+  EXTRA_FROM_ENV=(${ANSIBLE_EXTRA_ARGS})
+  ANSIBLE_ARGS+=("${EXTRA_FROM_ENV[@]}")
+fi
+
+ANSIBLE_HOST_KEY_CHECKING=False \
 ansible-playbook \
   -i "$INVENTORY" \
   "$PLAYBOOK" \
