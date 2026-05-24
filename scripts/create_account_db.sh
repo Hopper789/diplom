@@ -3,10 +3,11 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="${ENV_FILE:-$ROOT_DIR/config/generated.env}"
-ANSIBLE_GROUP_VARS="${ANSIBLE_GROUP_VARS:-$ROOT_DIR/ansible/group_vars/all.yml}"
+ANSIBLE_GROUP_VARS="$ROOT_DIR/ansible/group_vars/all/main.yml"
 
 if [[ ! -f "$ENV_FILE" ]]; then
-  echo "ERROR: config/generated.env not found. Run: ./scripts/init_config.sh"
+  echo "ERROR: config/generated.env not found. Run:"
+  echo "  ./scripts/init_config.sh"
   exit 1
 fi
 
@@ -42,9 +43,22 @@ fi
 
 if ! docker ps --format '{{.Names}}' | grep -qx 'boinc-mysql'; then
   echo "ERROR: boinc-mysql container is not running."
-  echo "Run: ./scripts/server_up.sh"
+  echo "Run:"
+  echo "  ./scripts/server_up.sh"
   exit 1
 fi
+
+sql_escape() {
+  python3 - "$1" <<'PY'
+import sys
+s = sys.argv[1]
+s = s.replace("\\", "\\\\").replace("'", "\\'")
+print(s)
+PY
+}
+
+EMAIL_SQL="$(sql_escape "$EMAIL")"
+USERNAME_SQL="$(sql_escape "$USERNAME")"
 
 echo "Creating or looking up BOINC account directly in MariaDB..."
 echo "Project:  $PROJECT_NAME"
@@ -54,15 +68,16 @@ echo "Username: $USERNAME"
 EXISTING_ROW="$(
   docker exec boinc-mysql \
     mariadb -u root -proot "$PROJECT_NAME" -N -B \
-    -e "SELECT id, email_addr, name, authenticator FROM user WHERE email_addr='${EMAIL}' OR name='${USERNAME}' LIMIT 1;" \
+    -e "SELECT id, email_addr, name, authenticator FROM user WHERE email_addr='${EMAIL_SQL}' OR name='${USERNAME_SQL}' LIMIT 1;" \
     2>/dev/null || true
 )"
 
 if [[ -n "$EXISTING_ROW" ]]; then
-  USER_ID="$(echo "$EXISTING_ROW" | awk '{print $1}')"
-  FOUND_EMAIL="$(echo "$EXISTING_ROW" | awk '{print $2}')"
-  FOUND_NAME="$(echo "$EXISTING_ROW" | awk '{print $3}')"
-  ACCOUNT_KEY="$(echo "$EXISTING_ROW" | awk '{print $4}')"
+  USER_ID="$(echo "$EXISTING_ROW" | awk -F '\t' '{print $1}')"
+  FOUND_EMAIL="$(echo "$EXISTING_ROW" | awk -F '\t' '{print $2}')"
+  FOUND_NAME="$(echo "$EXISTING_ROW" | awk -F '\t' '{print $3}')"
+  ACCOUNT_KEY="$(echo "$EXISTING_ROW" | awk -F '\t' '{print $4}')"
+
   echo "Account already exists."
   echo "User ID: $USER_ID"
   echo "Email:   $FOUND_EMAIL"
@@ -94,6 +109,9 @@ password = sys.argv[2]
 print(hashlib.md5((password + email).encode()).hexdigest())
 PY
   )"
+
+  AUTHENTICATOR_SQL="$(sql_escape "$AUTHENTICATOR")"
+  PASSWD_HASH_SQL="$(sql_escape "$PASSWD_HASH")"
 
   docker exec boinc-mysql \
     mariadb -u root -proot "$PROJECT_NAME" \
@@ -133,10 +151,10 @@ INSERT INTO user (
 )
 VALUES (
   UNIX_TIMESTAMP(),
-  '${EMAIL}',
-  '${USERNAME}',
-  '${AUTHENTICATOR}',
-  '${PASSWD_HASH}',
+  '${EMAIL_SQL}',
+  '${USERNAME_SQL}',
+  '${AUTHENTICATOR_SQL}',
+  '${PASSWD_HASH_SQL}',
 
   0,
   0,
@@ -169,7 +187,7 @@ VALUES (
   USER_ID="$(
     docker exec boinc-mysql \
       mariadb -u root -proot "$PROJECT_NAME" -N -B \
-      -e "SELECT id FROM user WHERE email_addr='${EMAIL}' LIMIT 1;"
+      -e "SELECT id FROM user WHERE email_addr='${EMAIL_SQL}' LIMIT 1;"
   )"
 
   ACCOUNT_KEY="$AUTHENTICATOR"
@@ -188,10 +206,10 @@ from pathlib import Path
 
 env_path = Path(sys.argv[1])
 vars_path = Path(sys.argv[2])
-key = sys.argv[3]
-password = sys.argv[4]
+account_key = sys.argv[3]
+account_password = sys.argv[4]
 
-def upsert_env(path: Path, key_name: str, value: str):
+def upsert_env(path: Path, key: str, value: str):
     path.parent.mkdir(parents=True, exist_ok=True)
 
     lines = []
@@ -202,18 +220,18 @@ def upsert_env(path: Path, key_name: str, value: str):
     replaced = False
 
     for line in lines:
-        if line.startswith(key_name + "="):
-            out.append(f'{key_name}="{value}"\n')
+        if line.startswith(key + "="):
+            out.append(f'{key}="{value}"\n')
             replaced = True
         else:
             out.append(line)
 
     if not replaced:
-        out.append(f'{key_name}="{value}"\n')
+        out.append(f'{key}="{value}"\n')
 
     path.write_text("".join(out), encoding="utf-8")
 
-def upsert_yaml_key(path: Path, key_name: str, value: str):
+def upsert_yaml(path: Path, key: str, value: str):
     path.parent.mkdir(parents=True, exist_ok=True)
 
     lines = []
@@ -224,20 +242,21 @@ def upsert_yaml_key(path: Path, key_name: str, value: str):
     replaced = False
 
     for line in lines:
-        if line.strip().startswith(key_name + ":"):
-            out.append(f'{key_name}: "{value}"\n')
+        if line.strip().startswith(key + ":"):
+            out.append(f'{key}: "{value}"\n')
             replaced = True
         else:
             out.append(line)
 
     if not replaced:
-        out.append(f'\n{key_name}: "{value}"\n')
+        out.append(f'{key}: "{value}"\n')
 
     path.write_text("".join(out), encoding="utf-8")
 
-upsert_env(env_path, "BOINC_ACCOUNT_KEY", key)
-upsert_env(env_path, "BOINC_ACCOUNT_PASSWORD", password)
-upsert_yaml_key(vars_path, "boinc_account_key", key)
+upsert_env(env_path, "BOINC_ACCOUNT_KEY", account_key)
+upsert_env(env_path, "BOINC_ACCOUNT_PASSWORD", account_password)
+
+upsert_yaml(vars_path, "boinc_account_key", account_key)
 PY
 
 echo
@@ -248,7 +267,8 @@ echo "  $ANSIBLE_GROUP_VARS"
 echo
 echo "Check:"
 echo "  grep BOINC_ACCOUNT_KEY config/generated.env"
-echo "  grep boinc_account_key ansible/group_vars/all.yml"
+echo "  grep boinc_account_key ansible/group_vars/all/main.yml"
+
 echo
 echo "Database:"
 echo "  docker exec -it boinc-mysql mariadb -u root -proot $PROJECT_NAME -e \"SELECT id, email_addr, name, authenticator FROM user;\""
