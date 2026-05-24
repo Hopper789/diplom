@@ -29,4 +29,6 @@ apps/*/templates/
 
 boinc-data
 
+# ansible passwords
+ansible/.vault_pass
 ansible/group_vars/all/vault.yml

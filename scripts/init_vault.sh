@@ -4,7 +4,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VAULT_DIR="$ROOT_DIR/ansible/group_vars/all"
 VAULT_FILE="$VAULT_DIR/vault.yml"
-VAULT_EXAMPLE="$ROOT_DIR/ansible/group_vars/all/vault.example.yml"
+VAULT_EXAMPLE="$VAULT_DIR/vault.example.yml"
+VAULT_PASS_FILE="$ROOT_DIR/ansible/.vault_pass"
 
 cd "$ROOT_DIR"
 
@@ -19,10 +20,23 @@ mkdir -p "$VAULT_DIR"
 
 if [[ -f "$VAULT_FILE" ]]; then
   echo "Vault file already exists:"
-  echo "  $VAULT_FILE"
+  echo "  ansible/group_vars/all/vault.yml"
   echo
-  echo "To edit it:"
-  echo "  ansible-vault edit ansible/group_vars/all/vault.yml"
+
+  if [[ ! -f "$VAULT_PASS_FILE" ]]; then
+    echo "You can create ansible/.vault_pass manually if you know the Vault password:"
+    echo "  nano ansible/.vault_pass"
+    echo "  chmod 600 ansible/.vault_pass"
+    echo
+  fi
+
+  echo "To edit Vault:"
+  if [[ -f "$VAULT_PASS_FILE" ]]; then
+    echo "  ansible-vault edit ansible/group_vars/all/vault.yml --vault-password-file ansible/.vault_pass"
+  else
+    echo "  ansible-vault edit ansible/group_vars/all/vault.yml --ask-vault-pass"
+  fi
+
   exit 0
 fi
 
@@ -39,9 +53,26 @@ read -rsp "Repeat client sudo password: " BECOME_PASSWORD_REPEAT
 echo
 
 if [[ "$BECOME_PASSWORD" != "$BECOME_PASSWORD_REPEAT" ]]; then
-  echo "ERROR: passwords do not match."
+  echo "ERROR: sudo passwords do not match."
   exit 1
 fi
+
+echo
+read -rsp "Vault password to save in ansible/.vault_pass: " VAULT_PASSWORD
+echo
+read -rsp "Repeat Vault password: " VAULT_PASSWORD_REPEAT
+echo
+
+if [[ "$VAULT_PASSWORD" != "$VAULT_PASSWORD_REPEAT" ]]; then
+  echo "ERROR: Vault passwords do not match."
+  exit 1
+fi
+
+cat > "$VAULT_PASS_FILE" <<EOF
+$VAULT_PASSWORD
+EOF
+
+chmod 600 "$VAULT_PASS_FILE"
 
 cat > "$VAULT_FILE" <<EOF
 ansible_become_password: "$BECOME_PASSWORD"
@@ -50,24 +81,20 @@ EOF
 chmod 600 "$VAULT_FILE"
 
 cat > "$VAULT_EXAMPLE" <<'EOF'
-# Copy this structure to ansible/group_vars/all/vault.yml and encrypt it with:
-# ansible-vault encrypt ansible/group_vars/all/vault.yml
+# Copy this structure to ansible/group_vars/all/vault.yml and encrypt it.
+# Do not commit real vault.yml.
 
 ansible_become_password: "your_client_sudo_password"
 EOF
 
-echo
-echo "Now enter a Vault password."
-echo "This Vault password will be used later with --ask-vault-pass."
-echo
-
-ansible-vault encrypt "$VAULT_FILE"
+ansible-vault encrypt "$VAULT_FILE" --vault-password-file "$VAULT_PASS_FILE"
 
 echo
-echo "Created encrypted Vault file:"
+echo "Created:"
 echo "  ansible/group_vars/all/vault.yml"
+echo "  ansible/.vault_pass"
 echo
-echo "Use it like this:"
-echo "  ./scripts/bootstrap_clients.sh --ask-vault-pass"
-echo "  ./scripts/run_experiment.sh --ask-vault-pass"
-echo "  ./scripts/status.sh --ask-vault-pass"
+echo "Now you can run scripts without repeated Vault prompts:"
+echo "  ./scripts/bootstrap_clients.sh"
+echo "  ./scripts/run_experiment.sh"
+echo "  ./scripts/status.sh"
