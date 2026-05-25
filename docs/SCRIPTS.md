@@ -1,109 +1,57 @@
 # Скрипты
 
-Все основные действия выполняются через скрипты из каталога `scripts/`.
+Все основные действия выполняются из каталога `scripts/`.
+
+## Главный путь
+
+```bash
+./scripts/init_vault.sh
+./scripts/quickstart.sh --with-monitoring --run-experiment
+./scripts/status.sh
+```
 
 ## Основные скрипты
 
-### `bootstrap_server.sh`
+`quickstart.sh` запускает сервер, клиентов, опционально мониторинг и эксперимент.
 
-Поднимает серверную часть:
+```bash
+./scripts/quickstart.sh
+./scripts/quickstart.sh --with-monitoring
+./scripts/quickstart.sh --run-experiment
+./scripts/quickstart.sh --with-monitoring --run-experiment
+```
 
-1. запускает `init_config.sh`;
-2. запускает `server_up.sh`;
-3. создаёт или находит BOINC account через `create_account_db.sh`;
-4. показывает серверный статус.
-
-Запуск:
+`bootstrap_server.sh` поднимает локальную серверную часть:
 
 ```bash
 ./scripts/bootstrap_server.sh
 ```
 
-### `bootstrap_clients.sh`
-
-Проверяет SSH-доступ до клиентов и запускает `deploy_clients.sh`.
+`bootstrap_clients.sh` разворачивает BOINC clients на узлах из `config/cluster.yml`:
 
 ```bash
 ./scripts/bootstrap_clients.sh
 ```
 
-Если нет `ansible/.vault_pass`:
-
-```bash
-./scripts/bootstrap_clients.sh --ask-vault-pass
-```
-
-### `run_experiment.sh`
-
-Запускает создание workunits и просит клиентов забрать задачи.
+`run_experiment.sh` создаёт workunits и просит клиентов забрать задачи:
 
 ```bash
 ./scripts/run_experiment.sh
 ```
 
-### `status.sh`
-
-Показывает состояние сервера, БД, клиентов и задач.
-
-```bash
-./scripts/status.sh
-```
-
-### `monitoring_up.sh`
-
-Запускает мониторинг. Скрипт:
-
-1. разворачивает `node-exporter` и `cAdvisor` на клиентах через Ansible;
-2. генерирует `monitoring/prometheus.yml` по `ansible/inventory.ini`;
-3. запускает `boinc-exporter`, Prometheus, Grafana и серверный cAdvisor.
+`monitoring_up.sh` запускает Prometheus/Grafana и клиентские агенты:
 
 ```bash
 ./scripts/monitoring_up.sh
 ```
 
-Если нет `ansible/.vault_pass`:
+`status.sh` показывает состояние сервера, клиентов, задач и мониторинга:
 
 ```bash
-./scripts/monitoring_up.sh --ask-vault-pass
+./scripts/status.sh
 ```
 
-### `deploy_monitoring_agents.sh`
-
-Только разворачивает агенты мониторинга на клиентах:
-
-```bash
-./scripts/deploy_monitoring_agents.sh
-```
-
-### `monitoring_down.sh`
-
-Останавливает мониторинг на сервере:
-
-```bash
-./scripts/monitoring_down.sh
-```
-
-Остановить ещё и агенты на клиентах:
-
-```bash
-./scripts/monitoring_down.sh --with-client-agents
-```
-
-Только серверная часть:
-
-```bash
-./scripts/status.sh --server-only
-```
-
-### `clean_runtime.sh`
-
-Очищает runtime-состояние сервера и клиентов:
-
-- контейнеры клиентов;
-- `/opt/boinc-client/data` на клиентах;
-- `server/project/`;
-- `server/mysql-data/`;
-- сгенерированные конфиги.
+`clean_runtime.sh` очищает runtime-состояние:
 
 ```bash
 ./scripts/clean_runtime.sh
@@ -111,45 +59,21 @@
 
 ## Вспомогательные скрипты
 
-### `init_config.sh`
+- `init_config.sh` — генерирует `config/generated.env`, inventory и Ansible vars;
+- `init_vault.sh` — создаёт Vault и `ansible/.vault_pass`;
+- `server_up.sh` — запускает Docker Compose сервера;
+- `create_account_db.sh` — создаёт BOINC account в MariaDB;
+- `deploy_clients.sh` — запускает Ansible playbook клиентов;
+- `deploy_monitoring_agents.sh` — ставит node-exporter и cAdvisor на клиентов;
+- `monitoring_down.sh` — останавливает мониторинг;
+- `copy_ssh_keys.sh` — помогает скопировать SSH-ключи на клиентов.
 
-Читает `config/cluster.yml` и генерирует:
+## Vault
 
-```text
-config/generated.env
-ansible/inventory.ini
-ansible/group_vars/all/main.yml
-monitoring/.env
-```
-
-### `init_vault.sh`
-
-Создаёт Ansible Vault для sudo-пароля клиентов.
-
-### `server_up.sh`
-
-Запускает Docker Compose серверной части из каталога `server/`.
-
-### `create_account_db.sh`
-
-Создаёт BOINC account напрямую в MariaDB и сохраняет `BOINC_ACCOUNT_KEY`.
-
-### `deploy_clients.sh`
-
-Запускает Ansible playbook `ansible/install_boinc_clients.yml`.
-
-### `copy_ssh_keys.sh`
-
-Копирует SSH-ключ на клиентские узлы из `config/cluster.yml`.
-
-## Аргументы Ansible/Vault
-
-Большинство скриптов, которые обращаются к клиентам, поддерживают:
+Основной сценарий такой:
 
 ```bash
---ask-vault-pass
---vault-password-file FILE
---ask-become-pass
+./scripts/init_vault.sh
 ```
 
-Если существует `ansible/.vault_pass`, скрипты используют его автоматически.
+После этого скрипты автоматически используют `ansible/.vault_pass`. Ручной ввод Vault-пароля описан только в [диагностике](TROUBLESHOOTING.md), потому что это аварийный сценарий.

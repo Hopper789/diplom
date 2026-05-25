@@ -3,55 +3,88 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VAULT_PASS_FILE="$ROOT_DIR/ansible/.vault_pass"
+VAULT_FILE="$ROOT_DIR/ansible/group_vars/all/vault.yml"
+
+WITH_MONITORING=0
+RUN_EXPERIMENT=0
+
+usage() {
+  cat <<'USAGE'
+Использование:
+  ./scripts/quickstart.sh [--with-monitoring] [--run-experiment]
+
+Варианты:
+  ./scripts/quickstart.sh
+  ./scripts/quickstart.sh --with-monitoring
+  ./scripts/quickstart.sh --run-experiment
+  ./scripts/quickstart.sh --with-monitoring --run-experiment
+USAGE
+}
 
 cd "$ROOT_DIR"
 
-ANSIBLE_ARGS=()
-
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --ask-vault-pass|--vault)
-      ANSIBLE_ARGS+=(--ask-vault-pass)
+    --with-monitoring)
+      WITH_MONITORING=1
       shift
       ;;
-    --vault-password-file)
-      if [[ $# -lt 2 ]]; then
-        echo "ERROR: --vault-password-file requires a path."
-        exit 2
-      fi
-      ANSIBLE_ARGS+=(--vault-password-file "$2")
-      shift 2
-      ;;
-    --ask-become-pass|-K)
-      ANSIBLE_ARGS+=(--ask-become-pass)
+    --run-experiment)
+      RUN_EXPERIMENT=1
       shift
+      ;;
+    --help|-h)
+      usage
+      exit 0
       ;;
     *)
-      echo "Unknown argument: $1"
-      echo "Usage: ./scripts/quickstart.sh [--ask-vault-pass|--vault] [--vault-password-file FILE] [--ask-become-pass|-K]"
+      echo "Неизвестный аргумент: $1"
+      usage
       exit 2
       ;;
   esac
 done
 
-if [[ "${#ANSIBLE_ARGS[@]}" -eq 0 && -f "$VAULT_PASS_FILE" ]]; then
-  ANSIBLE_ARGS+=(--vault-password-file "$VAULT_PASS_FILE")
-fi
-
 if [[ ! -f "$ROOT_DIR/config/cluster.yml" ]]; then
-  echo "ERROR: config/cluster.yml not found."
+  echo "Не найден config/cluster.yml."
   echo
-  echo "Create it first:"
+  echo "Создай его перед запуском:"
   echo "  cp config/cluster.example.yml config/cluster.yml"
   echo "  nano config/cluster.yml"
   exit 1
 fi
 
+if [[ ! -f "$VAULT_PASS_FILE" || ! -f "$VAULT_FILE" ]]; then
+  echo "Не найдены файлы Ansible Vault."
+  echo
+  echo "Создай их перед запуском:"
+  echo "  ./scripts/init_vault.sh"
+  exit 1
+fi
+
+if command -v docker >/dev/null 2>&1; then
+  if ! docker ps >/dev/null 2>&1; then
+    echo "Docker недоступен текущему пользователю."
+    echo "Добавьте пользователя в группу docker: sudo usermod -aG docker \"\$USER\", затем перелогиньтесь"
+    exit 1
+  fi
+fi
+
+echo "== Быстрый запуск BOINC-кластера =="
+echo
+
 ./scripts/bootstrap_server.sh
-./scripts/bootstrap_clients.sh "${ANSIBLE_ARGS[@]}"
+./scripts/bootstrap_clients.sh
+
+if [[ "$WITH_MONITORING" == "1" ]]; then
+  ./scripts/monitoring_up.sh
+fi
+
+if [[ "$RUN_EXPERIMENT" == "1" ]]; then
+  ./scripts/run_experiment.sh
+fi
+
+./scripts/status.sh
 
 echo
-echo "Quickstart completed."
-echo
-echo "To run experiment:"
-echo "  ./scripts/run_experiment.sh"
+echo "Быстрый запуск завершён."

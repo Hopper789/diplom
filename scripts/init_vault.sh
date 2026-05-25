@@ -10,8 +10,8 @@ VAULT_PASS_FILE="$ROOT_DIR/ansible/.vault_pass"
 cd "$ROOT_DIR"
 
 if ! command -v ansible-vault >/dev/null 2>&1; then
-  echo "ERROR: ansible-vault is required."
-  echo "Install Ansible first:"
+  echo "ОШИБКА: нужен ansible-vault."
+  echo "Сначала установи Ansible:"
   echo "  sudo apt install -y ansible"
   exit 1
 fi
@@ -19,52 +19,52 @@ fi
 mkdir -p "$VAULT_DIR"
 
 if [[ -f "$VAULT_FILE" ]]; then
-  echo "Vault file already exists:"
+  echo "Vault-файл уже существует:"
   echo "  ansible/group_vars/all/vault.yml"
   echo
 
   if [[ ! -f "$VAULT_PASS_FILE" ]]; then
-    echo "You can create ansible/.vault_pass manually if you know the Vault password:"
+    echo "Если ты знаешь пароль от Vault, создай ansible/.vault_pass вручную:"
     echo "  nano ansible/.vault_pass"
     echo "  chmod 600 ansible/.vault_pass"
     echo
   fi
 
-  echo "To edit Vault:"
+  echo "Редактирование Vault:"
   if [[ -f "$VAULT_PASS_FILE" ]]; then
     echo "  ansible-vault edit ansible/group_vars/all/vault.yml --vault-password-file ansible/.vault_pass"
   else
-    echo "  ansible-vault edit ansible/group_vars/all/vault.yml --ask-vault-pass"
+    echo "  сначала восстанови ansible/.vault_pass, затем повтори команду"
   fi
 
   exit 0
 fi
 
-echo "Creating Ansible Vault file for sudo/become password."
+echo "Создаётся Ansible Vault для sudo-пароля клиентов."
 echo
-echo "This password is the sudo password on client machines."
-echo "It will be stored encrypted in:"
+echo "Этот пароль используется для sudo на клиентских машинах."
+echo "Он будет сохранён в зашифрованном виде:"
 echo "  ansible/group_vars/all/vault.yml"
 echo
 
-read -rsp "Client sudo password: " BECOME_PASSWORD
+read -rsp "Sudo-пароль клиентов: " BECOME_PASSWORD
 echo
-read -rsp "Repeat client sudo password: " BECOME_PASSWORD_REPEAT
+read -rsp "Повтори sudo-пароль клиентов: " BECOME_PASSWORD_REPEAT
 echo
 
 if [[ "$BECOME_PASSWORD" != "$BECOME_PASSWORD_REPEAT" ]]; then
-  echo "ERROR: sudo passwords do not match."
+  echo "ОШИБКА: sudo-пароли не совпадают."
   exit 1
 fi
 
 echo
-read -rsp "Vault password to save in ansible/.vault_pass: " VAULT_PASSWORD
+read -rsp "Пароль Vault для сохранения в ansible/.vault_pass: " VAULT_PASSWORD
 echo
-read -rsp "Repeat Vault password: " VAULT_PASSWORD_REPEAT
+read -rsp "Повтори пароль Vault: " VAULT_PASSWORD_REPEAT
 echo
 
 if [[ "$VAULT_PASSWORD" != "$VAULT_PASSWORD_REPEAT" ]]; then
-  echo "ERROR: Vault passwords do not match."
+  echo "ОШИБКА: пароли Vault не совпадают."
   exit 1
 fi
 
@@ -81,8 +81,8 @@ EOF
 chmod 600 "$VAULT_FILE"
 
 cat > "$VAULT_EXAMPLE" <<'EOF'
-# Copy this structure to ansible/group_vars/all/vault.yml and encrypt it.
-# Do not commit real vault.yml.
+# Скопируй эту структуру в ansible/group_vars/all/vault.yml и зашифруй её.
+# Не коммить настоящий vault.yml.
 
 ansible_become_password: "your_client_sudo_password"
 EOF
@@ -90,11 +90,11 @@ EOF
 ansible-vault encrypt "$VAULT_FILE" --vault-password-file "$VAULT_PASS_FILE"
 
 echo
-echo "Created:"
+echo "Создано:"
 echo "  ansible/group_vars/all/vault.yml"
 echo "  ansible/.vault_pass"
 echo
-echo "Now you can run scripts without repeated Vault prompts:"
+echo "Теперь скрипты будут использовать Vault автоматически:"
 echo "  ./scripts/bootstrap_clients.sh"
 echo "  ./scripts/run_experiment.sh"
 echo "  ./scripts/status.sh"

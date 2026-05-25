@@ -1,25 +1,27 @@
 # Конфигурация
 
-В проекте есть три основных конфигурационных файла:
+В репозитории есть примеры конфигов. Рабочие файлы создаются локально и не коммитятся.
+
+## Главные файлы
 
 ```text
 config/cluster.yml       # машины кластера и BOINC project
-config/experiment.env    # размер и длительность вычислительного эксперимента
-config/distributed.env   # параметры выдачи и репликации BOINC-задач
+config/generated.env     # сгенерированные параметры запуска
+config/experiment.env    # параметры конкретного эксперимента
+config/distributed.env   # правила выдачи и репликации workunits
+config/alerts.env        # Telegram alerts, добавляется позже
 ```
-
-Все эти файлы локальные и не должны коммититься в Git.
 
 ## config/cluster.yml
 
-Создаётся из примера:
+Создаётся так:
 
 ```bash
 cp config/cluster.example.yml config/cluster.yml
 nano config/cluster.yml
 ```
 
-Пример:
+Пример структуры:
 
 ```yaml
 project:
@@ -33,9 +35,6 @@ clients:
   - name: node1
     ip: 192.168.1.11
     user: ubuntu
-  - name: node2
-    ip: 192.168.1.12
-    user: ubuntu
 
 boinc:
   client_rpc_password: auto
@@ -46,39 +45,11 @@ account:
   password: manual
 ```
 
-### project.name
-
-Имя BOINC project. Оно используется в URL:
-
-```text
-http://SERVER_IP:8080/my_project/
-```
-
-### server.ip
-
-IP управляющей машины, на которой запускается BOINC server. Этот IP должен быть доступен клиентам.
-
-### clients
-
-Список вычислительных узлов. Для каждого клиента указываются:
-
-- `name` — понятное имя узла;
-- `ip` — IP адрес;
-- `user` — SSH-пользователь с sudo-доступом.
-
-### account
-
-Один BOINC account используется для подключения всех клиентов. Скрипт `create_account_db.sh` создаёт его в MariaDB и сохраняет `authenticator` как `BOINC_ACCOUNT_KEY`.
+`server.ip` должен быть доступен клиентам. `clients[].user` должен подключаться по SSH и иметь sudo-доступ.
 
 ## Сгенерированные файлы
 
-После запуска:
-
-```bash
-./scripts/init_config.sh
-```
-
-создаются:
+`./scripts/init_config.sh` создаёт:
 
 ```text
 config/generated.env
@@ -87,11 +58,11 @@ ansible/group_vars/all/main.yml
 monitoring/.env
 ```
 
-Эти файлы генерируются автоматически и не коммитятся.
+Эти файлы можно пересоздавать. Они описывают текущее runtime-состояние и не должны попадать в Git.
 
 ## config/experiment.env
 
-Создаётся из примера:
+Если файла нет, скрипты используют значения из `config/experiment.example.env` или создают локальную копию.
 
 ```bash
 cp config/experiment.example.env config/experiment.env
@@ -109,51 +80,22 @@ TASK_DATASET_SIZE=500
 TASK_SEED_BASE=1000
 ```
 
-Если `TASK_COUNT` пустой, число задач считается так:
+Если `TASK_COUNT` пустой, число задач считается примерно как:
 
 ```text
-ceil(EXPERIMENT_WALL_SECONDS * EXPERIMENT_CORES / TASK_SECONDS)
+EXPERIMENT_WALL_SECONDS * EXPERIMENT_CORES / TASK_SECONDS
 ```
-
-Например:
-
-```text
-180 * 12 / 8 = 270 workunits
-```
-
-## Как менять размер эксперимента
-
-Больше задач:
-
-```env
-EXPERIMENT_WALL_SECONDS=600
-```
-
-Более короткие задачи:
-
-```env
-TASK_SECONDS=4
-```
-
-Точное число задач вручную:
-
-```env
-TASK_COUNT=1000
-```
-
 
 ## config/distributed.env
 
-Создаётся из примера:
+Этот файл отвечает не за содержимое задачи, а за правила BOINC:
 
 ```bash
 cp config/distributed.example.env config/distributed.env
 nano config/distributed.env
 ```
 
-Этот файл описывает не содержимое задачи, а правила распределённого выполнения BOINC workunits.
-
-Основные параметры:
+Базовый режим без репликации:
 
 ```env
 DISTRIBUTED_TARGET_NRESULTS=1
@@ -165,28 +107,10 @@ DISTRIBUTED_MAX_TOTAL_RESULTS=3
 
 Смысл параметров:
 
-- `DISTRIBUTED_TARGET_NRESULTS` — сколько result-записей сервер старается создать на одну workunit. Значение `1` означает отсутствие репликации, `2` — дублирование задач.
-- `DISTRIBUTED_MIN_QUORUM` — сколько успешных совпадающих результатов нужно для подтверждения workunit.
-- `DISTRIBUTED_MAX_SUCCESS_RESULTS` — максимум успешных результатов для одной workunit.
-- `DISTRIBUTED_MAX_ERROR_RESULTS` — сколько ошибочных попыток допускается.
-- `DISTRIBUTED_MAX_TOTAL_RESULTS` — максимум всех попыток выполнения.
+- `DISTRIBUTED_TARGET_NRESULTS` — сколько result-записей сервер создаёт на workunit;
+- `DISTRIBUTED_MIN_QUORUM` — сколько совпадающих успешных результатов нужно для подтверждения;
+- `DISTRIBUTED_MAX_SUCCESS_RESULTS` — максимум успешных результатов;
+- `DISTRIBUTED_MAX_ERROR_RESULTS` — допустимое число ошибочных попыток;
+- `DISTRIBUTED_MAX_TOTAL_RESULTS` — общий предел попыток.
 
-Базовая конфигурация без репликации:
-
-```env
-DISTRIBUTED_TARGET_NRESULTS=1
-DISTRIBUTED_MIN_QUORUM=1
-DISTRIBUTED_MAX_SUCCESS_RESULTS=1
-DISTRIBUTED_MAX_TOTAL_RESULTS=3
-```
-
-Пример конфигурации с дублированием:
-
-```env
-DISTRIBUTED_TARGET_NRESULTS=2
-DISTRIBUTED_MIN_QUORUM=2
-DISTRIBUTED_MAX_SUCCESS_RESULTS=2
-DISTRIBUTED_MAX_TOTAL_RESULTS=4
-```
-
-`run_task.sh` генерирует BOINC input template из `config/distributed.env` перед созданием workunits. Поэтому для смены репликации достаточно изменить `config/distributed.env` и запустить новый эксперимент на чистом runtime.
+Для учебного первого запуска оставь значения по умолчанию.

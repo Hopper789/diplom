@@ -1,108 +1,76 @@
-# Архитектура проекта
+# Архитектура
 
-## Общая схема
+## Схема
 
 ```text
-              управляющая машина
-        ┌────────────────────────────┐
-        │ boinc-server Docker         │
-        │ boinc-mysql Docker          │
-        │ scripts/*.sh                │
-        │ ansible                     │
-        └─────────────┬──────────────┘
-                      │ SSH
-          ┌───────────┴───────────┐
-          │                       │
-   ┌──────▼──────┐         ┌──────▼──────┐
-   │ client node │         │ client node │
-   │ Docker      │         │ Docker      │
-   │ boinc-client│         │ boinc-client│
-   └─────────────┘         └─────────────┘
+управляющая машина
+  boinc-server
+  boinc-mysql
+  Prometheus/Grafana
+  scripts/
+  ansible/
+        |
+        | SSH
+        v
+клиентские узлы
+  Docker
+  boinc-client
+  node-exporter
+  cAdvisor
 ```
 
-## Что запускается на сервере
+## Сервер
 
-В каталоге `server/` находится Docker Compose для двух контейнеров:
+Серверная часть находится в `server/` и запускается через Docker Compose:
 
-- `boinc-server` — BOINC server, Apache, project runtime;
-- `boinc-mysql` — MariaDB с таблицами BOINC project.
+- `boinc-server` — BOINC server, Apache и runtime проекта;
+- `boinc-mysql` — MariaDB с таблицами BOINC.
 
-Сервер доступен по URL:
+URL проекта:
 
 ```text
 http://SERVER_IP:8080/PROJECT_NAME/
 ```
 
-## Что запускается на клиентах
+## Клиенты
 
-На клиентах Ansible устанавливает Docker и создаёт каталог:
+Клиентские узлы описаны в `config/cluster.yml`. Ansible подключается к ним по SSH, устанавливает Docker и запускает контейнер `boinc-client`.
+
+Клиент подключается к BOINC-проекту через account key, который создаёт `./scripts/create_account_db.sh`.
+
+## Workunit и result
+
+`workunit` — логическая задача. `result` — конкретная попытка выполнить её на клиенте.
+
+При базовых настройках:
 
 ```text
-/opt/boinc-client
+1 workunit -> 1 result
 ```
 
-В нём создаётся Docker Compose файл, который запускает контейнер:
+При репликации:
 
 ```text
-boinc-client
+1 workunit -> 2 или больше result
 ```
 
-Клиент подключается к BOINC project через `BOINC_ACCOUNT_KEY`.
+Репликация и quorum задаются в `config/distributed.env`.
 
-## Как создаются задачи
+## Runtime-файлы
 
-`apps/ml_grid_search/run_task.sh` выполняет несколько действий:
-
-1. компилирует BOINC application внутри `boinc-server`;
-2. копирует XML-шаблоны input/output;
-3. регистрирует приложение через `xadd` и `update_versions`;
-4. создаёт workunits через `create_work`;
-5. просит клиентов выполнить `project update`;
-6. показывает краткий статус.
-
-## Какие файлы создаются автоматически
+Автоматически создаются и не коммитятся:
 
 ```text
 config/generated.env
 ansible/inventory.ini
 ansible/group_vars/all/main.yml
 monitoring/.env
-```
-
-Их можно удалить и создать заново через:
-
-```bash
-./scripts/init_config.sh
-```
-
-## Какие данные являются runtime
-
-```text
 server/project/
 server/mysql-data/
-/opt/boinc-client/data на клиентах
 ```
 
-Эти данные очищаются через:
+Полная очистка:
 
 ```bash
 ./scripts/clean_runtime.sh
 ```
-
-## Как устроен мониторинг
-
-Мониторинг состоит из серверной и клиентской части.
-
-На управляющей машине запускаются:
-
-- `boinc-exporter` — читает BOINC MariaDB и отдаёт метрики проекта;
-- `boinc-prometheus` — собирает и хранит метрики;
-- `boinc-grafana` — показывает dashboard;
-- `boinc-cadvisor` — показывает нагрузку Docker-контейнеров на управляющей машине.
-
-На каждом клиенте через Ansible запускаются:
-
-- `boinc-node-exporter` — CPU, RAM, load average, сеть и диск узла;
-- `boinc-client-cadvisor` — CPU/RAM/IO Docker-контейнера `boinc-client`.
-
-`monitoring_up.sh` генерирует `monitoring/prometheus.yml` из `ansible/inventory.ini`, поэтому Prometheus автоматически знает IP клиентских узлов.

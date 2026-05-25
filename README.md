@@ -1,39 +1,71 @@
-# BOINC cluster
+# BOINC-кластер
 
-Проект поднимает небольшой BOINC-кластер для учебных экспериментов с распределёнными вычислениями.
+Это учебный BOINC-кластер для запуска независимых вычислительных задач на нескольких машинах.
 
-BOINC можно представить как систему “сервер раздаёт задачи — клиенты считают — сервер собирает результаты”. В этом репозитории всё разворачивается скриптами:
+BOINC можно представить так: сервер хранит задания, клиенты забирают их, считают и возвращают результаты. Репозиторий автоматизирует этот цикл скриптами, Docker и Ansible.
 
-- BOINC server и MariaDB запускаются в Docker на управляющей машине;
-- BOINC clients запускаются в Docker-контейнерах на удалённых вычислительных узлах;
-- Ansible устанавливает Docker на клиентах, запускает контейнеры и подключает их к проекту;
-- BOINC account создаётся автоматически через MariaDB;
-- пример эксперимента `ml_grid_search` создаёт много маленьких workunit-задач и раздаёт их клиентам;
-- мониторинг собирает BOINC-метрики, состояния задач и нагрузку CPU/RAM/Docker на клиентских узлах.
+## Что умеет
 
-## Быстрый запуск
+- поднимает BOINC server и MariaDB в Docker;
+- разворачивает BOINC clients на удалённых узлах по SSH;
+- хранит sudo-пароль клиентов через Ansible Vault;
+- запускает пример `ml_grid_search`;
+- собирает метрики BOINC и нагрузки клиентов в Prometheus/Grafana;
+- готовит основу для пользовательских задач.
+
+## Архитектура в 5 строк
+
+1. Управляющая машина запускает `boinc-server` и `boinc-mysql`.
+2. `config/cluster.yml` описывает сервер, клиентов и BOINC-проект.
+3. Ansible по SSH ставит Docker на клиентские узлы.
+4. Клиентский контейнер `boinc-client` подключается к проекту.
+5. Workunit создаётся на сервере, result выполняется клиентом и возвращается обратно.
+
+## Самый быстрый запуск
 
 ```bash
 cp config/cluster.example.yml config/cluster.yml
 nano config/cluster.yml
 
 ./scripts/init_vault.sh
-# optional: cp config/distributed.example.env config/distributed.env
-# optional: nano config/distributed.env
-./scripts/bootstrap_server.sh
-./scripts/bootstrap_clients.sh
-./scripts/run_experiment.sh
-./scripts/monitoring_up.sh
+./scripts/quickstart.sh --with-monitoring --run-experiment
 ./scripts/status.sh
 ```
 
-Если не хочешь хранить пароль от Ansible Vault в `ansible/.vault_pass`, запускай клиентские команды с ручным вводом Vault-пароля:
+`./scripts/init_vault.sh` создаёт:
+
+- `ansible/group_vars/all/vault.yml` — зашифрованный sudo-пароль клиентов;
+- `ansible/.vault_pass` — пароль от Vault, чтобы скрипты могли читать Vault автоматически.
+
+`ansible/.vault_pass` не коммитится. После `init_vault` скрипты сами используют `--vault-password-file ansible/.vault_pass`.
+
+## Пошаговый запуск
 
 ```bash
-./scripts/bootstrap_clients.sh --ask-vault-pass
-./scripts/run_experiment.sh --ask-vault-pass
-./scripts/status.sh --ask-vault-pass
+./scripts/init_vault.sh
+./scripts/bootstrap_server.sh
+./scripts/bootstrap_clients.sh
+./scripts/monitoring_up.sh
+./scripts/run_experiment.sh
+./scripts/status.sh
 ```
+
+## Запуск мониторинга
+
+```bash
+./scripts/monitoring_up.sh
+```
+
+Grafana доступна по адресу:
+
+```text
+http://localhost:3000
+admin / admin
+```
+
+## Запуск своего Python task
+
+Пользовательский Python runner добавляется в следующем этапе. Формат будет простой: функция `run(params)` и файл `params.jsonl`, где каждая строка описывает независимую задачу.
 
 ## Документация
 
@@ -46,33 +78,19 @@ nano config/cluster.yml
 - [Мониторинг и метрики](docs/MONITORING.md)
 - [Скрипты](docs/SCRIPTS.md)
 - [Диагностика](docs/TROUBLESHOOTING.md)
+- [Обоснование технологий](docs/TECH_DECISIONS.md)
 
-## Основной цикл работы
+## Что не коммитится
 
-```bash
-./scripts/bootstrap_server.sh     # создать конфиги, поднять сервер, создать BOINC account
-./scripts/bootstrap_clients.sh    # развернуть BOINC clients на узлах
-./scripts/run_experiment.sh       # создать workunits и попросить клиентов забрать задачи
-./scripts/monitoring_up.sh        # включить Prometheus/Grafana и агенты нагрузки на клиентах
-./scripts/status.sh               # посмотреть состояние сервера, клиентов и задач
-```
+В Git не должны попадать секреты, локальные конфиги и runtime-данные:
 
-Для полного сброса runtime-состояния сервера и клиентов:
-
-```bash
-./scripts/clean_runtime.sh
-```
-
-## Что не хранится в Git
-
-В репозитории не должны храниться runtime-данные и секреты:
-
-- `config/cluster.yml` — локальная конфигурация кластера;
-- `config/generated.env` — сгенерированные параметры запуска;
+- `config/cluster.yml`, `config/generated.env` — локальная и сгенерированная конфигурация;
 - `config/experiment.env` — параметры конкретного эксперимента;
+- `config/distributed.env` — локальные параметры репликации;
+- `config/alerts.env` — токен Telegram-бота и chat id;
 - `ansible/inventory.ini` — сгенерированный список клиентов;
 - `ansible/group_vars/all/main.yml` — сгенерированные Ansible-переменные;
 - `ansible/group_vars/all/vault.yml` — зашифрованный sudo-пароль клиентов;
 - `ansible/.vault_pass` — пароль от Vault;
-- `server/project/`, `server/mysql-data/` — runtime-данные BOINC server и MariaDB;
-- `monitoring/.env` и сгенерированный `monitoring/prometheus.yml` — runtime-настройки мониторинга.
+- `server/project/`, `server/mysql-data/` — runtime-данные сервера;
+- `monitoring/.env` — runtime-настройки мониторинга.

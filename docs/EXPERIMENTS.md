@@ -1,83 +1,78 @@
 # Эксперименты
 
-В проекте есть пример вычислительного приложения:
+Эксперимент в этом репозитории — это набор независимых задач, которые BOINC раздаёт клиентам.
+
+## Текущий пример: ml_grid_search
+
+Приложение находится в:
 
 ```text
 apps/ml_grid_search/
 ```
 
-Оно создаёт много маленьких BOINC workunits. Каждая задача получает входной файл с параметрами:
+Оно создаёт много workunits для перебора параметров. Каждая задача получает входные параметры, считает синтетическую работу и возвращает результат.
 
-```text
-task_id
-lambda
-seed
-n
-target_seconds
-```
+## Запуск
 
-## Подготовка
-
-Перед запуском эксперимента сервер и клиенты должны быть подняты:
+Сначала должны быть подняты сервер и клиенты:
 
 ```bash
 ./scripts/bootstrap_server.sh
 ./scripts/bootstrap_clients.sh
 ```
 
-## Настройка размера эксперимента
+Затем:
+
+```bash
+./scripts/run_experiment.sh
+```
+
+Или одной командой с первого запуска:
+
+```bash
+./scripts/quickstart.sh --with-monitoring --run-experiment
+```
+
+## Размер эксперимента
+
+Локальный файл:
 
 ```bash
 cp config/experiment.example.env config/experiment.env
 nano config/experiment.env
 ```
 
-Главные параметры:
+Основные параметры:
 
 - `EXPERIMENT_WALL_SECONDS` — желаемая длительность эксперимента;
-- `EXPERIMENT_CORES` — примерное число CPU-ядер на одной машине;
-- `TASK_SECONDS` — примерная длительность одной маленькой задачи;
-- `TASK_COUNT` — ручное число задач, если не хочется использовать автоматический расчёт;
+- `EXPERIMENT_CORES` — ориентировочное число CPU-ядер;
+- `TASK_SECONDS` — примерная длительность одной задачи;
+- `TASK_COUNT` — точное число задач, если нужно задать вручную;
 - `TASK_DATASET_SIZE` — размер синтетических данных;
-- `TASK_SEED_BASE` — базовое значение seed.
+- `TASK_SEED_BASE` — базовый seed.
 
-## Настройка распределённого выполнения
+## Репликация и quorum
 
 ```bash
 cp config/distributed.example.env config/distributed.env
 nano config/distributed.env
 ```
 
-В этом файле задаются параметры BOINC workunit template: репликация, quorum и ограничения на число попыток. Например, для базовой версии без репликации:
+Без репликации:
 
 ```env
 DISTRIBUTED_TARGET_NRESULTS=1
 DISTRIBUTED_MIN_QUORUM=1
-DISTRIBUTED_MAX_SUCCESS_RESULTS=1
 ```
 
-Для запуска с дублированием задач:
+С дублированием и проверкой совпадения:
 
 ```env
 DISTRIBUTED_TARGET_NRESULTS=2
 DISTRIBUTED_MIN_QUORUM=2
-DISTRIBUTED_MAX_SUCCESS_RESULTS=2
-DISTRIBUTED_MAX_TOTAL_RESULTS=4
 ```
 
-Dashboard берёт метрику `Replication` именно из этой конфигурации через `boinc_config_replication_factor`.
-
-## Запуск
-
-```bash
-./scripts/run_experiment.sh
-```
-
-Если нет `ansible/.vault_pass`:
-
-```bash
-./scripts/run_experiment.sh --ask-vault-pass
-```
+Для первого запуска лучше оставить базовый режим.
 
 ## Проверка прогресса
 
@@ -85,71 +80,14 @@ Dashboard берёт метрику `Replication` именно из этой к�
 ./scripts/status.sh
 ```
 
-В блоке `Remote BOINC client task summary` видны задачи на клиентах. Возможные статусы:
+Важные блоки:
 
-- `executing` — задача выполняется;
-- `uninitialized` — задача в очереди клиента;
-- пустой список — клиент сейчас не держит активных задач.
+- `MariaDB hosts` — зарегистрированные клиенты;
+- `MariaDB workunits/results summary` — созданные задачи и попытки;
+- `Remote BOINC client task summary` — очередь и активные задачи на клиентах.
 
-## Проверка через БД
-
-```bash
-docker exec -it boinc-mysql \
-  mariadb -u root -proot my_project \
-  -e "
-SELECT COUNT(*) AS hosts FROM host;
-SELECT COUNT(*) AS workunits FROM workunit;
-SELECT COUNT(*) AS results FROM result;
-SELECT server_state, outcome, client_state, COUNT(*) AS cnt
-FROM result
-GROUP BY server_state, outcome, client_state;
-"
-```
-
-## Новый прогон с чистого состояния
+Метрики:
 
 ```bash
-./scripts/clean_runtime.sh
-./scripts/bootstrap_server.sh
-./scripts/bootstrap_clients.sh
-./scripts/run_experiment.sh
-```
-
-
-## Какие метрики смотреть
-
-Для оценки эксперимента полезны две группы метрик.
-
-BOINC-метрики:
-
-- `boinc_workunits_total` — сколько логических задач создано;
-- `boinc_results_total` — сколько попыток выполнения создано;
-- `boinc_results_finished_total` — сколько results завершилось;
-- `boinc_results_error_total` — сколько results завершилось ошибкой;
-- `boinc_queue_remaining_total` — сколько результатов остаётся в очереди;
-- `boinc_completed_workunits_total` — сколько workunits получили успешный результат;
-- `boinc_config_replication_factor` — настроенная репликация из `config/distributed.env`;
-- `boinc_config_min_quorum` — настроенный quorum из `config/distributed.env`;
-- `boinc_avg_compute_time_per_workunit_seconds` — среднее время непосредственного выполнения задачи;
-- `boinc_avg_overhead_time_per_workunit_seconds` — средние накладные расходы на одну workunit;
-- `boinc_avg_success_turnaround_seconds` — среднее полное время возврата результата.
-
-Метрики нагрузки клиентов:
-
-- CPU usage по каждому клиенту;
-- RAM usage по каждому клиенту;
-- load average;
-- network RX/TX;
-- контейнерная нагрузка через cAdvisor.
-
-Для просмотра графиков:
-
-```bash
-./scripts/monitoring_up.sh
-```
-
-Затем открыть:
-
-```text
-http://localhost:3000
+curl -s http://localhost:9101/metrics | grep boinc_
 ```

@@ -2,6 +2,8 @@
 config/cluster.yml
 config/generated.env
 config/experiment.env
+config/distributed.env
+config/alerts.env
 
 # Generated Ansible runtime files
 ansible/inventory.ini
@@ -25,11 +27,11 @@ boinc-data/
 apps/*/build/
 
 # Logs/cache
+__pycache__/
+*.pyc
 *.log
 *.out
 *.err
-__pycache__/
-*.pyc
 .env
 config.env
 
