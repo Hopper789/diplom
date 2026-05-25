@@ -116,7 +116,7 @@ remove_runtime_dir() {
       return 0
     fi
 
-    echo "  Need sudo to remove root-owned path: $path"
+    echo "  Removing root-owned runtime path with sudo: $path"
     sudo rm -rf "$path"
   fi
 }
