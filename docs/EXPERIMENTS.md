@@ -12,6 +12,24 @@ apps/ml_grid_search/
 
 Оно создаёт много workunits для перебора параметров. Каждая задача получает входные параметры, считает синтетическую работу и возвращает результат.
 
+## Пользовательские Python-задачи
+
+Для независимых задач можно использовать:
+
+```text
+apps/python_task_runner/
+```
+
+Пользователь пишет `user_task.py` с функцией `run(params)` и список задач в `params.jsonl`.
+
+```bash
+apps/python_task_runner/run_task.sh \
+  --task apps/python_task_runner/examples/sum_params/user_task.py \
+  --params apps/python_task_runner/examples/sum_params/params.jsonl
+```
+
+Подробнее: [Разработка пользовательских задач](DEVELOP_CUSTOM_TASK.md).
+
 ## Запуск
 
 Сначала должны быть подняты сервер и клиенты:

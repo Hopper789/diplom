@@ -10,8 +10,8 @@ BOINC можно представить так: сервер хранит зад
 - разворачивает BOINC clients на удалённых узлах по SSH;
 - хранит sudo-пароль клиентов через Ansible Vault;
 - запускает пример `ml_grid_search`;
+- запускает пользовательские Python-задачи через `apps/python_task_runner`;
 - собирает метрики BOINC и нагрузки клиентов в Prometheus/Grafana;
-- готовит основу для пользовательских задач.
 
 ## Архитектура в 5 строк
 
@@ -65,7 +65,13 @@ admin / admin
 
 ## Запуск своего Python task
 
-Пользовательский Python runner добавляется в следующем этапе. Формат будет простой: функция `run(params)` и файл `params.jsonl`, где каждая строка описывает независимую задачу.
+```bash
+apps/python_task_runner/run_task.sh \
+  --task apps/python_task_runner/examples/sum_params/user_task.py \
+  --params apps/python_task_runner/examples/sum_params/params.jsonl
+```
+
+`user_task.py` должен содержать функцию `run(params)`. Каждая строка `params.jsonl` становится отдельной BOINC workunit.
 
 ## Документация
 
@@ -78,6 +84,7 @@ admin / admin
 - [Мониторинг и метрики](docs/MONITORING.md)
 - [Скрипты](docs/SCRIPTS.md)
 - [Диагностика](docs/TROUBLESHOOTING.md)
+- [Разработка пользовательских задач](docs/DEVELOP_CUSTOM_TASK.md)
 - [Обоснование технологий](docs/TECH_DECISIONS.md)
 
 ## Что не коммитится

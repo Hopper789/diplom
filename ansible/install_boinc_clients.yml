@@ -71,7 +71,7 @@
           FROM ubuntu:24.04
 
           RUN apt-get update && \
-              apt-get install -y boinc-client ca-certificates curl && \
+              apt-get install -y boinc-client ca-certificates curl python3 && \
               rm -rf /var/lib/apt/lists/*
 
           RUN mkdir -p /var/lib/boinc /var/lib/boinc/slots /var/lib/boinc/projects

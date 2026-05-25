@@ -39,6 +39,14 @@
 ./scripts/run_experiment.sh
 ```
 
+`apps/python_task_runner/run_task.sh` запускает пользовательские Python-задачи:
+
+```bash
+apps/python_task_runner/run_task.sh \
+  --task apps/python_task_runner/examples/sum_params/user_task.py \
+  --params apps/python_task_runner/examples/sum_params/params.jsonl
+```
+
 `monitoring_up.sh` запускает Prometheus/Grafana и клиентские агенты:
 
 ```bash
