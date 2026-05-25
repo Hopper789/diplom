@@ -1,12 +1,22 @@
+# Main cluster configuration.
+# Copy this file to config/cluster.yml and edit values for your machines:
+#   cp config/cluster.example.yml config/cluster.yml
+#   nano config/cluster.yml
+
 project:
+  # BOINC project name. It becomes part of the URL:
+  # http://SERVER_IP:8080/my_project/
   name: my_project
   port: 8080
 
 server:
+  # IP address of the machine where BOINC server Docker containers run.
+  # This IP must be reachable from every client node.
   ip: 192.168.1.10
-  user: ubuntu
 
 clients:
+  # Compute nodes. Ansible connects to them over SSH.
+  # Each node must have SSH server enabled and a user with sudo access.
   - name: node1
     ip: 192.168.1.11
     user: ubuntu
@@ -15,7 +25,13 @@ clients:
     user: ubuntu
 
 boinc:
-  rpc_password: auto
-  account_email: auto
-  account_password: auto
-  account_name: cluster_user
+  # Password for BOINC client RPC inside client containers.
+  # "auto" means init_config.sh will generate a value.
+  client_rpc_password: auto
+
+account:
+  # One BOINC account is used to attach all clients to the project.
+  # create_account_db.sh creates it directly in MariaDB and saves the authenticator.
+  email: nodes@local.test
+  name: nodes
+  password: manual

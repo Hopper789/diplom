@@ -1,189 +1,124 @@
 # Диагностика
 
-## `Connection refused` при Ansible
+## `config/cluster.yml not found`
 
-Ошибка:
-
-```text
-ssh: connect to host 192.168.1.189 port 22: Connection refused
-```
-
-Причина:
-
-- клиент доступен по сети;
-- SSH-сервер не запущен;
-- порт 22 закрыт.
-
-Решение на клиенте:
+Создай файл из примера:
 
 ```bash
-sudo apt update
-sudo apt install -y openssh-server
-sudo systemctl enable ssh
-sudo systemctl start ssh
+cp config/cluster.example.yml config/cluster.yml
+nano config/cluster.yml
 ```
 
-## `No route to host`
+## Ansible: `Host key verification failed`
 
-Ошибка:
+Такое бывает после пересоздания или отката клиентских машин. У них меняется SSH host key.
+
+Решение вручную:
+
+```bash
+ssh-keygen -R CLIENT_IP
+ssh USER@CLIENT_IP
+```
+
+`clean_runtime.sh` также пытается автоматически удалить старые host keys для клиентов из `inventory.ini`.
+
+## Ansible: `Attempting to decrypt but no vault secrets found`
+
+Ansible нашёл зашифрованный `vault.yml`, но не получил пароль от Vault.
+
+Варианты:
+
+```bash
+./scripts/status.sh --ask-vault-pass
+```
+
+или создать файл пароля:
+
+```bash
+nano ansible/.vault_pass
+chmod 600 ansible/.vault_pass
+```
+
+Проверка:
+
+```bash
+ansible-vault view ansible/group_vars/all/vault.yml --vault-password-file ansible/.vault_pass
+```
+
+## Ansible не видит `boinc_project_url`
+
+Проверь, что существует файл:
 
 ```text
-ssh: connect to host 192.168.3.189 port 22: No route to host
+ansible/group_vars/all/main.yml
 ```
 
-Причина:
-
-- неверный IP;
-- другая подсеть;
-- нет маршрута.
-
-Решение:
-
-1. проверить IP клиента;
-2. исправить `config/cluster.yml`;
-3. выполнить:
+Если нет:
 
 ```bash
 ./scripts/init_config.sh
+./scripts/create_account_db.sh
 ```
 
-## `Permission denied (publickey,password)`
+## Клиенты подключены, но сервер не видит hosts
 
-Причина:
+Возможно, сервер был очищен, а на клиентах остался старый BOINC volume.
 
-- неверный `user` в `cluster.yml`;
-- SSH-ключ не скопирован;
-- пароль не подходит.
-
-Решение:
-
-```bash
-ssh user@client_ip
-./scripts/copy_ssh_keys.sh
-```
-
-или:
-
-```bash
-ansible -i ansible/inventory.ini boinc_clients -m ping --ask-pass
-```
-
-## `sudo: interactive authentication is required`
-
-Решение:
-
-```bash
-./scripts/deploy_clients.sh --ask-become-pass
-```
-
-## `Timeout waiting for privilege escalation prompt`
-
-Решение:
-
-```bash
-ANSIBLE_BECOME_TIMEOUT=60 ./scripts/deploy_clients.sh --ask-become-pass
-```
-
-или:
-
-```bash
-ANSIBLE_BECOME_TIMEOUT=60 ansible-playbook \
-  -i ansible/inventory.ini \
-  ansible/install_boinc_clients.yml \
-  --ask-become-pass \
-  -e 'ansible_ssh_common_args="-tt"'
-```
-
-Для учебного стенда можно временно включить passwordless sudo на клиенте:
-
-```bash
-sudo visudo
-```
-
-Добавить:
-
-```text
-hopper ALL=(ALL) NOPASSWD:ALL
-```
-
-## `Can't create database 'my_project'; database exists`
-
-Причина:
-
-- старая MariaDB БД осталась после прошлого запуска.
-
-Решение:
+Очисти runtime полностью:
 
 ```bash
 ./scripts/clean_runtime.sh
-./scripts/init_config.sh
-./scripts/server_up.sh
+./scripts/bootstrap_server.sh
+./scripts/bootstrap_clients.sh
 ```
 
-## `Table 'my_project.platform' doesn't exist`
+## `bad WU template - no <workunit>`
 
-Причина:
+Некорректный BOINC input template. Проверь файл:
 
-- BOINC project создался не полностью;
-- `make_project` упал во время создания БД.
+```text
+apps/ml_grid_search/templates/ml_grid_search_in
+```
 
-Решение:
+В нём должен быть блок:
+
+```xml
+<workunit>
+...
+</workunit>
+```
+
+## `workunits=0`, `results=0`
+
+Задачи ещё не созданы. Запусти:
 
 ```bash
-./scripts/clean_runtime.sh
-./scripts/init_config.sh
-./scripts/server_up.sh
+./scripts/run_experiment.sh
 ```
 
-## `Table 'my_project.consent_type' doesn't exist`
+## Задачи созданы, но клиенты их не забирают
 
-Причина:
-
-- web schema BOINC не создалась полностью;
-- возможно, отсутствует `php-xml`.
-
-Решение:
-
-1. проверить `server/Dockerfile`;
-2. убедиться, что установлен `php-xml`;
-3. пересоздать runtime:
+Проверь статус клиентов:
 
 ```bash
-./scripts/clean_runtime.sh
-./scripts/init_config.sh
-./scripts/server_up.sh
+./scripts/status.sh
 ```
 
-## BOINC client не появляется в таблице `host`
-
-Проверить статус клиента:
+Затем принудительно запроси обновление проекта:
 
 ```bash
-docker exec -it boinc-client boinccmd --get_project_status
+ansible -i ansible/inventory.ini boinc_clients -b --vault-password-file ansible/.vault_pass -m shell -a '
+docker exec boinc-client boinccmd --passwd "$(cat /opt/boinc-client/data/gui_rpc_auth.cfg)" --project http://SERVER_IP:8080/my_project/ update
+'
 ```
 
-Проверить URL:
+## Docker требует sudo на клиентах
+
+Используй Vault:
 
 ```bash
-grep BOINC_PROJECT_URL config/generated.env
+./scripts/init_vault.sh
+./scripts/bootstrap_clients.sh
 ```
 
-Проверить, что URL доступен с клиента:
-
-```bash
-curl -I http://SERVER_IP:8080/my_project/
-```
-
-Проверить scheduler URL в проекте:
-
-```bash
-docker exec -it boinc-server bash -c \
-  "grep -R 'http://' /project/my_project/html/user/schedulers.txt /project/my_project/config.xml"
-```
-
-Если там `localhost`, нужно выполнить:
-
-```bash
-./server/scripts/fix_project_url.sh
-docker restart boinc-server
-```
+Или настрой `NOPASSWD` для SSH-пользователя на клиентах.

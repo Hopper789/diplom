@@ -1,18 +1,24 @@
-# Конфигурация кластера
+# Конфигурация
 
-Основной файл конфигурации:
+В проекте есть два основных конфигурационных файла:
 
 ```text
-config/cluster.yml
+config/cluster.yml      # машины кластера и BOINC project
+config/experiment.env   # параметры вычислительного эксперимента
 ```
+
+Оба файла локальные и не должны коммититься в Git.
+
+## config/cluster.yml
 
 Создаётся из примера:
 
 ```bash
 cp config/cluster.example.yml config/cluster.yml
+nano config/cluster.yml
 ```
 
-## Пример
+Пример:
 
 ```yaml
 project:
@@ -20,124 +26,50 @@ project:
   port: 8080
 
 server:
-  ip: 192.168.1.209
-  user: hopper
+  ip: 192.168.1.10
 
-clients:
-  - name: laptop
-    ip: 192.168.1.189
-    user: hopper
-
-  - name: node2
-    ip: 192.168.1.190
-    user: ubuntu
-
-boinc:
-  rpc_password: auto
-  account_email: nodes@local.test
-  account_password: manual
-  account_name: nodes
-```
-
-## `project`
-
-```yaml
-project:
-  name: my_project
-  port: 8080
-```
-
-- `name` — имя BOINC-проекта.
-- `port` — порт Web UI.
-
-Итоговый URL:
-
-```text
-http://SERVER_IP:PORT/PROJECT_NAME/
-```
-
-## `server`
-
-```yaml
-server:
-  ip: 192.168.1.209
-  user: hopper
-```
-
-- `ip` — IP серверной машины, доступный всем клиентам.
-- `user` — SSH-пользователь серверной машины.
-
-Для реального кластера нельзя использовать:
-
-```text
-localhost
-127.0.0.1
-172.17.0.1
-host.docker.internal
-```
-
-Нужно использовать LAN IP, например:
-
-```text
-192.168.1.209
-```
-
-## `clients`
-
-Один клиент:
-
-```yaml
-clients:
-  - name: laptop
-    ip: 192.168.1.189
-    user: hopper
-```
-
-Несколько клиентов:
-
-```yaml
 clients:
   - name: node1
-    ip: 192.168.1.101
+    ip: 192.168.1.11
     user: ubuntu
-
   - name: node2
-    ip: 192.168.1.102
+    ip: 192.168.1.12
     user: ubuntu
 
-  - name: node3
-    ip: 192.168.1.103
-    user: student
-```
-
-Каждый клиент должен быть доступен по SSH:
-
-```bash
-ssh user@client_ip
-```
-
-## `boinc`
-
-```yaml
 boinc:
-  rpc_password: auto
-  account_email: nodes@local.test
-  account_password: manual
-  account_name: nodes
+  client_rpc_password: auto
+
+account:
+  email: nodes@local.test
+  name: nodes
+  password: manual
 ```
 
-- `rpc_password` — пароль RPC-интерфейса BOINC clients.
-- `account_email` — email BOINC-пользователя.
-- `account_password` — справочное поле, если пользователь создаётся вручную.
-- `account_name` — имя BOINC-пользователя.
+### project.name
 
-Рекомендуется:
+Имя BOINC project. Оно используется в URL:
 
-```yaml
-rpc_password: auto
+```text
+http://SERVER_IP:8080/my_project/
 ```
 
-## Генерируемые файлы
+### server.ip
+
+IP управляющей машины, на которой запускается BOINC server. Этот IP должен быть доступен клиентам.
+
+### clients
+
+Список вычислительных узлов. Для каждого клиента указываются:
+
+- `name` — понятное имя узла;
+- `ip` — IP адрес;
+- `user` — SSH-пользователь с sudo-доступом.
+
+### account
+
+Один BOINC account используется для подключения всех клиентов. Скрипт `create_account_db.sh` создаёт его в MariaDB и сохраняет `authenticator` как `BOINC_ACCOUNT_KEY`.
+
+## Сгенерированные файлы
 
 После запуска:
 
@@ -150,7 +82,60 @@ rpc_password: auto
 ```text
 config/generated.env
 ansible/inventory.ini
-ansible/group_vars/all.yml
+ansible/group_vars/all/main.yml
+monitoring/.env
 ```
 
-`config/generated.env` содержит секреты и не должен храниться в Git.
+Эти файлы генерируются автоматически и не коммитятся.
+
+## config/experiment.env
+
+Создаётся из примера:
+
+```bash
+cp config/experiment.example.env config/experiment.env
+nano config/experiment.env
+```
+
+Основные параметры:
+
+```env
+EXPERIMENT_WALL_SECONDS=180
+EXPERIMENT_CORES=12
+TASK_SECONDS=8
+TASK_COUNT=
+TASK_DATASET_SIZE=500
+TASK_SEED_BASE=1000
+```
+
+Если `TASK_COUNT` пустой, число задач считается так:
+
+```text
+ceil(EXPERIMENT_WALL_SECONDS * EXPERIMENT_CORES / TASK_SECONDS)
+```
+
+Например:
+
+```text
+180 * 12 / 8 = 270 workunits
+```
+
+## Как менять размер эксперимента
+
+Больше задач:
+
+```env
+EXPERIMENT_WALL_SECONDS=600
+```
+
+Более короткие задачи:
+
+```env
+TASK_SECONDS=4
+```
+
+Точное число задач вручную:
+
+```env
+TASK_COUNT=1000
+```

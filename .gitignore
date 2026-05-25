@@ -1,34 +1,39 @@
-# generated config
+# Local configuration generated from examples
 config/cluster.yml
 config/generated.env
-ansible/inventory.ini
-ansible/group_vars/all.yml
+config/experiment.env
 
-# BOINC runtime data
+# Generated Ansible runtime files
+ansible/inventory.ini
+ansible/group_vars/all/main.yml
+
+# Ansible secrets
+ansible/.vault_pass
+ansible/group_vars/all/vault.yml
+
+# BOINC server runtime data
 server/project/
 server/mysql-data/
 
-# monitoring runtime
+# Monitoring runtime
 monitoring/.env
 
-# secrets
-config/experiment.env
-.env
-config.env
+# Old/local BOINC client runtime, should not be committed
+boinc-data/
 
-# logs/cache
+# Build artifacts
+apps/*/build/
+
+# Logs/cache
 *.log
 *.out
 *.err
 __pycache__/
 *.pyc
+.env
+config.env
 
-# build artifacts
-apps/*/build/
-apps/*/templates/
-
-boinc-data
-
-# ansible passwords
-ansible/.vault_pass
-ansible/group_vars/all/vault.yml
+# OS/editor noise
+.DS_Store
+.idea/
+.vscode/

@@ -1,76 +1,100 @@
-# Quick start
+# Быстрый запуск
 
-## 1. Подготовить конфиг кластера
+Эта инструкция рассчитана на первый запуск. Предполагается, что у тебя есть одна управляющая машина и один или несколько клиентских узлов по SSH.
+
+## 1. Подготовить конфигурацию
 
 ```bash
 cp config/cluster.example.yml config/cluster.yml
 nano config/cluster.yml
 ```
 
-## 2. Обычный запуск с вводом sudo-пароля
+В `cluster.yml` укажи:
 
-```bash
-./scripts/bootstrap_server.sh
-./scripts/bootstrap_clients.sh --ask-become-pass
-./scripts/run_experiment.sh --ask-become-pass
-```
+- IP управляющей машины в `server.ip`;
+- список клиентских узлов в `clients`;
+- SSH-пользователя для каждого клиента.
 
-## 3. Запуск через Ansible Vault
-
-Создать зашифрованный vault-файл с sudo-паролем клиентов:
+## 2. Создать Ansible Vault
 
 ```bash
 ./scripts/init_vault.sh
 ```
 
-Запуск:
+Скрипт спросит два пароля:
+
+1. sudo-пароль на клиентских машинах;
+2. пароль от Ansible Vault.
+
+После этого будут созданы:
+
+```text
+ansible/group_vars/all/vault.yml   # зашифрованный sudo-пароль
+ansible/.vault_pass                # пароль от Vault, чтобы не вводить его много раз
+```
+
+Оба файла игнорируются Git.
+
+## 3. Поднять BOINC server
 
 ```bash
 ./scripts/bootstrap_server.sh
+```
+
+Скрипт создаёт runtime-конфиги, запускает Docker-контейнеры `boinc-server` и `boinc-mysql`, создаёт BOINC project account.
+
+## 4. Развернуть клиентов
+
+```bash
+./scripts/bootstrap_clients.sh
+```
+
+Скрипт подключается к клиентам по SSH, устанавливает Docker и запускает контейнер `boinc-client` на каждом узле.
+
+Если ты не используешь `ansible/.vault_pass`, запусти так:
+
+```bash
 ./scripts/bootstrap_clients.sh --ask-vault-pass
-./scripts/run_experiment.sh --ask-vault-pass
 ```
 
-Сокращение:
+## 5. Запустить вычисления
 
 ```bash
-./scripts/quickstart.sh --ask-vault-pass
-./scripts/run_experiment.sh --ask-vault-pass
+./scripts/run_experiment.sh
 ```
 
-## 4. Очистка перед новым прогоном
+Скрипт создаст workunits на BOINC server и попросит клиентов забрать задачи.
 
-С вводом sudo-пароля:
-
-```bash
-./scripts/clean_runtime.sh --ask-become-pass
-```
-
-Через Vault:
-
-```bash
-./scripts/clean_runtime.sh --ask-vault-pass
-```
-
-После очистки:
-
-```bash
-./scripts/bootstrap_server.sh
-./scripts/bootstrap_clients.sh --ask-vault-pass
-./scripts/run_experiment.sh --ask-vault-pass
-```
-
-## 5. Проверка состояния
+## 6. Смотреть статус
 
 ```bash
 ./scripts/status.sh
 ```
 
-Смотреть блоки:
+В выводе важны блоки:
 
-```text
-MariaDB hosts
-MariaDB workunits/results summary
-Remote BOINC client project status
-Remote BOINC client task summary
+- `MariaDB hosts` — зарегистрированные клиенты;
+- `MariaDB workunits/results summary` — созданные задачи и результаты;
+- `Remote BOINC client task summary` — задачи на клиентских узлах.
+
+## Полный запуск одной последовательностью
+
+```bash
+cp config/cluster.example.yml config/cluster.yml
+nano config/cluster.yml
+
+./scripts/init_vault.sh
+./scripts/bootstrap_server.sh
+./scripts/bootstrap_clients.sh
+./scripts/run_experiment.sh
+./scripts/status.sh
+```
+
+## Полная очистка перед новым прогоном
+
+```bash
+./scripts/clean_runtime.sh
+./scripts/bootstrap_server.sh
+./scripts/bootstrap_clients.sh
+./scripts/run_experiment.sh
 ```

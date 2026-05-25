@@ -1,88 +1,115 @@
 # Скрипты
 
-## Основной запуск
+Все основные действия выполняются через скрипты из каталога `scripts/`.
 
-### `scripts/bootstrap_server.sh`
+## Основные скрипты
 
-Генерирует runtime-конфиги, поднимает BOINC server и создаёт BOINC account.
+### `bootstrap_server.sh`
+
+Поднимает серверную часть:
+
+1. запускает `init_config.sh`;
+2. запускает `server_up.sh`;
+3. создаёт или находит BOINC account через `create_account_db.sh`;
+4. показывает серверный статус.
+
+Запуск:
 
 ```bash
 ./scripts/bootstrap_server.sh
 ```
 
-### `scripts/bootstrap_clients.sh`
+### `bootstrap_clients.sh`
 
-Проверяет SSH-доступ и разворачивает BOINC clients в Docker на вычислительных узлах.
+Проверяет SSH-доступ до клиентов и запускает `deploy_clients.sh`.
 
 ```bash
-./scripts/bootstrap_clients.sh --ask-become-pass
+./scripts/bootstrap_clients.sh
+```
+
+Если нет `ansible/.vault_pass`:
+
+```bash
 ./scripts/bootstrap_clients.sh --ask-vault-pass
 ```
 
-### `scripts/run_experiment.sh`
+### `run_experiment.sh`
 
-Запускает создание workunits и отправляет `project update` клиентам.
-
-```bash
-./scripts/run_experiment.sh --ask-become-pass
-./scripts/run_experiment.sh --ask-vault-pass
-```
-
-### `scripts/quickstart.sh`
-
-Выполняет `bootstrap_server.sh` и `bootstrap_clients.sh`.
+Запускает создание workunits и просит клиентов забрать задачи.
 
 ```bash
-./scripts/quickstart.sh --ask-vault-pass
+./scripts/run_experiment.sh
 ```
 
-## Низкоуровневые скрипты
+### `status.sh`
 
-### `scripts/init_config.sh`
+Показывает состояние сервера, БД, клиентов и задач.
 
-Читает `config/cluster.yml`, создаёт:
+```bash
+./scripts/status.sh
+```
+
+Только серверная часть:
+
+```bash
+./scripts/status.sh --server-only
+```
+
+### `clean_runtime.sh`
+
+Очищает runtime-состояние сервера и клиентов:
+
+- контейнеры клиентов;
+- `/opt/boinc-client/data` на клиентах;
+- `server/project/`;
+- `server/mysql-data/`;
+- сгенерированные конфиги.
+
+```bash
+./scripts/clean_runtime.sh
+```
+
+## Вспомогательные скрипты
+
+### `init_config.sh`
+
+Читает `config/cluster.yml` и генерирует:
 
 ```text
 config/generated.env
 ansible/inventory.ini
-ansible/group_vars/all.yml
+ansible/group_vars/all/main.yml
+monitoring/.env
 ```
 
-### `scripts/server_up.sh`
+### `init_vault.sh`
 
-Поднимает BOINC server и MariaDB в Docker.
+Создаёт Ansible Vault для sudo-пароля клиентов.
 
-### `scripts/create_account_db.sh`
+### `server_up.sh`
 
-Создаёт или находит BOINC user напрямую в MariaDB и сохраняет `BOINC_ACCOUNT_KEY`.
+Запускает Docker Compose серверной части из каталога `server/`.
 
-### `scripts/deploy_clients.sh`
+### `create_account_db.sh`
+
+Создаёт BOINC account напрямую в MariaDB и сохраняет `BOINC_ACCOUNT_KEY`.
+
+### `deploy_clients.sh`
 
 Запускает Ansible playbook `ansible/install_boinc_clients.yml`.
 
-```bash
-./scripts/deploy_clients.sh --ask-become-pass
-./scripts/deploy_clients.sh --ask-vault-pass
-./scripts/deploy_clients.sh --vault
-```
+### `copy_ssh_keys.sh`
 
-### `scripts/init_vault.sh`
+Копирует SSH-ключ на клиентские узлы из `config/cluster.yml`.
 
-Создаёт зашифрованный файл `ansible/group_vars/all/vault.yml` с `ansible_become_password`.
+## Аргументы Ansible/Vault
+
+Большинство скриптов, которые обращаются к клиентам, поддерживают:
 
 ```bash
-./scripts/init_vault.sh
+--ask-vault-pass
+--vault-password-file FILE
+--ask-become-pass
 ```
 
-### `scripts/clean_runtime.sh`
-
-Очищает runtime сервера, мониторинга и удалённое BOINC-состояние клиентов.
-
-```bash
-./scripts/clean_runtime.sh --ask-become-pass
-./scripts/clean_runtime.sh --ask-vault-pass
-```
-
-### `scripts/status.sh`
-
-Показывает состояние server containers, BOINC DB, клиентов и мониторинга.
+Если существует `ansible/.vault_pass`, скрипты используют его автоматически.

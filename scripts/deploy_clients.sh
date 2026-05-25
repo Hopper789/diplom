@@ -45,11 +45,10 @@ if [[ ! -f "$ROOT_DIR/ansible/inventory.ini" ]]; then
   exit 1
 fi
 
-if [[ ! -f "$ROOT_DIR/ansible/group_vars/all/main.yml" && ! -f "$ROOT_DIR/ansible/group_vars/all.yml" ]]; then
+if [[ ! -f "$ROOT_DIR/ansible/group_vars/all/main.yml" ]]; then
   echo "ERROR: Ansible group vars not found."
-  echo "Expected one of:"
+  echo "Expected:"
   echo "  ansible/group_vars/all/main.yml"
-  echo "  ansible/group_vars/all.yml"
   echo
   echo "Run:"
   echo "  ./scripts/init_config.sh"

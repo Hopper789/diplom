@@ -240,8 +240,8 @@ update_real_clients() {
 
   echo
   echo "Requesting project update on real BOINC clients..."
-  echo "If sudo password is required, run with:"
-  echo "  ANSIBLE_EXTRA_ARGS='--ask-become-pass' apps/ml_grid_search/run_task.sh boinc"
+  echo "Ansible options are taken from ANSIBLE_EXTRA_ARGS."
+  echo "If ansible/.vault_pass exists, wrapper scripts pass it automatically."
   echo
 
   # shellcheck disable=SC2086

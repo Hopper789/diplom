@@ -1,57 +1,75 @@
-# Ansible Vault для sudo-пароля клиентов
+# Ansible Vault
 
-Если на клиентских узлах `sudo` требует пароль, можно не вводить `--ask-become-pass` каждый раз, а сохранить пароль в зашифрованном Ansible Vault файле.
+Ansible выполняет команды на клиентских узлах с `sudo`: устанавливает Docker, создаёт директории, запускает контейнеры. Если sudo требует пароль, его нужно передать Ansible.
 
-## Создание vault-файла
+Чтобы не хранить sudo-пароль открытым текстом, используется Ansible Vault.
+
+## Создание Vault
 
 ```bash
 ./scripts/init_vault.sh
 ```
 
-Скрипт спросит sudo-пароль для клиентских машин и создаст зашифрованный файл:
+Скрипт спросит:
+
+1. sudo-пароль клиентских машин;
+2. пароль от Vault.
+
+После этого появятся файлы:
 
 ```text
 ansible/group_vars/all/vault.yml
+ansible/.vault_pass
 ```
 
-Файл добавлен в `.gitignore`, поэтому не попадёт в репозиторий.
+`vault.yml` хранит sudo-пароль в зашифрованном виде. `.vault_pass` хранит пароль от Vault, чтобы скрипты не спрашивали его много раз.
 
-## Запуск с Vault
+Оба файла добавлены в `.gitignore`.
 
-Развернуть клиентов:
+## Запуск с .vault_pass
 
-```bash
-./scripts/deploy_clients.sh --ask-vault-pass
-```
-
-Запустить эксперимент:
+Если `ansible/.vault_pass` существует, команды можно запускать без дополнительных ключей:
 
 ```bash
-./scripts/run_experiment.sh --ask-vault-pass
-```
-
-Очистить сервер и клиентов:
-
-```bash
-./scripts/clean_runtime.sh --ask-vault-pass
-```
-
-Можно использовать сокращение:
-
-```bash
-./scripts/deploy_clients.sh --vault
-./scripts/run_experiment.sh --vault
-```
-
-## Если sudo без пароля
-
-Если на клиентах настроен `NOPASSWD`, Vault не нужен:
-
-```bash
-./scripts/deploy_clients.sh
+./scripts/bootstrap_clients.sh
 ./scripts/run_experiment.sh
+./scripts/status.sh
 ```
 
-## Если у разных клиентов разные sudo-пароли
+## Запуск без .vault_pass
 
-Тогда лучше использовать `ansible/host_vars/<host>/vault.yml` для каждого хоста и шифровать каждый файл через `ansible-vault encrypt`.
+Если не хочешь хранить `ansible/.vault_pass`, удали его:
+
+```bash
+rm ansible/.vault_pass
+```
+
+Тогда запускай клиентские команды так:
+
+```bash
+./scripts/bootstrap_clients.sh --ask-vault-pass
+./scripts/run_experiment.sh --ask-vault-pass
+./scripts/status.sh --ask-vault-pass
+```
+
+## Посмотреть содержимое Vault
+
+```bash
+ansible-vault view ansible/group_vars/all/vault.yml --vault-password-file ansible/.vault_pass
+```
+
+## Изменить sudo-пароль
+
+```bash
+ansible-vault edit ansible/group_vars/all/vault.yml --vault-password-file ansible/.vault_pass
+```
+
+## Альтернатива: sudo без пароля
+
+Для учебного стенда можно настроить на клиентах `NOPASSWD` и не использовать Vault:
+
+```text
+ubuntu ALL=(ALL) NOPASSWD:ALL
+```
+
+Но для более аккуратной конфигурации лучше использовать Vault.
