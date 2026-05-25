@@ -6,6 +6,18 @@ VAULT_PASS_FILE="$ROOT_DIR/ansible/.vault_pass"
 
 cd "$ROOT_DIR"
 
+if [[ "${EUID:-$(id -u)}" -eq 0 && -n "${SUDO_USER:-}" ]]; then
+  echo "ERROR: Do not run this script with sudo."
+  echo
+  echo "Run as your normal user:"
+  echo "  ./scripts/clean_runtime.sh"
+  echo
+  echo "Reason:"
+  echo "  Ansible uses your user's SSH keys to connect to client nodes."
+  echo "  If you run this script with sudo, Ansible runs as root and cannot use your SSH keys."
+  exit 1
+fi
+
 ANSIBLE_ARGS=()
 
 while [[ $# -gt 0 ]]; do
@@ -96,8 +108,22 @@ fi
 
 echo
 echo "Removing server runtime directories..."
-rm -rf "$ROOT_DIR/server/project"
-rm -rf "$ROOT_DIR/server/mysql-data"
+remove_runtime_dir() {
+  local path="$1"
+
+  if [[ -e "$path" ]]; then
+    if rm -rf "$path" 2>/dev/null; then
+      return 0
+    fi
+
+    echo "  Need sudo to remove root-owned path: $path"
+    sudo rm -rf "$path"
+  fi
+}
+
+remove_runtime_dir "$ROOT_DIR/server/project"
+remove_runtime_dir "$ROOT_DIR/server/mysql-data"
+
 mkdir -p "$ROOT_DIR/server/project"
 
 echo
