@@ -176,3 +176,40 @@ RAM, которую потребляет контейнер `boinc-client`.
 ```bash
 ./scripts/monitoring_down.sh --with-client-agents
 ```
+
+## Особенности cAdvisor в этой версии
+
+На разных версиях Docker/cAdvisor имена контейнеров могут попадать в метрики по-разному. Иногда label `name="boinc-client"` отсутствует, хотя сами метрики cAdvisor есть. Поэтому dashboard использует более устойчивые агрегированные запросы:
+
+```promql
+sum by(instance) (rate(container_cpu_usage_seconds_total{job="cadvisor_clients",id!="/"}[1m]))
+```
+
+и:
+
+```promql
+sum by(instance) (container_memory_usage_bytes{job="cadvisor_clients",id!="/"})
+```
+
+Эти панели называются `Client cAdvisor CPU` и `Client cAdvisor memory`. Они показывают суммарную нагрузку cAdvisor-tracked cgroups/containers на клиенте. Для учебного стенда этого достаточно, чтобы видеть дополнительную активность контейнерного окружения. Основную нагрузку вычислительного узла лучше оценивать по `Client CPU usage` и `Client memory usage` из node-exporter.
+
+## Почему throughput считается через `delta`
+
+BOINC exporter отдаёт накопленные значения, например `boinc_results_success_total` и `boinc_completed_workunits_total`, как gauge. Поэтому в Grafana для скорости завершения задач используется:
+
+```promql
+clamp_min(delta(boinc_completed_workunits_total[1m]), 0)
+```
+
+Это показывает, сколько workunit завершилось за последнюю минуту. `clamp_min` нужен, чтобы при очистке runtime или пересоздании проекта график не уходил в отрицательные значения.
+
+## Проверка, что все источники мониторинга работают
+
+```bash
+curl -s http://localhost:9090/api/v1/targets | grep -E "node_exporter|cadvisor|boinc" -n
+curl -s http://localhost:9101/metrics | grep boinc_
+curl -s http://CLIENT_IP:9100/metrics | grep node_cpu_seconds_total | head
+curl -s http://CLIENT_IP:8081/metrics | grep container_cpu_usage_seconds_total | head
+```
+
+Если Prometheus target имеет `health: up`, значит источник метрик доступен. Если в Grafana отдельная панель показывает `No data`, сначала проверь PromQL-запрос в Explore: часто проблема не в exporter, а в label-ах конкретной версии cAdvisor.

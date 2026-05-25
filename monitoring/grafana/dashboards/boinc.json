@@ -426,13 +426,13 @@
       },
       "targets": [
         {
-          "expr": "rate(boinc_results_success_total[5m]) * 60",
+          "expr": "clamp_min(delta(boinc_results_success_total[1m]), 0)",
           "refId": "A",
           "legendFormat": "successful results/min"
         },
         {
-          "expr": "rate(boinc_completed_workunits_total[5m]) * 60",
-          "refId": "A",
+          "expr": "clamp_min(delta(boinc_completed_workunits_total[1m]), 0)",
+          "refId": "B",
           "legendFormat": "completed workunits/min"
         }
       ],
@@ -441,7 +441,8 @@
           "unit": "ops"
         },
         "overrides": []
-      }
+      },
+      "description": "Tasks completed per minute. Uses delta() because BOINC exporter exposes these values as gauges."
     },
     {
       "type": "timeseries",
@@ -460,13 +461,8 @@
         },
         {
           "expr": "boinc_p95_success_turnaround_seconds",
-          "refId": "A",
+          "refId": "B",
           "legendFormat": "p95 success turnaround"
-        },
-        {
-          "expr": "boinc_oldest_unfinished_result_age_seconds",
-          "refId": "A",
-          "legendFormat": "oldest unfinished age"
         }
       ],
       "fieldConfig": {
@@ -610,8 +606,13 @@
         },
         {
           "expr": "node_load5{job=\"node_exporter_clients\"}",
-          "refId": "A",
+          "refId": "B",
           "legendFormat": "{{instance}} load5"
+        },
+        {
+          "expr": "node_load15{job=\"node_exporter_clients\"}",
+          "refId": "C",
+          "legendFormat": "{{instance}} load15"
         }
       ],
       "fieldConfig": {
@@ -632,14 +633,14 @@
       },
       "targets": [
         {
-          "expr": "rate(node_network_receive_bytes_total{job=\"node_exporter_clients\",device!~\"lo|docker.*|veth.*|br.*\"}[1m])",
+          "expr": "sum by(instance, device) (rate(node_network_receive_bytes_total{job=\"node_exporter_clients\",device!~\"lo|docker.*|veth.*|br.*\"}[1m]))",
           "refId": "A",
-          "legendFormat": "{{instance}} rx"
+          "legendFormat": "{{instance}} {{device}} rx"
         },
         {
-          "expr": "rate(node_network_transmit_bytes_total{job=\"node_exporter_clients\",device!~\"lo|docker.*|veth.*|br.*\"}[1m])",
-          "refId": "A",
-          "legendFormat": "{{instance}} tx"
+          "expr": "sum by(instance, device) (rate(node_network_transmit_bytes_total{job=\"node_exporter_clients\",device!~\"lo|docker.*|veth.*|br.*\"}[1m]))",
+          "refId": "B",
+          "legendFormat": "{{instance}} {{device}} tx"
         }
       ],
       "fieldConfig": {
@@ -647,11 +648,12 @@
           "unit": "Bps"
         },
         "overrides": []
-      }
+      },
+      "description": "Network traffic on real host interfaces. Docker, bridge, veth and loopback interfaces are excluded."
     },
     {
       "type": "timeseries",
-      "title": "BOINC container CPU",
+      "title": "Client cAdvisor CPU",
       "gridPos": {
         "x": 0,
         "y": 48,
@@ -660,9 +662,9 @@
       },
       "targets": [
         {
-          "expr": "rate(container_cpu_usage_seconds_total{job=\"cadvisor_clients\",name=\"boinc-client\"}[1m])",
+          "expr": "sum by(instance) (rate(container_cpu_usage_seconds_total{job=\"cadvisor_clients\",id!=\"/\"}[1m]))",
           "refId": "A",
-          "legendFormat": "{{instance}} boinc-client"
+          "legendFormat": "{{instance}} cAdvisor CPU"
         }
       ],
       "fieldConfig": {
@@ -670,11 +672,12 @@
           "unit": "cores"
         },
         "overrides": []
-      }
+      },
+      "description": "Aggregated client cAdvisor CPU for tracked cgroups/containers. Some cAdvisor versions do not expose Docker container names, so this is broader than only boinc-client."
     },
     {
       "type": "timeseries",
-      "title": "BOINC container memory",
+      "title": "Client cAdvisor memory",
       "gridPos": {
         "x": 12,
         "y": 48,
@@ -683,9 +686,9 @@
       },
       "targets": [
         {
-          "expr": "container_memory_usage_bytes{job=\"cadvisor_clients\",name=\"boinc-client\"}",
+          "expr": "sum by(instance) (container_memory_usage_bytes{job=\"cadvisor_clients\",id!=\"/\"})",
           "refId": "A",
-          "legendFormat": "{{instance}} boinc-client"
+          "legendFormat": "{{instance}} cAdvisor memory"
         }
       ],
       "fieldConfig": {
@@ -693,11 +696,12 @@
           "unit": "bytes"
         },
         "overrides": []
-      }
+      },
+      "description": "Aggregated client cAdvisor memory for tracked cgroups/containers. Some cAdvisor versions do not expose Docker container names, so this is broader than only boinc-client."
     },
     {
       "type": "timeseries",
-      "title": "Server containers CPU",
+      "title": "Server cAdvisor CPU",
       "gridPos": {
         "x": 0,
         "y": 56,
@@ -706,9 +710,9 @@
       },
       "targets": [
         {
-          "expr": "rate(container_cpu_usage_seconds_total{job=\"cadvisor_server\",name=~\"boinc-server|boinc-mysql|boinc-exporter|boinc-prometheus|boinc-grafana\"}[1m])",
+          "expr": "sum by(instance) (rate(container_cpu_usage_seconds_total{job=\"cadvisor_server\",id!=\"/\"}[1m]))",
           "refId": "A",
-          "legendFormat": "{{name}}"
+          "legendFormat": "{{instance}} cAdvisor CPU"
         }
       ],
       "fieldConfig": {
@@ -716,11 +720,12 @@
           "unit": "cores"
         },
         "overrides": []
-      }
+      },
+      "description": "Aggregated server cAdvisor CPU for tracked cgroups/containers. This avoids depending on unstable Docker name labels."
     },
     {
       "type": "timeseries",
-      "title": "Server containers memory",
+      "title": "Server cAdvisor memory",
       "gridPos": {
         "x": 12,
         "y": 56,
@@ -729,9 +734,9 @@
       },
       "targets": [
         {
-          "expr": "container_memory_usage_bytes{job=\"cadvisor_server\",name=~\"boinc-server|boinc-mysql|boinc-exporter|boinc-prometheus|boinc-grafana\"}",
+          "expr": "sum by(instance) (container_memory_usage_bytes{job=\"cadvisor_server\",id!=\"/\"})",
           "refId": "A",
-          "legendFormat": "{{name}}"
+          "legendFormat": "{{instance}} cAdvisor memory"
         }
       ],
       "fieldConfig": {
@@ -739,7 +744,8 @@
           "unit": "bytes"
         },
         "overrides": []
-      }
+      },
+      "description": "Aggregated server cAdvisor memory for tracked cgroups/containers. This avoids depending on unstable Docker name labels."
     }
   ]
 }

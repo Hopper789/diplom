@@ -167,3 +167,59 @@ ansible -i ansible/inventory.ini boinc_clients -b -m shell -a 'docker ps --filte
 ```
 
 Если используется Vault и нет `ansible/.vault_pass`, добавь `--ask-vault-pass`.
+
+## В Grafana часть cAdvisor-панелей показывает `No data`
+
+Сначала проверь, что Prometheus видит targets:
+
+```bash
+curl -s http://localhost:9090/api/v1/targets | grep -E "cadvisor|node_exporter|boinc" -n
+```
+
+Если targets `up`, значит данные собираются. Проблема обычно в label-ах cAdvisor. В некоторых версиях cAdvisor нет label `name="boinc-client"`, поэтому запросы вида:
+
+```promql
+container_cpu_usage_seconds_total{name="boinc-client"}
+```
+
+могут ничего не вернуть.
+
+В актуальном dashboard используются более устойчивые агрегированные запросы:
+
+```promql
+sum by(instance) (rate(container_cpu_usage_seconds_total{job="cadvisor_clients",id!="/"}[1m]))
+```
+
+и:
+
+```promql
+sum by(instance) (container_memory_usage_bytes{job="cadvisor_clients",id!="/"})
+```
+
+Они не зависят от имени Docker-контейнера и должны работать даже тогда, когда `grep -i boinc` по cAdvisor-метрикам ничего не находит.
+
+## В Grafana пустой throughput
+
+Для BOINC exporter накопленные значения успешных задач отдаются как gauge. Поэтому для скорости завершения задач нужно использовать `delta`, а не `rate`:
+
+```promql
+clamp_min(delta(boinc_completed_workunits_total[1m]), 0)
+```
+
+Если эксперимент только начался или за последнюю минуту не завершилась ни одна задача, значение может быть нулевым. Это нормально.
+
+## В Grafana пустой network traffic
+
+Проверь реальные имена сетевых интерфейсов на клиентах:
+
+```bash
+curl -s http://CLIENT_IP:9100/metrics | grep node_network_receive_bytes_total | head -30
+```
+
+Dashboard исключает loopback, Docker bridge и veth-интерфейсы:
+
+```promql
+device!~"lo|docker.*|veth.*|br.*"
+```
+
+Обычно остаётся физический/виртуальный интерфейс вроде `ens192`, `eth0`, `enp0s3`.
