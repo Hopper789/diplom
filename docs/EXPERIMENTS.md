@@ -25,7 +25,7 @@ target_seconds
 ./scripts/bootstrap_clients.sh
 ```
 
-## Настройка параметров
+## Настройка размера эксперимента
 
 ```bash
 cp config/experiment.example.env config/experiment.env
@@ -40,6 +40,32 @@ nano config/experiment.env
 - `TASK_COUNT` — ручное число задач, если не хочется использовать автоматический расчёт;
 - `TASK_DATASET_SIZE` — размер синтетических данных;
 - `TASK_SEED_BASE` — базовое значение seed.
+
+## Настройка распределённого выполнения
+
+```bash
+cp config/distributed.example.env config/distributed.env
+nano config/distributed.env
+```
+
+В этом файле задаются параметры BOINC workunit template: репликация, quorum и ограничения на число попыток. Например, для базовой версии без репликации:
+
+```env
+DISTRIBUTED_TARGET_NRESULTS=1
+DISTRIBUTED_MIN_QUORUM=1
+DISTRIBUTED_MAX_SUCCESS_RESULTS=1
+```
+
+Для запуска с дублированием задач:
+
+```env
+DISTRIBUTED_TARGET_NRESULTS=2
+DISTRIBUTED_MIN_QUORUM=2
+DISTRIBUTED_MAX_SUCCESS_RESULTS=2
+DISTRIBUTED_MAX_TOTAL_RESULTS=4
+```
+
+Dashboard берёт метрику `Replication` именно из этой конфигурации через `boinc_config_replication_factor`.
 
 ## Запуск
 
@@ -98,20 +124,23 @@ BOINC-метрики:
 
 - `boinc_workunits_total` — сколько логических задач создано;
 - `boinc_results_total` — сколько попыток выполнения создано;
-- `boinc_results_success_total` — сколько results завершилось успешно;
+- `boinc_results_finished_total` — сколько results завершилось;
 - `boinc_results_error_total` — сколько results завершилось ошибкой;
-- `boinc_results_unfinished_total` — сколько results ещё не завершено;
-- `boinc_success_rate` и `boinc_error_rate` — доли успехов и ошибок;
-- `boinc_replication_overhead` — накладные расходы репликации;
-- `boinc_avg_success_turnaround_seconds` — среднее время возврата результата.
+- `boinc_queue_remaining_total` — сколько результатов остаётся в очереди;
+- `boinc_completed_workunits_total` — сколько workunits получили успешный результат;
+- `boinc_config_replication_factor` — настроенная репликация из `config/distributed.env`;
+- `boinc_config_min_quorum` — настроенный quorum из `config/distributed.env`;
+- `boinc_avg_compute_time_per_workunit_seconds` — среднее время непосредственного выполнения задачи;
+- `boinc_avg_overhead_time_per_workunit_seconds` — средние накладные расходы на одну workunit;
+- `boinc_avg_success_turnaround_seconds` — среднее полное время возврата результата.
 
 Метрики нагрузки клиентов:
 
 - CPU usage по каждому клиенту;
 - RAM usage по каждому клиенту;
 - load average;
-- CPU/RAM контейнера `boinc-client`;
-- network RX/TX.
+- network RX/TX;
+- контейнерная нагрузка через cAdvisor.
 
 Для просмотра графиков:
 

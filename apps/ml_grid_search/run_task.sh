@@ -4,11 +4,19 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 ENV_FILE="$ROOT_DIR/config/generated.env"
 EXPERIMENT_ENV_FILE="$ROOT_DIR/config/experiment.env"
+DISTRIBUTED_ENV_FILE="$ROOT_DIR/config/distributed.env"
 
 if [[ -f "$EXPERIMENT_ENV_FILE" ]]; then
   set -a
   # shellcheck disable=SC1090
   source "$EXPERIMENT_ENV_FILE"
+  set +a
+fi
+
+if [[ -f "$DISTRIBUTED_ENV_FILE" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$DISTRIBUTED_ENV_FILE"
   set +a
 fi
 
@@ -18,9 +26,10 @@ PLATFORM="${PLATFORM:-x86_64-pc-linux-gnu}"
 BIN_NAME="${APP_NAME}_${APP_VERSION}_${PLATFORM}"
 
 SRC_CPP="$ROOT_DIR/apps/ml_grid_search/ml_grid_search.cpp"
-TPL_IN="$ROOT_DIR/apps/ml_grid_search/templates/ml_grid_search_in"
+TPL_IN_BASE="$ROOT_DIR/apps/ml_grid_search/templates/ml_grid_search_in"
 TPL_OUT="$ROOT_DIR/apps/ml_grid_search/templates/ml_grid_search_out"
 BUILD_DIR="$ROOT_DIR/apps/ml_grid_search/build"
+TPL_IN="$BUILD_DIR/${APP_NAME}_in.generated"
 
 MODE="${1:-boinc}"
 
@@ -30,6 +39,19 @@ TASK_SECONDS="${TASK_SECONDS:-8}"
 TASK_COUNT="${TASK_COUNT:-}"
 TASK_DATASET_SIZE="${TASK_DATASET_SIZE:-500}"
 TASK_SEED_BASE="${TASK_SEED_BASE:-1000}"
+
+# BOINC workunit scheduling and replication parameters.
+# Defaults match the baseline configuration: one result per workunit, no replication.
+DISTRIBUTED_TARGET_NRESULTS="${DISTRIBUTED_TARGET_NRESULTS:-1}"
+DISTRIBUTED_MIN_QUORUM="${DISTRIBUTED_MIN_QUORUM:-1}"
+DISTRIBUTED_MAX_SUCCESS_RESULTS="${DISTRIBUTED_MAX_SUCCESS_RESULTS:-1}"
+DISTRIBUTED_MAX_ERROR_RESULTS="${DISTRIBUTED_MAX_ERROR_RESULTS:-3}"
+DISTRIBUTED_MAX_TOTAL_RESULTS="${DISTRIBUTED_MAX_TOTAL_RESULTS:-3}"
+DISTRIBUTED_DELAY_BOUND="${DISTRIBUTED_DELAY_BOUND:-86400}"
+DISTRIBUTED_RSC_FPOPS_EST="${DISTRIBUTED_RSC_FPOPS_EST:-100000000000.0}"
+DISTRIBUTED_RSC_FPOPS_BOUND="${DISTRIBUTED_RSC_FPOPS_BOUND:-10000000000000.0}"
+DISTRIBUTED_RSC_MEMORY_BOUND="${DISTRIBUTED_RSC_MEMORY_BOUND:-268435456}"
+DISTRIBUTED_RSC_DISK_BOUND="${DISTRIBUTED_RSC_DISK_BOUND:-104857600}"
 
 ANSIBLE_EXTRA_ARGS="${ANSIBLE_EXTRA_ARGS:-}"
 
@@ -108,9 +130,92 @@ ensure_server_running() {
   fi
 }
 
+validate_distributed_config() {
+  python3 - <<PY
+import sys
+
+ints = {
+    "DISTRIBUTED_TARGET_NRESULTS": "$DISTRIBUTED_TARGET_NRESULTS",
+    "DISTRIBUTED_MIN_QUORUM": "$DISTRIBUTED_MIN_QUORUM",
+    "DISTRIBUTED_MAX_SUCCESS_RESULTS": "$DISTRIBUTED_MAX_SUCCESS_RESULTS",
+    "DISTRIBUTED_MAX_ERROR_RESULTS": "$DISTRIBUTED_MAX_ERROR_RESULTS",
+    "DISTRIBUTED_MAX_TOTAL_RESULTS": "$DISTRIBUTED_MAX_TOTAL_RESULTS",
+    "DISTRIBUTED_DELAY_BOUND": "$DISTRIBUTED_DELAY_BOUND",
+    "DISTRIBUTED_RSC_MEMORY_BOUND": "$DISTRIBUTED_RSC_MEMORY_BOUND",
+    "DISTRIBUTED_RSC_DISK_BOUND": "$DISTRIBUTED_RSC_DISK_BOUND",
+}
+
+for name, value in ints.items():
+    try:
+        parsed = int(value)
+    except ValueError:
+        print(f"ERROR: {name} must be an integer, got: {value}")
+        sys.exit(1)
+    if parsed < 0:
+        print(f"ERROR: {name} must be >= 0, got: {value}")
+        sys.exit(1)
+
+floats = {
+    "DISTRIBUTED_RSC_FPOPS_EST": "$DISTRIBUTED_RSC_FPOPS_EST",
+    "DISTRIBUTED_RSC_FPOPS_BOUND": "$DISTRIBUTED_RSC_FPOPS_BOUND",
+}
+
+for name, value in floats.items():
+    try:
+        parsed = float(value)
+    except ValueError:
+        print(f"ERROR: {name} must be a number, got: {value}")
+        sys.exit(1)
+    if parsed < 0:
+        print(f"ERROR: {name} must be >= 0, got: {value}")
+        sys.exit(1)
+
+if int("$DISTRIBUTED_MIN_QUORUM") > int("$DISTRIBUTED_TARGET_NRESULTS"):
+    print("ERROR: DISTRIBUTED_MIN_QUORUM must be <= DISTRIBUTED_TARGET_NRESULTS")
+    sys.exit(1)
+
+if int("$DISTRIBUTED_MAX_SUCCESS_RESULTS") < int("$DISTRIBUTED_MIN_QUORUM"):
+    print("ERROR: DISTRIBUTED_MAX_SUCCESS_RESULTS must be >= DISTRIBUTED_MIN_QUORUM")
+    sys.exit(1)
+
+if int("$DISTRIBUTED_MAX_TOTAL_RESULTS") < int("$DISTRIBUTED_TARGET_NRESULTS"):
+    print("ERROR: DISTRIBUTED_MAX_TOTAL_RESULTS must be >= DISTRIBUTED_TARGET_NRESULTS")
+    sys.exit(1)
+PY
+}
+
+generate_input_template() {
+  validate_distributed_config
+
+  cat > "$TPL_IN" <<TEMPLATE_EOF
+<file_info>
+    <number>0</number>
+</file_info>
+
+<workunit>
+    <file_ref>
+        <file_number>0</file_number>
+        <open_name>in</open_name>
+    </file_ref>
+
+    <rsc_fpops_est>$DISTRIBUTED_RSC_FPOPS_EST</rsc_fpops_est>
+    <rsc_fpops_bound>$DISTRIBUTED_RSC_FPOPS_BOUND</rsc_fpops_bound>
+    <rsc_memory_bound>$DISTRIBUTED_RSC_MEMORY_BOUND</rsc_memory_bound>
+    <rsc_disk_bound>$DISTRIBUTED_RSC_DISK_BOUND</rsc_disk_bound>
+
+    <delay_bound>$DISTRIBUTED_DELAY_BOUND</delay_bound>
+    <min_quorum>$DISTRIBUTED_MIN_QUORUM</min_quorum>
+    <target_nresults>$DISTRIBUTED_TARGET_NRESULTS</target_nresults>
+    <max_error_results>$DISTRIBUTED_MAX_ERROR_RESULTS</max_error_results>
+    <max_total_results>$DISTRIBUTED_MAX_TOTAL_RESULTS</max_total_results>
+    <max_success_results>$DISTRIBUTED_MAX_SUCCESS_RESULTS</max_success_results>
+</workunit>
+TEMPLATE_EOF
+}
+
 ensure_templates() {
-  if [[ ! -f "$TPL_IN" ]]; then
-    echo "ERROR: input template not found: $TPL_IN"
+  if [[ ! -f "$TPL_IN_BASE" ]]; then
+    echo "ERROR: input template reference not found: $TPL_IN_BASE"
     exit 1
   fi
 
@@ -118,6 +223,8 @@ ensure_templates() {
     echo "ERROR: output template not found: $TPL_OUT"
     exit 1
   fi
+
+  generate_input_template
 }
 
 declare_app_in_project_xml() {
@@ -188,6 +295,10 @@ create_workunits() {
   echo "  TASK_SEED_BASE=$TASK_SEED_BASE"
   echo "  EXPERIMENT_WALL_SECONDS=$EXPERIMENT_WALL_SECONDS"
   echo "  EXPERIMENT_CORES=$EXPERIMENT_CORES"
+  echo "  DISTRIBUTED_TARGET_NRESULTS=$DISTRIBUTED_TARGET_NRESULTS"
+  echo "  DISTRIBUTED_MIN_QUORUM=$DISTRIBUTED_MIN_QUORUM"
+  echo "  DISTRIBUTED_MAX_SUCCESS_RESULTS=$DISTRIBUTED_MAX_SUCCESS_RESULTS"
+  echo "  DISTRIBUTED_MAX_TOTAL_RESULTS=$DISTRIBUTED_MAX_TOTAL_RESULTS"
 
   local run_id
   run_id="$(date +%s)"

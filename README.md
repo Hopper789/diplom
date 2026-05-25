@@ -18,6 +18,8 @@ cp config/cluster.example.yml config/cluster.yml
 nano config/cluster.yml
 
 ./scripts/init_vault.sh
+# optional: cp config/distributed.example.env config/distributed.env
+# optional: nano config/distributed.env
 ./scripts/bootstrap_server.sh
 ./scripts/bootstrap_clients.sh
 ./scripts/run_experiment.sh

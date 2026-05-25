@@ -53,6 +53,11 @@ if [[ ! -f "$ROOT_DIR/config/experiment.env" && -f "$ROOT_DIR/config/experiment.
   cp "$ROOT_DIR/config/experiment.example.env" "$ROOT_DIR/config/experiment.env"
 fi
 
+if [[ ! -f "$ROOT_DIR/config/distributed.env" && -f "$ROOT_DIR/config/distributed.example.env" ]]; then
+  echo "Creating config/distributed.env from example..."
+  cp "$ROOT_DIR/config/distributed.example.env" "$ROOT_DIR/config/distributed.env"
+fi
+
 if [[ "${#ANSIBLE_ARGS[@]}" -gt 0 ]]; then
   export ANSIBLE_EXTRA_ARGS="${ANSIBLE_ARGS[*]}"
 fi
@@ -62,6 +67,14 @@ if [[ -f "$ROOT_DIR/config/experiment.env" ]]; then
   grep -v '^#' "$ROOT_DIR/config/experiment.env" | grep -v '^$' || true
 else
   echo "No config/experiment.env found; using defaults from run_task.sh."
+fi
+
+echo
+echo "Distributed computing config:"
+if [[ -f "$ROOT_DIR/config/distributed.env" ]]; then
+  grep -v '^#' "$ROOT_DIR/config/distributed.env" | grep -v '^$' || true
+else
+  echo "No config/distributed.env found; using defaults from run_task.sh."
 fi
 
 echo

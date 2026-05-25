@@ -3,6 +3,8 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="$ROOT_DIR/config/generated.env"
+EXPERIMENT_ENV_FILE="$ROOT_DIR/config/experiment.env"
+DISTRIBUTED_ENV_FILE="$ROOT_DIR/config/distributed.env"
 MONITORING_DIR="$ROOT_DIR/monitoring"
 VAULT_PASS_FILE="$ROOT_DIR/ansible/.vault_pass"
 
@@ -54,6 +56,14 @@ fi
 set -a
 # shellcheck disable=SC1090
 source "$ENV_FILE"
+if [[ -f "$EXPERIMENT_ENV_FILE" ]]; then
+  # shellcheck disable=SC1090
+  source "$EXPERIMENT_ENV_FILE"
+fi
+if [[ -f "$DISTRIBUTED_ENV_FILE" ]]; then
+  # shellcheck disable=SC1090
+  source "$DISTRIBUTED_ENV_FILE"
+fi
 set +a
 
 if ! docker network inspect server_default >/dev/null 2>&1; then
@@ -73,6 +83,12 @@ MYSQL_PORT=3306
 MYSQL_USER=root
 MYSQL_PASSWORD=root
 MYSQL_DATABASE=$PROJECT_NAME
+TASK_SECONDS=${TASK_SECONDS:-8}
+DISTRIBUTED_TARGET_NRESULTS=${DISTRIBUTED_TARGET_NRESULTS:-1}
+DISTRIBUTED_MIN_QUORUM=${DISTRIBUTED_MIN_QUORUM:-1}
+DISTRIBUTED_MAX_SUCCESS_RESULTS=${DISTRIBUTED_MAX_SUCCESS_RESULTS:-1}
+DISTRIBUTED_MAX_ERROR_RESULTS=${DISTRIBUTED_MAX_ERROR_RESULTS:-3}
+DISTRIBUTED_MAX_TOTAL_RESULTS=${DISTRIBUTED_MAX_TOTAL_RESULTS:-3}
 ENVEOF
 
 python3 - "$ROOT_DIR" "$MONITORING_DIR/prometheus.yml" <<'PY'

@@ -1,13 +1,14 @@
 # Конфигурация
 
-В проекте есть два основных конфигурационных файла:
+В проекте есть три основных конфигурационных файла:
 
 ```text
-config/cluster.yml      # машины кластера и BOINC project
-config/experiment.env   # параметры вычислительного эксперимента
+config/cluster.yml       # машины кластера и BOINC project
+config/experiment.env    # размер и длительность вычислительного эксперимента
+config/distributed.env   # параметры выдачи и репликации BOINC-задач
 ```
 
-Оба файла локальные и не должны коммититься в Git.
+Все эти файлы локальные и не должны коммититься в Git.
 
 ## config/cluster.yml
 
@@ -139,3 +140,53 @@ TASK_SECONDS=4
 ```env
 TASK_COUNT=1000
 ```
+
+
+## config/distributed.env
+
+Создаётся из примера:
+
+```bash
+cp config/distributed.example.env config/distributed.env
+nano config/distributed.env
+```
+
+Этот файл описывает не содержимое задачи, а правила распределённого выполнения BOINC workunits.
+
+Основные параметры:
+
+```env
+DISTRIBUTED_TARGET_NRESULTS=1
+DISTRIBUTED_MIN_QUORUM=1
+DISTRIBUTED_MAX_SUCCESS_RESULTS=1
+DISTRIBUTED_MAX_ERROR_RESULTS=3
+DISTRIBUTED_MAX_TOTAL_RESULTS=3
+```
+
+Смысл параметров:
+
+- `DISTRIBUTED_TARGET_NRESULTS` — сколько result-записей сервер старается создать на одну workunit. Значение `1` означает отсутствие репликации, `2` — дублирование задач.
+- `DISTRIBUTED_MIN_QUORUM` — сколько успешных совпадающих результатов нужно для подтверждения workunit.
+- `DISTRIBUTED_MAX_SUCCESS_RESULTS` — максимум успешных результатов для одной workunit.
+- `DISTRIBUTED_MAX_ERROR_RESULTS` — сколько ошибочных попыток допускается.
+- `DISTRIBUTED_MAX_TOTAL_RESULTS` — максимум всех попыток выполнения.
+
+Базовая конфигурация без репликации:
+
+```env
+DISTRIBUTED_TARGET_NRESULTS=1
+DISTRIBUTED_MIN_QUORUM=1
+DISTRIBUTED_MAX_SUCCESS_RESULTS=1
+DISTRIBUTED_MAX_TOTAL_RESULTS=3
+```
+
+Пример конфигурации с дублированием:
+
+```env
+DISTRIBUTED_TARGET_NRESULTS=2
+DISTRIBUTED_MIN_QUORUM=2
+DISTRIBUTED_MAX_SUCCESS_RESULTS=2
+DISTRIBUTED_MAX_TOTAL_RESULTS=4
+```
+
+`run_task.sh` генерирует BOINC input template из `config/distributed.env` перед созданием workunits. Поэтому для смены репликации достаточно изменить `config/distributed.env` и запустить новый эксперимент на чистом runtime.

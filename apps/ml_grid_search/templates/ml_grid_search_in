@@ -1,3 +1,8 @@
+<!--
+This file is kept as a reference template.
+At runtime apps/ml_grid_search/run_task.sh generates the actual BOINC input template
+from config/distributed.env and copies that generated template to the BOINC server.
+-->
 <file_info>
     <number>0</number>
 </file_info>

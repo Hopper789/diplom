@@ -51,6 +51,21 @@ Exporter:   http://localhost:9101/metrics
 admin / admin
 ```
 
+## Основные окна dashboard
+
+Верхняя строка показывает состояние системы: доступность БД и HTTP, количество hosts, workunits и results.
+
+Вторая строка показывает прогресс и конфигурацию:
+
+- `Finished results` — сколько result-записей завершилось;
+- `Error results` — сколько result-записей завершилось ошибкой;
+- `Replication` — значение `DISTRIBUTED_TARGET_NRESULTS` из `config/distributed.env`;
+- `Min quorum` — значение `DISTRIBUTED_MIN_QUORUM` из `config/distributed.env`;
+- `Avg compute/WU` — среднее время непосредственного выполнения задачи;
+- `Avg overhead/WU` — среднее время накладных расходов на одну workunit.
+
+`Avg overhead/WU` считается как полное время возврата результата минус время вычисления. Если BOINC schema не отдаёт `elapsed_time`, exporter использует `TASK_SECONDS` из `config/experiment.env` как приближение времени вычисления.
+
 ## Что показывает BOINC exporter
 
 Основные метрики BOINC:
@@ -66,17 +81,18 @@ admin / admin
 | `boinc_results_total` | число result-записей, то есть попыток выполнения |
 | `boinc_results_success_total` | число успешно завершённых results |
 | `boinc_results_error_total` | число ошибочных results |
-| `boinc_results_unfinished_total` | число незавершённых results |
+| `boinc_queue_remaining_total` | сколько results остаётся незавершёнными |
 | `boinc_results_unsent_total` | results, ещё не назначенные клиентам |
 | `boinc_results_assigned_total` | results, назначенные клиентам |
 | `boinc_results_in_progress_total` | назначенные, но ещё не завершённые results |
-| `boinc_success_rate` | доля успешных результатов среди завершённых |
-| `boinc_error_rate` | доля ошибок среди завершённых |
-| `boinc_replication_overhead` | `results_total / workunits_total` |
 | `boinc_completed_workunits_total` | число workunit, у которых есть успешный результат |
 | `boinc_effective_completion_ratio` | доля завершённых workunits |
 | `boinc_avg_success_turnaround_seconds` | среднее время от создания result до получения результата |
 | `boinc_p95_success_turnaround_seconds` | 95-й процентиль времени возврата результата |
+| `boinc_avg_compute_time_per_workunit_seconds` | среднее время вычисления на одну workunit |
+| `boinc_avg_overhead_time_per_workunit_seconds` | средние накладные расходы на одну workunit |
+| `boinc_config_replication_factor` | настроенная репликация из `config/distributed.env` |
+| `boinc_config_min_quorum` | настроенный quorum из `config/distributed.env` |
 
 ## Метрики репликации задач
 
@@ -97,23 +113,25 @@ BOINC различает `workunit` и `result`.
 1 workunit -> 2 или больше result
 ```
 
-Поэтому важная метрика:
+В этой версии основная метрика `Replication` берётся из файла `config/distributed.env`:
 
 ```text
-replication_overhead = results_total / workunits_total
+boinc_config_replication_factor = DISTRIBUTED_TARGET_NRESULTS
 ```
 
-Если значение около `1.0`, репликации почти нет. Если около `2.0`, каждая задача в среднем считается дважды.
+`Min quorum` также вынесен в отдельное числовое окно:
 
-Дополнительно exporter отдаёт усреднённые параметры из таблицы `workunit`:
+```text
+boinc_config_min_quorum = DISTRIBUTED_MIN_QUORUM
+```
 
-- `boinc_target_nresults_avg`;
-- `boinc_min_quorum_avg`;
-- `boinc_max_success_results_avg`;
-- `boinc_max_error_results_avg`;
-- `boinc_max_total_results_avg`.
+Дополнительно exporter отдаёт фактическое среднее число result-записей на одну workunit:
 
-Эти метрики помогают сравнивать конфигурации BOINC с разной надёжностью и накладными расходами.
+```text
+boinc_actual_results_per_workunit
+```
+
+Это полезно для проверки: настроенная репликация показывает желаемое поведение, а actual results/workunit показывает, что реально получилось в BOINC-БД.
 
 ## Метрики нагрузки клиентов
 
@@ -159,8 +177,8 @@ RAM, которую потребляет контейнер `boinc-client`.
 
 - CPU клиентов высокий, очередь уменьшается — система считает эффективно;
 - CPU низкий, но `boinc_results_unfinished_total` высокий — клиенты не получают задачи или есть проблема scheduler/update;
-- `boinc_error_rate` растёт — приложение или окружение нестабильны;
-- `boinc_replication_overhead` растёт — надёжность повышается, но расход ресурсов увеличивается;
+- `boinc_results_error_total` растёт — приложение или окружение нестабильны;
+- `boinc_config_replication_factor` показывает выбранный уровень репликации;
 - `boinc_hosts_active_recent_total` меньше `boinc_hosts_total` — часть клиентов зарегистрирована, но неактивна.
 
 ## Остановка

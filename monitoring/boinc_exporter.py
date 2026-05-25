@@ -15,6 +15,12 @@ MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "root")
 MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", PROJECT_NAME)
 SCRAPE_INTERVAL = int(os.getenv("SCRAPE_INTERVAL", "10"))
 ACTIVE_HOST_WINDOW_SECONDS = int(os.getenv("ACTIVE_HOST_WINDOW_SECONDS", "900"))
+CONFIG_TASK_SECONDS = float(os.getenv("TASK_SECONDS", "8"))
+CONFIG_REPLICATION_FACTOR = float(os.getenv("DISTRIBUTED_TARGET_NRESULTS", "1"))
+CONFIG_MIN_QUORUM = float(os.getenv("DISTRIBUTED_MIN_QUORUM", "1"))
+CONFIG_MAX_SUCCESS_RESULTS = float(os.getenv("DISTRIBUTED_MAX_SUCCESS_RESULTS", "1"))
+CONFIG_MAX_ERROR_RESULTS = float(os.getenv("DISTRIBUTED_MAX_ERROR_RESULTS", "3"))
+CONFIG_MAX_TOTAL_RESULTS = float(os.getenv("DISTRIBUTED_MAX_TOTAL_RESULTS", "3"))
 
 # Availability
 boinc_db_up = Gauge("boinc_db_up", "MariaDB connection status: 1 if up, 0 if down")
@@ -79,6 +85,44 @@ boinc_oldest_unfinished_result_age_seconds = Gauge(
     "Age of the oldest unfinished result by create_time",
 )
 
+# Distributed-computing configuration loaded from config/distributed.env through monitoring/.env.
+boinc_config_replication_factor = Gauge(
+    "boinc_config_replication_factor",
+    "Configured target results per workunit from distributed.env",
+)
+boinc_config_min_quorum = Gauge(
+    "boinc_config_min_quorum",
+    "Configured min_quorum from distributed.env",
+)
+boinc_config_max_success_results = Gauge(
+    "boinc_config_max_success_results",
+    "Configured max_success_results from distributed.env",
+)
+boinc_config_max_error_results = Gauge(
+    "boinc_config_max_error_results",
+    "Configured max_error_results from distributed.env",
+)
+boinc_config_max_total_results = Gauge(
+    "boinc_config_max_total_results",
+    "Configured max_total_results from distributed.env",
+)
+boinc_config_task_seconds = Gauge(
+    "boinc_config_task_seconds",
+    "Configured target compute seconds per workunit from experiment.env",
+)
+
+# Time decomposition.
+# Compute time is read from BOINC result.elapsed_time when available.
+# If the schema does not expose elapsed_time yet, the exporter falls back to configured TASK_SECONDS.
+boinc_avg_compute_time_per_workunit_seconds = Gauge(
+    "boinc_avg_compute_time_per_workunit_seconds",
+    "Average compute time per successful result/workunit",
+)
+boinc_avg_overhead_time_per_workunit_seconds = Gauge(
+    "boinc_avg_overhead_time_per_workunit_seconds",
+    "Average non-compute overhead per successful result/workunit: turnaround - compute_time",
+)
+
 
 def connect():
     return pymysql.connect(
@@ -133,6 +177,12 @@ def update_db_metrics() -> None:
             boinc_hosts_active_recent_total.set(active_hosts)
             boinc_workunits_total.set(workunits)
             boinc_results_total.set(results)
+            boinc_config_replication_factor.set(CONFIG_REPLICATION_FACTOR)
+            boinc_config_min_quorum.set(CONFIG_MIN_QUORUM)
+            boinc_config_max_success_results.set(CONFIG_MAX_SUCCESS_RESULTS)
+            boinc_config_max_error_results.set(CONFIG_MAX_ERROR_RESULTS)
+            boinc_config_max_total_results.set(CONFIG_MAX_TOTAL_RESULTS)
+            boinc_config_task_seconds.set(CONFIG_TASK_SECONDS)
 
             success = safe_fetch_one(cur, "SELECT COUNT(*) FROM result WHERE outcome = 1")
             unfinished = safe_fetch_one(cur, "SELECT COUNT(*) FROM result WHERE outcome = 0")
@@ -162,7 +212,7 @@ def update_db_metrics() -> None:
             boinc_latest_result_received_time.set(
                 safe_fetch_one(cur, "SELECT COALESCE(MAX(received_time), 0) FROM result")
             )
-            boinc_avg_success_turnaround_seconds.set(
+            avg_turnaround = float(
                 safe_fetch_one(
                     cur,
                     """
@@ -172,6 +222,28 @@ def update_db_metrics() -> None:
                     """,
                 )
             )
+            boinc_avg_success_turnaround_seconds.set(avg_turnaround)
+
+            avg_compute_time = float(
+                safe_fetch_one(
+                    cur,
+                    """
+                    SELECT COALESCE(AVG(elapsed_time), 0)
+                    FROM result
+                    WHERE outcome = 1 AND elapsed_time > 0
+                    """,
+                    default=0,
+                )
+            )
+            if avg_compute_time <= 0:
+                avg_compute_time = CONFIG_TASK_SECONDS if success else 0
+
+            avg_overhead_time = avg_turnaround - avg_compute_time if avg_turnaround > 0 else 0
+            if avg_overhead_time < 0:
+                avg_overhead_time = 0
+
+            boinc_avg_compute_time_per_workunit_seconds.set(avg_compute_time)
+            boinc_avg_overhead_time_per_workunit_seconds.set(avg_overhead_time)
 
             cur.execute(
                 """

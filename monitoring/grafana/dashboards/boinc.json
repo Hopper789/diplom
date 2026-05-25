@@ -182,67 +182,9 @@
     },
     {
       "type": "stat",
-      "title": "Success rate",
-      "gridPos": {
-        "x": 0,
-        "y": 4,
-        "w": 4,
-        "h": 4
-      },
-      "targets": [
-        {
-          "expr": "boinc_success_rate",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit"
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
-        }
-      }
-    },
-    {
-      "type": "stat",
-      "title": "Error rate",
-      "gridPos": {
-        "x": 4,
-        "y": 4,
-        "w": 4,
-        "h": 4
-      },
-      "targets": [
-        {
-          "expr": "boinc_error_rate",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit"
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
-        }
-      }
-    },
-    {
-      "type": "stat",
       "title": "Finished results",
       "gridPos": {
-        "x": 8,
+        "x": 0,
         "y": 4,
         "w": 4,
         "h": 4
@@ -269,7 +211,65 @@
     },
     {
       "type": "stat",
-      "title": "Unfinished results",
+      "title": "Error results",
+      "gridPos": {
+        "x": 4,
+        "y": 4,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "boinc_results_error_total",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Replication",
+      "gridPos": {
+        "x": 8,
+        "y": 4,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "boinc_config_replication_factor",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Min quorum",
       "gridPos": {
         "x": 12,
         "y": 4,
@@ -278,7 +278,7 @@
       },
       "targets": [
         {
-          "expr": "boinc_results_unfinished_total",
+          "expr": "boinc_config_min_quorum",
           "refId": "A"
         }
       ],
@@ -298,7 +298,7 @@
     },
     {
       "type": "stat",
-      "title": "Replication overhead",
+      "title": "Avg compute/WU",
       "gridPos": {
         "x": 16,
         "y": 4,
@@ -307,13 +307,13 @@
       },
       "targets": [
         {
-          "expr": "boinc_replication_overhead",
+          "expr": "boinc_avg_compute_time_per_workunit_seconds",
           "refId": "A"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "short"
+          "unit": "s"
         },
         "overrides": []
       },
@@ -327,7 +327,7 @@
     },
     {
       "type": "stat",
-      "title": "Completed WU ratio",
+      "title": "Avg overhead/WU",
       "gridPos": {
         "x": 20,
         "y": 4,
@@ -336,13 +336,13 @@
       },
       "targets": [
         {
-          "expr": "boinc_effective_completion_ratio",
+          "expr": "boinc_avg_overhead_time_per_workunit_seconds",
           "refId": "A"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "percentunit"
+          "unit": "s"
         },
         "overrides": []
       },
@@ -375,23 +375,18 @@
           "legendFormat": "finished results"
         },
         {
-          "expr": "boinc_results_unfinished_total",
-          "refId": "C",
-          "legendFormat": "unfinished results"
-        },
-        {
           "expr": "boinc_completed_workunits_total",
-          "refId": "D",
+          "refId": "C",
           "legendFormat": "completed workunits"
         },
         {
           "expr": "boinc_results_success_total",
-          "refId": "E",
+          "refId": "D",
           "legendFormat": "successful results"
         },
         {
           "expr": "boinc_results_error_total",
-          "refId": "F",
+          "refId": "E",
           "legendFormat": "error results"
         }
       ],
@@ -486,12 +481,22 @@
         {
           "expr": "boinc_avg_success_turnaround_seconds",
           "refId": "A",
-          "legendFormat": "avg success turnaround"
+          "legendFormat": "avg turnaround"
         },
         {
           "expr": "boinc_p95_success_turnaround_seconds",
           "refId": "B",
-          "legendFormat": "p95 success turnaround"
+          "legendFormat": "p95 turnaround"
+        },
+        {
+          "expr": "boinc_avg_compute_time_per_workunit_seconds",
+          "refId": "C",
+          "legendFormat": "avg compute/WU"
+        },
+        {
+          "expr": "boinc_avg_overhead_time_per_workunit_seconds",
+          "refId": "D",
+          "legendFormat": "avg overhead/WU"
         }
       ],
       "fieldConfig": {
@@ -503,7 +508,7 @@
     },
     {
       "type": "timeseries",
-      "title": "Replication settings and actual overhead",
+      "title": "Replication configuration",
       "gridPos": {
         "x": 0,
         "y": 24,
@@ -512,9 +517,9 @@
       },
       "targets": [
         {
-          "expr": "boinc_replication_overhead",
+          "expr": "boinc_config_replication_factor",
           "refId": "A",
-          "legendFormat": "replication overhead"
+          "legendFormat": "configured replication"
         },
         {
           "expr": "boinc_actual_results_per_workunit",
@@ -524,22 +529,17 @@
         {
           "expr": "boinc_target_nresults_avg",
           "refId": "C",
-          "legendFormat": "target_nresults avg"
-        },
-        {
-          "expr": "boinc_min_quorum_avg",
-          "refId": "D",
-          "legendFormat": "min_quorum avg"
+          "legendFormat": "DB target_nresults avg"
         },
         {
           "expr": "boinc_max_success_results_avg",
-          "refId": "E",
-          "legendFormat": "max_success_results avg"
+          "refId": "D",
+          "legendFormat": "max success avg"
         },
         {
           "expr": "boinc_max_total_results_avg",
-          "refId": "F",
-          "legendFormat": "max_total_results avg"
+          "refId": "E",
+          "legendFormat": "max total avg"
         }
       ],
       "fieldConfig": {
@@ -570,7 +570,7 @@
     },
     {
       "type": "timeseries",
-      "title": "Result assignment",
+      "title": "Error results over time",
       "gridPos": {
         "x": 12,
         "y": 24,
@@ -579,54 +579,19 @@
       },
       "targets": [
         {
-          "expr": "boinc_results_assigned_total",
-          "refId": "A",
-          "legendFormat": "assigned"
-        },
-        {
-          "expr": "boinc_results_unsent_total",
-          "refId": "B",
-          "legendFormat": "unsent"
-        },
-        {
-          "expr": "boinc_results_in_progress_total",
-          "refId": "C",
-          "legendFormat": "in progress"
-        },
-        {
-          "expr": "boinc_results_success_total",
-          "refId": "D",
-          "legendFormat": "success"
-        },
-        {
           "expr": "boinc_results_error_total",
-          "refId": "E",
-          "legendFormat": "errors"
+          "refId": "A",
+          "legendFormat": "error results"
         }
       ],
       "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "fillOpacity": 10,
-            "showPoints": "never",
-            "spanNulls": true
-          }
-        },
+        "defaults": {},
         "overrides": []
       },
       "options": {
         "legend": {
           "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
+          "placement": "bottom"
         }
       }
     },
