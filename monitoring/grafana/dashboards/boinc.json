@@ -3,7 +3,7 @@
   "title": "BOINC Cluster",
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 2,
+  "version": 3,
   "refresh": "10s",
   "panels": [
     {
@@ -365,31 +365,60 @@
       },
       "targets": [
         {
-          "expr": "boinc_results_unfinished_total",
+          "expr": "boinc_queue_remaining_total",
           "refId": "A",
-          "legendFormat": "unfinished"
+          "legendFormat": "queue remaining"
         },
         {
           "expr": "boinc_results_finished_total",
-          "refId": "A",
-          "legendFormat": "finished"
+          "refId": "B",
+          "legendFormat": "finished results"
+        },
+        {
+          "expr": "boinc_results_unfinished_total",
+          "refId": "C",
+          "legendFormat": "unfinished results"
+        },
+        {
+          "expr": "boinc_completed_workunits_total",
+          "refId": "D",
+          "legendFormat": "completed workunits"
         },
         {
           "expr": "boinc_results_success_total",
-          "refId": "A",
-          "legendFormat": "success"
+          "refId": "E",
+          "legendFormat": "successful results"
         },
         {
           "expr": "boinc_results_error_total",
-          "refId": "A",
-          "legendFormat": "errors"
+          "refId": "F",
+          "legendFormat": "error results"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "short"
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true
+          }
         },
         "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       }
     },
     {
@@ -483,31 +512,60 @@
       },
       "targets": [
         {
-          "expr": "boinc_target_nresults_avg",
+          "expr": "boinc_replication_overhead",
           "refId": "A",
+          "legendFormat": "replication overhead"
+        },
+        {
+          "expr": "boinc_actual_results_per_workunit",
+          "refId": "B",
+          "legendFormat": "actual results/workunit"
+        },
+        {
+          "expr": "boinc_target_nresults_avg",
+          "refId": "C",
           "legendFormat": "target_nresults avg"
         },
         {
           "expr": "boinc_min_quorum_avg",
-          "refId": "A",
+          "refId": "D",
           "legendFormat": "min_quorum avg"
         },
         {
-          "expr": "boinc_actual_results_per_workunit",
-          "refId": "A",
-          "legendFormat": "actual results/workunit"
+          "expr": "boinc_max_success_results_avg",
+          "refId": "E",
+          "legendFormat": "max_success_results avg"
         },
         {
-          "expr": "boinc_replication_overhead",
-          "refId": "A",
-          "legendFormat": "replication overhead"
+          "expr": "boinc_max_total_results_avg",
+          "refId": "F",
+          "legendFormat": "max_total_results avg"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "short"
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true
+          }
         },
         "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       }
     },
     {
@@ -521,26 +579,55 @@
       },
       "targets": [
         {
-          "expr": "boinc_results_unsent_total",
-          "refId": "A",
-          "legendFormat": "unsent"
-        },
-        {
           "expr": "boinc_results_assigned_total",
           "refId": "A",
           "legendFormat": "assigned"
         },
         {
+          "expr": "boinc_results_unsent_total",
+          "refId": "B",
+          "legendFormat": "unsent"
+        },
+        {
           "expr": "boinc_results_in_progress_total",
-          "refId": "A",
+          "refId": "C",
           "legendFormat": "in progress"
+        },
+        {
+          "expr": "boinc_results_success_total",
+          "refId": "D",
+          "legendFormat": "success"
+        },
+        {
+          "expr": "boinc_results_error_total",
+          "refId": "E",
+          "legendFormat": "errors"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "short"
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true
+          }
         },
         "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       }
     },
     {
