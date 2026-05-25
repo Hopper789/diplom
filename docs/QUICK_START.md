@@ -65,7 +65,21 @@ ansible/.vault_pass                # пароль от Vault, чтобы не в
 
 Скрипт создаст workunits на BOINC server и попросит клиентов забрать задачи.
 
-## 6. Смотреть статус
+## 6. Включить мониторинг
+
+```bash
+./scripts/monitoring_up.sh
+```
+
+После этого открой Grafana:
+
+```text
+http://localhost:3000
+```
+
+Логин: `admin / admin`.
+
+## 7. Смотреть статус
 
 ```bash
 ./scripts/status.sh
@@ -75,7 +89,8 @@ ansible/.vault_pass                # пароль от Vault, чтобы не в
 
 - `MariaDB hosts` — зарегистрированные клиенты;
 - `MariaDB workunits/results summary` — созданные задачи и результаты;
-- `Remote BOINC client task summary` — задачи на клиентских узлах.
+- `Remote BOINC client task summary` — задачи на клиентских узлах;
+- Grafana dashboard — графики BOINC-метрик, CPU/RAM и Docker-нагрузки клиентов.
 
 ## Полный запуск одной последовательностью
 
@@ -87,6 +102,7 @@ nano config/cluster.yml
 ./scripts/bootstrap_server.sh
 ./scripts/bootstrap_clients.sh
 ./scripts/run_experiment.sh
+./scripts/monitoring_up.sh
 ./scripts/status.sh
 ```
 

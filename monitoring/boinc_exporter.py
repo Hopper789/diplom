@@ -4,7 +4,7 @@ from typing import Any
 
 import pymysql
 import requests
-from prometheus_client import Gauge, Counter, start_http_server
+from prometheus_client import Counter, Gauge, start_http_server
 
 PROJECT_NAME = os.getenv("PROJECT_NAME", "my_project")
 PROJECT_URL = os.getenv("PROJECT_URL", "")
@@ -14,19 +14,70 @@ MYSQL_USER = os.getenv("MYSQL_USER", "root")
 MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "root")
 MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", PROJECT_NAME)
 SCRAPE_INTERVAL = int(os.getenv("SCRAPE_INTERVAL", "10"))
+ACTIVE_HOST_WINDOW_SECONDS = int(os.getenv("ACTIVE_HOST_WINDOW_SECONDS", "900"))
 
-db_up = Gauge("boinc_db_up", "MariaDB connection status: 1 if up, 0 if down")
-project_http_up = Gauge("boinc_project_http_up", "BOINC project HTTP status: 1 if reachable, 0 if down")
-project_http_status_code = Gauge("boinc_project_http_status_code", "BOINC project HTTP status code")
+# Availability
+boinc_db_up = Gauge("boinc_db_up", "MariaDB connection status: 1 if up, 0 if down")
+boinc_project_http_up = Gauge("boinc_project_http_up", "BOINC project HTTP status: 1 if reachable, 0 if down")
+boinc_project_http_status_code = Gauge("boinc_project_http_status_code", "BOINC project HTTP status code")
+boinc_exporter_scrape_errors_total = Counter("boinc_exporter_scrape_errors_total", "Exporter scrape errors")
 
-users_total = Gauge("boinc_users_total", "Total BOINC users")
-hosts_total = Gauge("boinc_hosts_total", "Total BOINC hosts")
-workunits_total = Gauge("boinc_workunits_total", "Total BOINC workunits")
-results_total = Gauge("boinc_results_total", "Total BOINC results")
-results_by_state = Gauge("boinc_results_by_state_total", "BOINC results grouped by server_state/outcome/client_state", ["server_state", "outcome", "client_state"])
-hosts_active_recent = Gauge("boinc_hosts_active_recent_total", "Hosts with recent RPC time in the last 15 minutes")
-latest_result_received_time = Gauge("boinc_latest_result_received_time", "Max result received_time value")
-scrape_errors_total = Counter("boinc_exporter_scrape_errors_total", "Exporter scrape errors")
+# Inventory and queue size
+boinc_users_total = Gauge("boinc_users_total", "Total BOINC users")
+boinc_hosts_total = Gauge("boinc_hosts_total", "Total BOINC hosts registered in DB")
+boinc_hosts_active_recent_total = Gauge(
+    "boinc_hosts_active_recent_total",
+    "Hosts with rpc_time in the last ACTIVE_HOST_WINDOW_SECONDS",
+)
+boinc_workunits_total = Gauge("boinc_workunits_total", "Total BOINC workunits")
+boinc_results_total = Gauge("boinc_results_total", "Total BOINC result records")
+
+# Result states
+boinc_results_by_state_total = Gauge(
+    "boinc_results_by_state_total",
+    "BOINC results grouped by server_state/outcome/client_state",
+    ["server_state", "outcome", "client_state"],
+)
+boinc_results_by_outcome_total = Gauge(
+    "boinc_results_by_outcome_total",
+    "BOINC results grouped by outcome",
+    ["outcome"],
+)
+boinc_results_success_total = Gauge("boinc_results_success_total", "BOINC results with outcome=1")
+boinc_results_error_total = Gauge("boinc_results_error_total", "BOINC results with error outcomes")
+boinc_results_unfinished_total = Gauge("boinc_results_unfinished_total", "BOINC results with outcome=0")
+boinc_results_finished_total = Gauge("boinc_results_finished_total", "BOINC results with outcome!=0")
+boinc_results_unsent_total = Gauge("boinc_results_unsent_total", "BOINC results not assigned to any host yet")
+boinc_results_assigned_total = Gauge("boinc_results_assigned_total", "BOINC results assigned to a host")
+boinc_results_in_progress_total = Gauge("boinc_results_in_progress_total", "Assigned BOINC results not finished yet")
+
+# Rates and efficiency are calculated by Prometheus from gauges/counters, but these point-in-time metrics
+# are useful for simple dashboards and diploma tables.
+boinc_success_rate = Gauge("boinc_success_rate", "successful_results / finished_results")
+boinc_error_rate = Gauge("boinc_error_rate", "error_results / finished_results")
+boinc_queue_remaining_total = Gauge("boinc_queue_remaining_total", "Unfinished BOINC results")
+boinc_completed_workunits_total = Gauge("boinc_completed_workunits_total", "Distinct workunits with at least one successful result")
+boinc_effective_completion_ratio = Gauge("boinc_effective_completion_ratio", "completed_workunits / workunits_total")
+boinc_replication_overhead = Gauge("boinc_replication_overhead", "results_total / workunits_total")
+boinc_actual_results_per_workunit = Gauge("boinc_actual_results_per_workunit", "Average result records per workunit")
+boinc_target_nresults_avg = Gauge("boinc_target_nresults_avg", "Average workunit target_nresults")
+boinc_min_quorum_avg = Gauge("boinc_min_quorum_avg", "Average workunit min_quorum")
+boinc_max_success_results_avg = Gauge("boinc_max_success_results_avg", "Average workunit max_success_results")
+boinc_max_error_results_avg = Gauge("boinc_max_error_results_avg", "Average workunit max_error_results")
+boinc_max_total_results_avg = Gauge("boinc_max_total_results_avg", "Average workunit max_total_results")
+boinc_latest_result_received_time = Gauge("boinc_latest_result_received_time", "Max result received_time value")
+boinc_avg_success_turnaround_seconds = Gauge(
+    "boinc_avg_success_turnaround_seconds",
+    "Average received_time - create_time for successful results",
+)
+boinc_p95_success_turnaround_seconds = Gauge(
+    "boinc_p95_success_turnaround_seconds",
+    "Approximate p95 received_time - create_time for successful results",
+)
+boinc_oldest_unfinished_result_age_seconds = Gauge(
+    "boinc_oldest_unfinished_result_age_seconds",
+    "Age of the oldest unfinished result by create_time",
+)
 
 
 def connect():
@@ -51,19 +102,111 @@ def fetch_one(cur, sql: str) -> Any:
     return list(row.values())[0] or 0
 
 
+def safe_fetch_one(cur, sql: str, default: Any = 0) -> Any:
+    try:
+        return fetch_one(cur, sql)
+    except Exception:
+        return default
+
+
+def set_ratio(metric: Gauge, numerator: float, denominator: float) -> None:
+    metric.set(float(numerator) / float(denominator) if denominator else 0)
+
+
 def update_db_metrics() -> None:
     try:
         conn = connect()
-        db_up.set(1)
-        with conn.cursor() as cur:
-            users_total.set(fetch_one(cur, "SELECT COUNT(*) FROM user"))
-            hosts_total.set(fetch_one(cur, "SELECT COUNT(*) FROM host"))
-            workunits_total.set(fetch_one(cur, "SELECT COUNT(*) FROM workunit"))
-            results_total.set(fetch_one(cur, "SELECT COUNT(*) FROM result"))
-            hosts_active_recent.set(fetch_one(cur, "SELECT COUNT(*) FROM host WHERE rpc_time > UNIX_TIMESTAMP() - 900"))
-            latest_result_received_time.set(fetch_one(cur, "SELECT COALESCE(MAX(received_time), 0) FROM result"))
+        boinc_db_up.set(1)
 
-            results_by_state.clear()
+        with conn.cursor() as cur:
+            users = safe_fetch_one(cur, "SELECT COUNT(*) FROM user")
+            hosts = safe_fetch_one(cur, "SELECT COUNT(*) FROM host")
+            workunits = safe_fetch_one(cur, "SELECT COUNT(*) FROM workunit")
+            results = safe_fetch_one(cur, "SELECT COUNT(*) FROM result")
+            active_hosts = safe_fetch_one(
+                cur,
+                f"SELECT COUNT(*) FROM host WHERE rpc_time > UNIX_TIMESTAMP() - {ACTIVE_HOST_WINDOW_SECONDS}",
+            )
+
+            boinc_users_total.set(users)
+            boinc_hosts_total.set(hosts)
+            boinc_hosts_active_recent_total.set(active_hosts)
+            boinc_workunits_total.set(workunits)
+            boinc_results_total.set(results)
+
+            success = safe_fetch_one(cur, "SELECT COUNT(*) FROM result WHERE outcome = 1")
+            unfinished = safe_fetch_one(cur, "SELECT COUNT(*) FROM result WHERE outcome = 0")
+            finished = safe_fetch_one(cur, "SELECT COUNT(*) FROM result WHERE outcome != 0")
+            errors = safe_fetch_one(cur, "SELECT COUNT(*) FROM result WHERE outcome NOT IN (0, 1)")
+            unsent = safe_fetch_one(cur, "SELECT COUNT(*) FROM result WHERE hostid = 0")
+            assigned = safe_fetch_one(cur, "SELECT COUNT(*) FROM result WHERE hostid != 0")
+            in_progress = safe_fetch_one(cur, "SELECT COUNT(*) FROM result WHERE hostid != 0 AND outcome = 0")
+            completed_wu = safe_fetch_one(cur, "SELECT COUNT(DISTINCT workunitid) FROM result WHERE outcome = 1")
+
+            boinc_results_success_total.set(success)
+            boinc_results_error_total.set(errors)
+            boinc_results_unfinished_total.set(unfinished)
+            boinc_results_finished_total.set(finished)
+            boinc_results_unsent_total.set(unsent)
+            boinc_results_assigned_total.set(assigned)
+            boinc_results_in_progress_total.set(in_progress)
+            boinc_queue_remaining_total.set(unfinished)
+            boinc_completed_workunits_total.set(completed_wu)
+
+            set_ratio(boinc_success_rate, success, finished)
+            set_ratio(boinc_error_rate, errors, finished)
+            set_ratio(boinc_effective_completion_ratio, completed_wu, workunits)
+            set_ratio(boinc_replication_overhead, results, workunits)
+            set_ratio(boinc_actual_results_per_workunit, results, workunits)
+
+            boinc_latest_result_received_time.set(
+                safe_fetch_one(cur, "SELECT COALESCE(MAX(received_time), 0) FROM result")
+            )
+            boinc_avg_success_turnaround_seconds.set(
+                safe_fetch_one(
+                    cur,
+                    """
+                    SELECT COALESCE(AVG(received_time - create_time), 0)
+                    FROM result
+                    WHERE outcome = 1 AND received_time > 0 AND create_time > 0
+                    """,
+                )
+            )
+
+            cur.execute(
+                """
+                SELECT received_time - create_time AS turnaround
+                FROM result
+                WHERE outcome = 1 AND received_time > 0 AND create_time > 0
+                ORDER BY turnaround
+                """
+            )
+            turnaround_rows = [float(row["turnaround"] or 0) for row in cur.fetchall()]
+            if turnaround_rows:
+                p95_index = int(round(0.95 * (len(turnaround_rows) - 1)))
+                boinc_p95_success_turnaround_seconds.set(turnaround_rows[p95_index])
+            else:
+                boinc_p95_success_turnaround_seconds.set(0)
+            boinc_oldest_unfinished_result_age_seconds.set(
+                safe_fetch_one(
+                    cur,
+                    """
+                    SELECT COALESCE(UNIX_TIMESTAMP() - MIN(create_time), 0)
+                    FROM result
+                    WHERE outcome = 0 AND create_time > 0
+                    """,
+                )
+            )
+
+            # Replication-related workunit configuration. Some BOINC schemas may miss a column,
+            # so every metric is filled best-effort.
+            boinc_target_nresults_avg.set(safe_fetch_one(cur, "SELECT COALESCE(AVG(target_nresults), 0) FROM workunit"))
+            boinc_min_quorum_avg.set(safe_fetch_one(cur, "SELECT COALESCE(AVG(min_quorum), 0) FROM workunit"))
+            boinc_max_success_results_avg.set(safe_fetch_one(cur, "SELECT COALESCE(AVG(max_success_results), 0) FROM workunit"))
+            boinc_max_error_results_avg.set(safe_fetch_one(cur, "SELECT COALESCE(AVG(max_error_results), 0) FROM workunit"))
+            boinc_max_total_results_avg.set(safe_fetch_one(cur, "SELECT COALESCE(AVG(max_total_results), 0) FROM workunit"))
+
+            boinc_results_by_state_total.clear()
             cur.execute(
                 """
                 SELECT server_state, outcome, client_state, COUNT(*) AS cnt
@@ -72,31 +215,37 @@ def update_db_metrics() -> None:
                 """
             )
             for row in cur.fetchall():
-                results_by_state.labels(
+                boinc_results_by_state_total.labels(
                     server_state=str(row["server_state"]),
                     outcome=str(row["outcome"]),
                     client_state=str(row["client_state"]),
                 ).set(row["cnt"])
+
+            boinc_results_by_outcome_total.clear()
+            cur.execute("SELECT outcome, COUNT(*) AS cnt FROM result GROUP BY outcome")
+            for row in cur.fetchall():
+                boinc_results_by_outcome_total.labels(outcome=str(row["outcome"])).set(row["cnt"])
+
         conn.close()
     except Exception:
-        db_up.set(0)
-        scrape_errors_total.inc()
+        boinc_db_up.set(0)
+        boinc_exporter_scrape_errors_total.inc()
 
 
 def update_http_metrics() -> None:
     if not PROJECT_URL:
-        project_http_up.set(0)
-        project_http_status_code.set(0)
+        boinc_project_http_up.set(0)
+        boinc_project_http_status_code.set(0)
         return
 
     try:
         response = requests.get(PROJECT_URL, timeout=5)
-        project_http_status_code.set(response.status_code)
-        project_http_up.set(1 if response.status_code < 500 else 0)
+        boinc_project_http_status_code.set(response.status_code)
+        boinc_project_http_up.set(1 if response.status_code < 500 else 0)
     except Exception:
-        project_http_status_code.set(0)
-        project_http_up.set(0)
-        scrape_errors_total.inc()
+        boinc_project_http_status_code.set(0)
+        boinc_project_http_up.set(0)
+        boinc_exporter_scrape_errors_total.inc()
 
 
 def main() -> None:

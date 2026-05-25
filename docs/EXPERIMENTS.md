@@ -88,3 +88,39 @@ GROUP BY server_state, outcome, client_state;
 ./scripts/bootstrap_clients.sh
 ./scripts/run_experiment.sh
 ```
+
+
+## Какие метрики смотреть
+
+Для оценки эксперимента полезны две группы метрик.
+
+BOINC-метрики:
+
+- `boinc_workunits_total` — сколько логических задач создано;
+- `boinc_results_total` — сколько попыток выполнения создано;
+- `boinc_results_success_total` — сколько results завершилось успешно;
+- `boinc_results_error_total` — сколько results завершилось ошибкой;
+- `boinc_results_unfinished_total` — сколько results ещё не завершено;
+- `boinc_success_rate` и `boinc_error_rate` — доли успехов и ошибок;
+- `boinc_replication_overhead` — накладные расходы репликации;
+- `boinc_avg_success_turnaround_seconds` — среднее время возврата результата.
+
+Метрики нагрузки клиентов:
+
+- CPU usage по каждому клиенту;
+- RAM usage по каждому клиенту;
+- load average;
+- CPU/RAM контейнера `boinc-client`;
+- network RX/TX.
+
+Для просмотра графиков:
+
+```bash
+./scripts/monitoring_up.sh
+```
+
+Затем открыть:
+
+```text
+http://localhost:3000
+```

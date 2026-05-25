@@ -126,6 +126,12 @@ if [[ -f "$ROOT_DIR/ansible/inventory.ini" ]]; then
         --get_task_summary
     " || true
     echo
+
+    echo "== Remote monitoring agents =="
+    ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b "${ANSIBLE_ARGS[@]}" -m shell -a "
+      docker ps --filter name=boinc-node-exporter --filter name=boinc-client-cadvisor
+    " || true
+    echo
   else
     echo "ansible is not installed; skip remote client checks."
     echo

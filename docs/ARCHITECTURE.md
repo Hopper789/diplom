@@ -88,3 +88,21 @@ server/mysql-data/
 ```bash
 ./scripts/clean_runtime.sh
 ```
+
+## Как устроен мониторинг
+
+Мониторинг состоит из серверной и клиентской части.
+
+На управляющей машине запускаются:
+
+- `boinc-exporter` — читает BOINC MariaDB и отдаёт метрики проекта;
+- `boinc-prometheus` — собирает и хранит метрики;
+- `boinc-grafana` — показывает dashboard;
+- `boinc-cadvisor` — показывает нагрузку Docker-контейнеров на управляющей машине.
+
+На каждом клиенте через Ansible запускаются:
+
+- `boinc-node-exporter` — CPU, RAM, load average, сеть и диск узла;
+- `boinc-client-cadvisor` — CPU/RAM/IO Docker-контейнера `boinc-client`.
+
+`monitoring_up.sh` генерирует `monitoring/prometheus.yml` из `ansible/inventory.ini`, поэтому Prometheus автоматически знает IP клиентских узлов.

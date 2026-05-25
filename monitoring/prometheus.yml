@@ -1,5 +1,6 @@
 global:
   scrape_interval: 10s
+  evaluation_interval: 10s
 
 scrape_configs:
   - job_name: prometheus
@@ -12,7 +13,16 @@ scrape_configs:
       - targets:
           - boinc-exporter:9101
 
-  - job_name: cadvisor
+  - job_name: cadvisor_server
     static_configs:
       - targets:
           - cadvisor:8080
+
+  # monitoring_up.sh rewrites this file and fills client targets from ansible/inventory.ini.
+  - job_name: node_exporter_clients
+    static_configs:
+      - targets: []
+
+  - job_name: cadvisor_clients
+    static_configs:
+      - targets: []

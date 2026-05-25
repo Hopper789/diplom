@@ -49,6 +49,46 @@
 ./scripts/status.sh
 ```
 
+### `monitoring_up.sh`
+
+Запускает мониторинг. Скрипт:
+
+1. разворачивает `node-exporter` и `cAdvisor` на клиентах через Ansible;
+2. генерирует `monitoring/prometheus.yml` по `ansible/inventory.ini`;
+3. запускает `boinc-exporter`, Prometheus, Grafana и серверный cAdvisor.
+
+```bash
+./scripts/monitoring_up.sh
+```
+
+Если нет `ansible/.vault_pass`:
+
+```bash
+./scripts/monitoring_up.sh --ask-vault-pass
+```
+
+### `deploy_monitoring_agents.sh`
+
+Только разворачивает агенты мониторинга на клиентах:
+
+```bash
+./scripts/deploy_monitoring_agents.sh
+```
+
+### `monitoring_down.sh`
+
+Останавливает мониторинг на сервере:
+
+```bash
+./scripts/monitoring_down.sh
+```
+
+Остановить ещё и агенты на клиентах:
+
+```bash
+./scripts/monitoring_down.sh --with-client-agents
+```
+
 Только серверная часть:
 
 ```bash

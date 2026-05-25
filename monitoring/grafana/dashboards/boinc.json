@@ -3,7 +3,7 @@
   "title": "BOINC Cluster",
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "refresh": "10s",
   "panels": [
     {
@@ -17,9 +17,23 @@
       },
       "targets": [
         {
-          "expr": "boinc_db_up"
+          "expr": "boinc_db_up",
+          "refId": "A"
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
     },
     {
       "type": "stat",
@@ -32,13 +46,27 @@
       },
       "targets": [
         {
-          "expr": "boinc_project_http_up"
+          "expr": "boinc_project_http_up",
+          "refId": "A"
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
     },
     {
       "type": "stat",
-      "title": "Users",
+      "title": "Hosts",
       "gridPos": {
         "x": 8,
         "y": 0,
@@ -47,13 +75,27 @@
       },
       "targets": [
         {
-          "expr": "boinc_users_total"
+          "expr": "boinc_hosts_total",
+          "refId": "A"
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
     },
     {
       "type": "stat",
-      "title": "Hosts",
+      "title": "Active hosts",
       "gridPos": {
         "x": 12,
         "y": 0,
@@ -62,9 +104,23 @@
       },
       "targets": [
         {
-          "expr": "boinc_hosts_total"
+          "expr": "boinc_hosts_active_recent_total",
+          "refId": "A"
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
     },
     {
       "type": "stat",
@@ -77,9 +133,23 @@
       },
       "targets": [
         {
-          "expr": "boinc_workunits_total"
+          "expr": "boinc_workunits_total",
+          "refId": "A"
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
     },
     {
       "type": "stat",
@@ -92,81 +162,584 @@
       },
       "targets": [
         {
-          "expr": "boinc_results_total"
-        }
-      ]
-    },
-    {
-      "type": "timeseries",
-      "title": "BOINC totals",
-      "gridPos": {
-        "x": 0,
-        "y": 4,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "expr": "boinc_hosts_total",
-          "legendFormat": "hosts"
-        },
-        {
-          "expr": "boinc_workunits_total",
-          "legendFormat": "workunits"
-        },
-        {
           "expr": "boinc_results_total",
-          "legendFormat": "results"
+          "refId": "A"
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
     },
     {
-      "type": "timeseries",
-      "title": "Results by state",
+      "type": "stat",
+      "title": "Success rate",
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "boinc_success_rate",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Error rate",
+      "gridPos": {
+        "x": 4,
+        "y": 4,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "boinc_error_rate",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Finished results",
+      "gridPos": {
+        "x": 8,
+        "y": 4,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "boinc_results_finished_total",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Unfinished results",
       "gridPos": {
         "x": 12,
         "y": 4,
-        "w": 12,
-        "h": 8
+        "w": 4,
+        "h": 4
       },
       "targets": [
         {
-          "expr": "boinc_results_by_state_total",
-          "legendFormat": "server={{server_state}} outcome={{outcome}} client={{client_state}}"
+          "expr": "boinc_results_unfinished_total",
+          "refId": "A"
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Replication overhead",
+      "gridPos": {
+        "x": 16,
+        "y": 4,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "boinc_replication_overhead",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Completed WU ratio",
+      "gridPos": {
+        "x": 20,
+        "y": 4,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "boinc_effective_completion_ratio",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
     },
     {
       "type": "timeseries",
-      "title": "Container CPU usage",
+      "title": "BOINC queue and completion",
       "gridPos": {
         "x": 0,
-        "y": 12,
+        "y": 8,
         "w": 12,
         "h": 8
       },
       "targets": [
         {
-          "expr": "rate(container_cpu_usage_seconds_total{name=~\"boinc-.*\"}[1m])",
-          "legendFormat": "{{name}}"
+          "expr": "boinc_results_unfinished_total",
+          "refId": "A",
+          "legendFormat": "unfinished"
+        },
+        {
+          "expr": "boinc_results_finished_total",
+          "refId": "A",
+          "legendFormat": "finished"
+        },
+        {
+          "expr": "boinc_results_success_total",
+          "refId": "A",
+          "legendFormat": "success"
+        },
+        {
+          "expr": "boinc_results_error_total",
+          "refId": "A",
+          "legendFormat": "errors"
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
     },
     {
       "type": "timeseries",
-      "title": "Container memory usage",
+      "title": "BOINC results by outcome",
       "gridPos": {
         "x": 12,
-        "y": 12,
+        "y": 8,
         "w": 12,
         "h": 8
       },
       "targets": [
         {
-          "expr": "container_memory_usage_bytes{name=~\"boinc-.*\"}",
+          "expr": "boinc_results_by_outcome_total",
+          "refId": "A",
+          "legendFormat": "outcome {{outcome}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Throughput",
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "rate(boinc_results_success_total[5m]) * 60",
+          "refId": "A",
+          "legendFormat": "successful results/min"
+        },
+        {
+          "expr": "rate(boinc_completed_workunits_total[5m]) * 60",
+          "refId": "A",
+          "legendFormat": "completed workunits/min"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Turnaround time",
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "boinc_avg_success_turnaround_seconds",
+          "refId": "A",
+          "legendFormat": "avg success turnaround"
+        },
+        {
+          "expr": "boinc_p95_success_turnaround_seconds",
+          "refId": "A",
+          "legendFormat": "p95 success turnaround"
+        },
+        {
+          "expr": "boinc_oldest_unfinished_result_age_seconds",
+          "refId": "A",
+          "legendFormat": "oldest unfinished age"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Replication settings and actual overhead",
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "boinc_target_nresults_avg",
+          "refId": "A",
+          "legendFormat": "target_nresults avg"
+        },
+        {
+          "expr": "boinc_min_quorum_avg",
+          "refId": "A",
+          "legendFormat": "min_quorum avg"
+        },
+        {
+          "expr": "boinc_actual_results_per_workunit",
+          "refId": "A",
+          "legendFormat": "actual results/workunit"
+        },
+        {
+          "expr": "boinc_replication_overhead",
+          "refId": "A",
+          "legendFormat": "replication overhead"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Result assignment",
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "boinc_results_unsent_total",
+          "refId": "A",
+          "legendFormat": "unsent"
+        },
+        {
+          "expr": "boinc_results_assigned_total",
+          "refId": "A",
+          "legendFormat": "assigned"
+        },
+        {
+          "expr": "boinc_results_in_progress_total",
+          "refId": "A",
+          "legendFormat": "in progress"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Client CPU usage",
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{job=\"node_exporter_clients\",mode=\"idle\"}[1m])))",
+          "refId": "A",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Client memory usage",
+      "gridPos": {
+        "x": 12,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "100 * (1 - node_memory_MemAvailable_bytes{job=\"node_exporter_clients\"} / node_memory_MemTotal_bytes{job=\"node_exporter_clients\"})",
+          "refId": "A",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Client load average",
+      "gridPos": {
+        "x": 0,
+        "y": 40,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "node_load1{job=\"node_exporter_clients\"}",
+          "refId": "A",
+          "legendFormat": "{{instance}} load1"
+        },
+        {
+          "expr": "node_load5{job=\"node_exporter_clients\"}",
+          "refId": "A",
+          "legendFormat": "{{instance}} load5"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Client network traffic",
+      "gridPos": {
+        "x": 12,
+        "y": 40,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "rate(node_network_receive_bytes_total{job=\"node_exporter_clients\",device!~\"lo|docker.*|veth.*|br.*\"}[1m])",
+          "refId": "A",
+          "legendFormat": "{{instance}} rx"
+        },
+        {
+          "expr": "rate(node_network_transmit_bytes_total{job=\"node_exporter_clients\",device!~\"lo|docker.*|veth.*|br.*\"}[1m])",
+          "refId": "A",
+          "legendFormat": "{{instance}} tx"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "BOINC container CPU",
+      "gridPos": {
+        "x": 0,
+        "y": 48,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "rate(container_cpu_usage_seconds_total{job=\"cadvisor_clients\",name=\"boinc-client\"}[1m])",
+          "refId": "A",
+          "legendFormat": "{{instance}} boinc-client"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "cores"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "BOINC container memory",
+      "gridPos": {
+        "x": 12,
+        "y": 48,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "container_memory_usage_bytes{job=\"cadvisor_clients\",name=\"boinc-client\"}",
+          "refId": "A",
+          "legendFormat": "{{instance}} boinc-client"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Server containers CPU",
+      "gridPos": {
+        "x": 0,
+        "y": 56,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "rate(container_cpu_usage_seconds_total{job=\"cadvisor_server\",name=~\"boinc-server|boinc-mysql|boinc-exporter|boinc-prometheus|boinc-grafana\"}[1m])",
+          "refId": "A",
           "legendFormat": "{{name}}"
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "cores"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Server containers memory",
+      "gridPos": {
+        "x": 12,
+        "y": 56,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "container_memory_usage_bytes{job=\"cadvisor_server\",name=~\"boinc-server|boinc-mysql|boinc-exporter|boinc-prometheus|boinc-grafana\"}",
+          "refId": "A",
+          "legendFormat": "{{name}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      }
     }
   ]
 }

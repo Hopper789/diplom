@@ -122,3 +122,48 @@ docker exec boinc-client boinccmd --passwd "$(cat /opt/boinc-client/data/gui_rpc
 ```
 
 Или настрой `NOPASSWD` для SSH-пользователя на клиентах.
+
+
+## Grafana открывается, но графики пустые
+
+Проверь, что мониторинг запущен:
+
+```bash
+docker ps --filter name=boinc-prometheus
+docker ps --filter name=boinc-grafana
+docker ps --filter name=boinc-exporter
+```
+
+Проверь exporter:
+
+```bash
+curl http://localhost:9101/metrics | grep boinc_
+```
+
+Проверь, что Prometheus видит клиентские targets. Файл генерируется из `ansible/inventory.ini`:
+
+```bash
+cat monitoring/prometheus.yml
+```
+
+Если нет targets клиентов, перезапусти:
+
+```bash
+./scripts/monitoring_up.sh
+```
+
+## Prometheus не видит node-exporter или cAdvisor клиентов
+
+Проверь агенты на клиентах:
+
+```bash
+./scripts/deploy_monitoring_agents.sh
+```
+
+Или вручную через Ansible:
+
+```bash
+ansible -i ansible/inventory.ini boinc_clients -b -m shell -a 'docker ps --filter name=boinc-node-exporter --filter name=boinc-client-cadvisor'
+```
+
+Если используется Vault и нет `ansible/.vault_pass`, добавь `--ask-vault-pass`.

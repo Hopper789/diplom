@@ -4,6 +4,46 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="$ROOT_DIR/config/generated.env"
 MONITORING_DIR="$ROOT_DIR/monitoring"
+VAULT_PASS_FILE="$ROOT_DIR/ansible/.vault_pass"
+
+cd "$ROOT_DIR"
+
+ANSIBLE_ARGS=()
+DEPLOY_CLIENT_AGENTS=1
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --ask-vault-pass|--vault)
+      ANSIBLE_ARGS+=(--ask-vault-pass)
+      shift
+      ;;
+    --vault-password-file)
+      if [[ $# -lt 2 ]]; then
+        echo "ERROR: --vault-password-file requires a path."
+        exit 2
+      fi
+      ANSIBLE_ARGS+=(--vault-password-file "$2")
+      shift 2
+      ;;
+    --ask-become-pass|-K)
+      ANSIBLE_ARGS+=(--ask-become-pass)
+      shift
+      ;;
+    --skip-client-agents)
+      DEPLOY_CLIENT_AGENTS=0
+      shift
+      ;;
+    *)
+      echo "Unknown argument: $1"
+      echo "Usage: ./scripts/monitoring_up.sh [--ask-vault-pass|--vault] [--vault-password-file FILE] [--ask-become-pass|-K] [--skip-client-agents]"
+      exit 2
+      ;;
+  esac
+done
+
+if [[ "${#ANSIBLE_ARGS[@]}" -eq 0 && -f "$VAULT_PASS_FILE" ]]; then
+  ANSIBLE_ARGS+=(--vault-password-file "$VAULT_PASS_FILE")
+fi
 
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "ERROR: config/generated.env not found."
@@ -35,6 +75,98 @@ MYSQL_PASSWORD=root
 MYSQL_DATABASE=$PROJECT_NAME
 ENVEOF
 
+python3 - "$ROOT_DIR" "$MONITORING_DIR/prometheus.yml" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+out_path = Path(sys.argv[2])
+inventory = root / "ansible" / "inventory.ini"
+
+hosts = []
+inside_group = False
+
+if inventory.exists():
+    for raw in inventory.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            inside_group = line == "[boinc_clients]"
+            continue
+        if not inside_group:
+            continue
+
+        parts = line.split()
+        if not parts:
+            continue
+
+        host = parts[0]
+        for part in parts[1:]:
+            if part.startswith("ansible_host="):
+                host = part.split("=", 1)[1]
+                break
+
+        if host and host not in hosts:
+            hosts.append(host)
+
+node_targets = [f"{host}:9100" for host in hosts]
+cadvisor_targets = [f"{host}:8081" for host in hosts]
+
+def yaml_list(items, indent="          "):
+    if not items:
+        return indent + "[]\n"
+    return "".join(f"{indent}- {item}\n" for item in items)
+
+content = """global:
+  scrape_interval: 10s
+  evaluation_interval: 10s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets:
+          - prometheus:9090
+
+  - job_name: boinc
+    static_configs:
+      - targets:
+          - boinc-exporter:9101
+
+  - job_name: cadvisor_server
+    static_configs:
+      - targets:
+          - cadvisor:8080
+"""
+
+content += "\n  - job_name: node_exporter_clients\n    static_configs:\n      - targets:\n"
+content += yaml_list(node_targets)
+content += "\n  - job_name: cadvisor_clients\n    static_configs:\n      - targets:\n"
+content += yaml_list(cadvisor_targets)
+
+out_path.write_text(content, encoding="utf-8")
+
+print("Generated Prometheus config:")
+print(f"  {out_path.relative_to(root)}")
+if hosts:
+    print("Client monitoring targets:")
+    for host in hosts:
+        print(f"  node-exporter: {host}:9100")
+        print(f"  cAdvisor:      {host}:8081")
+else:
+    print("No boinc_clients found in ansible/inventory.ini; only server metrics will be scraped.")
+PY
+
+if [[ "$DEPLOY_CLIENT_AGENTS" == "1" && -f "$ROOT_DIR/ansible/inventory.ini" ]]; then
+  echo
+  echo "Deploying monitoring agents on BOINC clients..."
+  ./scripts/deploy_monitoring_agents.sh "${ANSIBLE_ARGS[@]}" || true
+else
+  echo
+  echo "Skipping client monitoring agent deployment."
+fi
+
 (
   cd "$MONITORING_DIR"
   docker compose up -d --build
@@ -45,6 +177,10 @@ echo "Monitoring is running:"
 echo "  Prometheus: http://localhost:9090"
 echo "  Grafana:    http://localhost:3000"
 echo "  Exporter:   http://localhost:9101/metrics"
+echo
+echo "Client agent endpoints are scraped from ansible/inventory.ini:"
+echo "  node-exporter: http://CLIENT_IP:9100/metrics"
+echo "  cAdvisor:      http://CLIENT_IP:8081/metrics"
 echo
 echo "Grafana login:"
 echo "  admin / admin"

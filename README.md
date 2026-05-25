@@ -8,7 +8,8 @@ BOINC можно представить как систему “сервер р
 - BOINC clients запускаются в Docker-контейнерах на удалённых вычислительных узлах;
 - Ansible устанавливает Docker на клиентах, запускает контейнеры и подключает их к проекту;
 - BOINC account создаётся автоматически через MariaDB;
-- пример эксперимента `ml_grid_search` создаёт много маленьких workunit-задач и раздаёт их клиентам.
+- пример эксперимента `ml_grid_search` создаёт много маленьких workunit-задач и раздаёт их клиентам;
+- мониторинг собирает BOINC-метрики, состояния задач и нагрузку CPU/RAM/Docker на клиентских узлах.
 
 ## Быстрый запуск
 
@@ -20,6 +21,7 @@ nano config/cluster.yml
 ./scripts/bootstrap_server.sh
 ./scripts/bootstrap_clients.sh
 ./scripts/run_experiment.sh
+./scripts/monitoring_up.sh
 ./scripts/status.sh
 ```
 
@@ -39,6 +41,7 @@ nano config/cluster.yml
 - [Ansible Vault и sudo-пароль клиентов](docs/VAULT.md)
 - [Архитектура](docs/ARCHITECTURE.md)
 - [Эксперименты](docs/EXPERIMENTS.md)
+- [Мониторинг и метрики](docs/MONITORING.md)
 - [Скрипты](docs/SCRIPTS.md)
 - [Диагностика](docs/TROUBLESHOOTING.md)
 
@@ -48,6 +51,7 @@ nano config/cluster.yml
 ./scripts/bootstrap_server.sh     # создать конфиги, поднять сервер, создать BOINC account
 ./scripts/bootstrap_clients.sh    # развернуть BOINC clients на узлах
 ./scripts/run_experiment.sh       # создать workunits и попросить клиентов забрать задачи
+./scripts/monitoring_up.sh        # включить Prometheus/Grafana и агенты нагрузки на клиентах
 ./scripts/status.sh               # посмотреть состояние сервера, клиентов и задач
 ```
 
@@ -68,4 +72,5 @@ nano config/cluster.yml
 - `ansible/group_vars/all/main.yml` — сгенерированные Ansible-переменные;
 - `ansible/group_vars/all/vault.yml` — зашифрованный sudo-пароль клиентов;
 - `ansible/.vault_pass` — пароль от Vault;
-- `server/project/`, `server/mysql-data/` — runtime-данные BOINC server и MariaDB.
+- `server/project/`, `server/mysql-data/` — runtime-данные BOINC server и MariaDB;
+- `monitoring/.env` и сгенерированный `monitoring/prometheus.yml` — runtime-настройки мониторинга.
