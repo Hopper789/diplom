@@ -33,6 +33,14 @@ nano config/cluster.yml
 ./scripts/status.sh
 ```
 
+Если нужны Telegram-уведомления о завершении эксперимента, перед запуском alerts создай локальный файл с токеном бота:
+
+```bash
+cp config/alerts.example.env config/alerts.env
+nano config/alerts.env
+./scripts/alerts_up.sh
+```
+
 `./scripts/init_vault.sh` создаёт:
 
 - `ansible/group_vars/all/vault.yml` — зашифрованный sudo-пароль клиентов;
@@ -63,6 +71,18 @@ Grafana доступна по адресу:
 http://localhost:3000
 admin / admin
 ```
+
+## Telegram-уведомления
+
+После запуска мониторинга:
+
+```bash
+cp config/alerts.example.env config/alerts.env
+nano config/alerts.env
+./scripts/alerts_up.sh
+```
+
+В `config/alerts.env` нужно указать `TELEGRAM_BOT_TOKEN` и `TELEGRAM_CHAT_ID`. Файл содержит секреты и не коммитится.
 
 ## Запуск своего Python task
 

@@ -45,6 +45,38 @@ ansible/.vault_pass
 4. `./scripts/run_experiment.sh`;
 5. `./scripts/status.sh`.
 
+## 4. Включить Telegram-уведомление
+
+Этот шаг необязательный. Он нужен, если хочешь получить сообщение в Telegram, когда эксперимент завершится.
+
+Сначала создай бота через `@BotFather`, напиши ему любое сообщение и получи `chat_id`.
+
+Потом создай локальный конфиг:
+
+```bash
+cp config/alerts.example.env config/alerts.env
+nano config/alerts.env
+```
+
+Заполни:
+
+```env
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHAT_ID=
+```
+
+После запуска quickstart с мониторингом включи notifier:
+
+```bash
+./scripts/alerts_up.sh
+```
+
+Логи:
+
+```bash
+docker logs -f boinc-alerts
+```
+
 Самый короткий полный запуск:
 
 ```bash
@@ -53,8 +85,11 @@ nano config/cluster.yml
 
 ./scripts/init_vault.sh
 ./scripts/quickstart.sh --with-monitoring --run-experiment
+./scripts/alerts_up.sh
 ./scripts/status.sh
 ```
+
+Для строки `./scripts/alerts_up.sh` заранее должен существовать заполненный `config/alerts.env`.
 
 ## Варианты quickstart
 

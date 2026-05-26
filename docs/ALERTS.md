@@ -22,8 +22,8 @@ nano config/alerts.env
 Минимально нужны:
 
 ```env
-TELEGRAM_BOT_TOKEN=123456:token
-TELEGRAM_CHAT_ID=123456789
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHAT_ID=
 ALERT_POLL_INTERVAL_SECONDS=30
 BOINC_EXPORTER_URL=http://boinc-exporter:9101/metrics
 ALERT_STATE_FILE=/state/alerts_state.json
