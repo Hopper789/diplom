@@ -120,3 +120,14 @@ apps/python_task_runner/run_task.sh \
 ```
 
 В этой версии реально поддержан CPU. Значение `resources.device` оставлено в формате входа для будущей маршрутизации GPU-задач.
+
+## Benchmark-примеры
+
+Готовые наборы:
+
+- `examples/monte_carlo_pi` — CPU-bound;
+- `examples/tiny_tasks_overhead` — очень короткие задачи;
+- `examples/synthetic_cpu` — фиксированное CPU-время;
+- `examples/memory_scan` — memory-bound;
+- `examples/io_test` — I/O-heavy;
+- `examples/failure_demo` — проверка ошибок.
