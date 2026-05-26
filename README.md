@@ -85,6 +85,7 @@ apps/python_task_runner/run_task.sh \
 - [Скрипты](docs/SCRIPTS.md)
 - [Диагностика](docs/TROUBLESHOOTING.md)
 - [Разработка пользовательских задач](docs/DEVELOP_CUSTOM_TASK.md)
+- [Telegram alerts](docs/ALERTS.md)
 - [Обоснование технологий](docs/TECH_DECISIONS.md)
 
 ## Что не коммитится

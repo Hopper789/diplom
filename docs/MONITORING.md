@@ -80,3 +80,15 @@ curl -s http://localhost:9101/metrics | grep boinc_
 ```bash
 ./scripts/monitoring_down.sh --with-client-agents
 ```
+
+## Telegram alerts
+
+Если нужно получить сообщение о завершении эксперимента:
+
+```bash
+cp config/alerts.example.env config/alerts.env
+nano config/alerts.env
+./scripts/alerts_up.sh
+```
+
+Подробнее: [Telegram alerts](ALERTS.md).

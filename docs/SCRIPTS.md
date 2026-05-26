@@ -53,6 +53,18 @@ apps/python_task_runner/run_task.sh \
 ./scripts/monitoring_up.sh
 ```
 
+`alerts_up.sh` запускает Telegram notifier:
+
+```bash
+./scripts/alerts_up.sh
+```
+
+`alerts_down.sh` останавливает Telegram notifier:
+
+```bash
+./scripts/alerts_down.sh
+```
+
 `status.sh` показывает состояние сервера, клиентов, задач и мониторинга:
 
 ```bash
@@ -74,6 +86,7 @@ apps/python_task_runner/run_task.sh \
 - `deploy_clients.sh` — запускает Ansible playbook клиентов;
 - `deploy_monitoring_agents.sh` — ставит node-exporter и cAdvisor на клиентов;
 - `monitoring_down.sh` — останавливает мониторинг;
+- `alerts_up.sh` и `alerts_down.sh` — управляют Telegram notifier;
 - `copy_ssh_keys.sh` — помогает скопировать SSH-ключи на клиентов.
 
 ## Vault

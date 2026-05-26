@@ -19,6 +19,7 @@ server/mysql-data/
 
 # Monitoring runtime
 monitoring/.env
+monitoring/alert-state/
 
 # Old/local BOINC client runtime, should not be committed
 boinc-data/
