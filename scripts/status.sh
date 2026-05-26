@@ -102,16 +102,19 @@ fi
 if [[ -f "$ROOT_DIR/ansible/inventory.ini" ]]; then
   if command -v ansible >/dev/null 2>&1; then
     echo "== Ansible ping boinc_clients =="
+    ANSIBLE_HOST_KEY_CHECKING=False \
     ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients "${ANSIBLE_ARGS[@]}" -m ping || true
     echo
 
     echo "== Docker BOINC clients on remote nodes =="
+    ANSIBLE_HOST_KEY_CHECKING=False \
     ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b "${ANSIBLE_ARGS[@]}" -m shell -a "
       docker ps --filter name=boinc-client
     " || true
     echo
 
     echo "== Remote BOINC client project status =="
+    ANSIBLE_HOST_KEY_CHECKING=False \
     ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b "${ANSIBLE_ARGS[@]}" -m shell -a "
       docker exec boinc-client \
         boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' \
@@ -120,6 +123,7 @@ if [[ -f "$ROOT_DIR/ansible/inventory.ini" ]]; then
     echo
 
     echo "== Remote BOINC client task summary =="
+    ANSIBLE_HOST_KEY_CHECKING=False \
     ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b "${ANSIBLE_ARGS[@]}" -m shell -a "
       docker exec boinc-client \
         boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' \
@@ -128,6 +132,7 @@ if [[ -f "$ROOT_DIR/ansible/inventory.ini" ]]; then
     echo
 
     echo "== Remote monitoring agents =="
+    ANSIBLE_HOST_KEY_CHECKING=False \
     ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b "${ANSIBLE_ARGS[@]}" -m shell -a "
       docker ps --filter name=boinc-node-exporter --filter name=boinc-client-cadvisor
     " || true

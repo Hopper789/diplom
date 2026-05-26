@@ -79,6 +79,7 @@ fi
 
 echo
 echo "Submitting BOINC work..."
+export ANSIBLE_HOST_KEY_CHECKING=False
 apps/ml_grid_search/run_task.sh boinc
 
 echo

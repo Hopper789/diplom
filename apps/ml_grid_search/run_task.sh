@@ -356,6 +356,7 @@ update_real_clients() {
   echo
 
   # shellcheck disable=SC2086
+  ANSIBLE_HOST_KEY_CHECKING=False \
   ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b $ANSIBLE_EXTRA_ARGS -m shell -a "
     docker exec boinc-client \
       boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' \
@@ -388,6 +389,7 @@ show_client_summary() {
   echo "Client task summary:"
 
   # shellcheck disable=SC2086
+  ANSIBLE_HOST_KEY_CHECKING=False \
   ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b $ANSIBLE_EXTRA_ARGS -m shell -a "
     docker exec boinc-client \
       boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' \
@@ -398,6 +400,7 @@ show_client_summary() {
   echo "Client project status:"
 
   # shellcheck disable=SC2086
+  ANSIBLE_HOST_KEY_CHECKING=False \
   ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b $ANSIBLE_EXTRA_ARGS -m shell -a "
     docker exec boinc-client \
       boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' \
