@@ -73,7 +73,7 @@ apps/python_task_runner/run_task.sh \
 Для C++ сейчас используй текущий подход `apps/ml_grid_search` как пример:
 
 1. исходник компилируется внутри `boinc-server`;
-2. бинарник кладётся в `apps/APP_NAME/APP_VERSION/PLATFORM`;
+2. бинарник кладётся в runtime-каталог BOINC-приложения внутри project directory;
 3. приложение регистрируется через `xadd` и `update_versions`;
 4. workunits создаются через `create_work`.
 
