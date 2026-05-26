@@ -56,6 +56,7 @@ if [[ ! -f "$ROOT_DIR/ansible/group_vars/all/main.yml" ]]; then
   exit 1
 fi
 
+ANSIBLE_HOST_KEY_CHECKING=False \
 ansible-playbook \
   -i "$ROOT_DIR/ansible/inventory.ini" \
   "$ROOT_DIR/ansible/install_boinc_clients.yml" \

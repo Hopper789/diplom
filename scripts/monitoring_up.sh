@@ -92,7 +92,6 @@ DISTRIBUTED_MAX_TOTAL_RESULTS=${DISTRIBUTED_MAX_TOTAL_RESULTS:-3}
 ENVEOF
 
 python3 - "$ROOT_DIR" "$MONITORING_DIR/prometheus.yml" <<'PY'
-import re
 import sys
 from pathlib import Path
 
@@ -176,7 +175,22 @@ PY
 
 if [[ "$DEPLOY_CLIENT_AGENTS" == "1" && -f "$ROOT_DIR/ansible/inventory.ini" ]]; then
   echo
+  echo "Refreshing SSH known_hosts for remote clients..."
+  awk '
+    /^\[/ {next}
+    /^[[:space:]]*$/ {next}
+    /^[[:space:]]*#/ {next}
+    {print $1}
+  ' "$ROOT_DIR/ansible/inventory.ini" | while read -r host; do
+    if [[ -n "$host" ]]; then
+      echo "  removing old SSH host key for $host"
+      ssh-keygen -R "$host" >/dev/null 2>&1 || true
+    fi
+  done
+
+  echo
   echo "Deploying monitoring agents on BOINC clients..."
+  ANSIBLE_HOST_KEY_CHECKING=False \
   ./scripts/deploy_monitoring_agents.sh "${ANSIBLE_ARGS[@]}" || true
 else
   echo

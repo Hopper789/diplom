@@ -55,8 +55,23 @@ if [[ ! -f "$ROOT_DIR/ansible/inventory.ini" ]]; then
   exit 1
 fi
 
+echo "Refreshing SSH known_hosts for remote clients..."
+awk '
+  /^\[/ {next}
+  /^[[:space:]]*$/ {next}
+  /^[[:space:]]*#/ {next}
+  {print $1}
+' "$ROOT_DIR/ansible/inventory.ini" | while read -r host; do
+  if [[ -n "$host" ]]; then
+    echo "  removing old SSH host key for $host"
+    ssh-keygen -R "$host" >/dev/null 2>&1 || true
+  fi
+done
+echo
+
 echo "Checking SSH access to clients..."
-if ! ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients "${ANSIBLE_ARGS[@]}" -m ping; then
+if ! ANSIBLE_HOST_KEY_CHECKING=False \
+  ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients "${ANSIBLE_ARGS[@]}" -m ping; then
   echo
   echo "SSH ping failed."
   echo "You can try copying SSH keys:"
