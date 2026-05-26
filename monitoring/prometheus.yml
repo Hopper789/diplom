@@ -18,7 +18,7 @@ scrape_configs:
       - targets:
           - cadvisor:8080
 
-  # monitoring_up.sh rewrites this file and fills client targets from ansible/inventory.ini.
+  # monitoring_up.sh перезаписывает этот файл и заполняет цели клиентов из ansible/inventory.ini.
   - job_name: node_exporter_clients
     static_configs:
       - targets: []

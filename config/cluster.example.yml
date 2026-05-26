@@ -1,22 +1,22 @@
-# Main cluster configuration.
-# Copy this file to config/cluster.yml and edit values for your machines:
+# Основная конфигурация кластера.
+# Скопируй этот файл в config/cluster.yml и измени значения под свои машины:
 #   cp config/cluster.example.yml config/cluster.yml
 #   nano config/cluster.yml
 
 project:
-  # BOINC project name. It becomes part of the URL:
+  # Имя BOINC-проекта. Оно становится частью URL:
   # http://SERVER_IP:8080/my_project/
   name: my_project
   port: 8080
 
 server:
-  # IP address of the machine where BOINC server Docker containers run.
-  # This IP must be reachable from every client node.
+  # IP-адрес машины, на которой запускаются Docker-контейнеры сервера BOINC.
+  # Этот IP должен быть доступен с каждого клиентского узла.
   ip: 192.168.1.10
 
 clients:
-  # Compute nodes. Ansible connects to them over SSH.
-  # Each node must have SSH server enabled and a user with sudo access.
+  # Вычислительные узлы. Ansible подключается к ним по SSH.
+  # На каждом узле должен быть включён SSH-сервер и пользователь с sudo-доступом.
   - name: node1
     ip: 192.168.1.11
     user: ubuntu
@@ -25,13 +25,13 @@ clients:
     user: ubuntu
 
 boinc:
-  # Password for BOINC client RPC inside client containers.
-  # "auto" means init_config.sh will generate a value.
+  # Пароль RPC для BOINC-клиента внутри клиентских контейнеров.
+  # Значение "auto" означает, что init_config.sh сгенерирует пароль.
   client_rpc_password: auto
 
 account:
-  # One BOINC account is used to attach all clients to the project.
-  # create_account_db.sh creates it directly in MariaDB and saves the authenticator.
+  # Одна учётная запись BOINC используется для подключения всех клиентов к проекту.
+  # create_account_db.sh создаёт её напрямую в MariaDB и сохраняет ключ authenticator.
   email: nodes@local.test
   name: nodes
   password: manual

@@ -1,5 +1,5 @@
-# Copy is not required. Use ./scripts/init_vault.sh to create encrypted:
+# Копировать этот файл не нужно. Используй ./scripts/init_vault.sh, чтобы создать зашифрованный:
 # ansible/group_vars/all/vault.yml
 #
-# This value is used by Ansible as the sudo password on remote client nodes.
+# Это значение Ansible использует как sudo-пароль на удалённых клиентских узлах.
 ansible_become_password: "CHANGE_ME"
