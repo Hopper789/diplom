@@ -94,6 +94,17 @@ apps/python_task_runner/run_task.sh \
 
 `user_task.py` должен содержать функцию `run(params)`. Каждая строка `params.jsonl` становится отдельной BOINC workunit.
 
+## Быстрые бенчмарки
+
+Чтобы быстро понять, какие задачи и настройки лучше подходят кластеру:
+
+```bash
+./scripts/quickstart.sh --with-monitoring
+./scripts/run_quick_benchmarks.sh --yes --replicas 2
+```
+
+Отчёт появится в `reports/quick_benchmarks/`.
+
 ## Документация
 
 - [Что это такое](docs/WHAT_IS_THIS.md)

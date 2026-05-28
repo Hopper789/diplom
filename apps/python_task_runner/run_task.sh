@@ -8,9 +8,10 @@ DISTRIBUTED_EXAMPLE_FILE="$ROOT_DIR/config/distributed.example.env"
 VAULT_PASS_FILE="$ROOT_DIR/ansible/.vault_pass"
 
 APP_NAME="${PYTHON_TASK_APP_NAME:-python_task_runner}"
-APP_VERSION="${PYTHON_TASK_APP_VERSION:-1.00}"
+APP_VERSION="${PYTHON_TASK_APP_VERSION:-}"
 PLATFORM="${PYTHON_TASK_PLATFORM:-x86_64-pc-linux-gnu}"
-BIN_NAME="${APP_NAME}_${APP_VERSION}_${PLATFORM}"
+APP_VERSION_NUM=""
+BIN_NAME=""
 
 TASK_FILE=""
 PARAMS_FILE=""
@@ -22,6 +23,7 @@ BUILD_DIR="$APP_DIR/build"
 INPUT_DIR="$BUILD_DIR/inputs"
 TPL_IN="$BUILD_DIR/${APP_NAME}_in.generated"
 TPL_OUT="$APP_DIR/templates/python_task_out"
+VERSION_XML="$BUILD_DIR/version.xml"
 
 DISTRIBUTED_TARGET_NRESULTS="${DISTRIBUTED_TARGET_NRESULTS:-1}"
 DISTRIBUTED_MIN_QUORUM="${DISTRIBUTED_MIN_QUORUM:-1}"
@@ -212,6 +214,58 @@ ensure_server_running() {
   fi
 }
 
+version_to_num() {
+  python3 - "$1" <<'PY'
+import decimal
+import sys
+
+value = decimal.Decimal(sys.argv[1])
+if value <= 0:
+    raise SystemExit("Версия приложения должна быть положительным числом")
+
+print(int(value * 100))
+PY
+}
+
+format_version_num() {
+  python3 - "$1" <<'PY'
+import sys
+
+value = int(sys.argv[1])
+if value < 1:
+    value = 100
+
+print(f"{value // 100}.{value % 100:02d}")
+PY
+}
+
+resolve_app_version() {
+  if [[ -n "$APP_VERSION" ]]; then
+    APP_VERSION_NUM="$(version_to_num "$APP_VERSION")"
+  else
+    local next_version_num
+    next_version_num="$(
+      docker exec boinc-mysql mariadb -u root -proot -N -B -D "$PROJECT_NAME" -e "
+        SELECT COALESCE(MAX(av.version_num), 99) + 1
+          FROM app_version av
+          JOIN app a ON a.id = av.appid
+          JOIN platform p ON p.id = av.platformid
+         WHERE a.name = '$APP_NAME'
+           AND p.name = '$PLATFORM';
+      " 2>/dev/null | tail -1
+    )"
+
+    if ! [[ "$next_version_num" =~ ^[0-9]+$ ]]; then
+      next_version_num=100
+    fi
+
+    APP_VERSION="$(format_version_num "$next_version_num")"
+    APP_VERSION_NUM="$next_version_num"
+  fi
+
+  BIN_NAME="${APP_NAME}_${APP_VERSION}_${PLATFORM}"
+}
+
 generate_inputs() {
   echo "Генерация input.json-файлов из params.jsonl..."
   python3 "$APP_DIR/generate_inputs.py" \
@@ -230,12 +284,37 @@ write_launcher() {
 
   cat > "$launcher" <<EOF
 #!/usr/bin/env bash
-set -euo pipefail
+set -uo pipefail
 SCRIPT_DIR="\$(cd "\$(dirname "\$0")" && pwd)"
-exec python3 "\$SCRIPT_DIR/runner.py" --task "\$SCRIPT_DIR/user_task.py" --input input.json --output output.json$fail_arg
+python3 "\$SCRIPT_DIR/runner.py" --task "\$SCRIPT_DIR/user_task.py" --input input.json --output output.json$fail_arg
+status="\$?"
+if [[ "\$status" -eq 0 ]]; then
+  printf '0\n' > boinc_finish_called
+fi
+exit "\$status"
 EOF
 
   chmod +x "$launcher"
+}
+
+write_version_xml() {
+  cat > "$VERSION_XML" <<EOF
+<version>
+  <file>
+    <physical_name>$BIN_NAME</physical_name>
+    <main_program/>
+  </file>
+  <file>
+    <physical_name>runner.py</physical_name>
+  </file>
+  <file>
+    <physical_name>task_api.py</physical_name>
+  </file>
+  <file>
+    <physical_name>user_task.py</physical_name>
+  </file>
+</version>
+EOF
 }
 
 declare_app_in_project_xml() {
@@ -271,6 +350,7 @@ deploy_app_to_server() {
 
   generate_input_template
   write_launcher
+  write_version_xml
 
   docker exec boinc-server bash -lc "
     mkdir -p \
@@ -283,15 +363,45 @@ deploy_app_to_server() {
   docker cp "$APP_DIR/runner.py" "boinc-server:/project/$PROJECT_NAME/apps/$APP_NAME/$APP_VERSION/$PLATFORM/runner.py"
   docker cp "$APP_DIR/task_api.py" "boinc-server:/project/$PROJECT_NAME/apps/$APP_NAME/$APP_VERSION/$PLATFORM/task_api.py"
   docker cp "$TASK_FILE" "boinc-server:/project/$PROJECT_NAME/apps/$APP_NAME/$APP_VERSION/$PLATFORM/user_task.py"
+  docker cp "$VERSION_XML" "boinc-server:/project/$PROJECT_NAME/apps/$APP_NAME/$APP_VERSION/$PLATFORM/version.xml"
   docker cp "$TPL_IN" "boinc-server:/project/$PROJECT_NAME/templates/${APP_NAME}_in"
   docker cp "$TPL_OUT" "boinc-server:/project/$PROJECT_NAME/templates/${APP_NAME}_out"
 
-  docker exec boinc-server bash -lc "chmod +x '/project/$PROJECT_NAME/apps/$APP_NAME/$APP_VERSION/$PLATFORM/$BIN_NAME'"
+  docker exec boinc-server bash -lc "
+    chmod +x '/project/$PROJECT_NAME/apps/$APP_NAME/$APP_VERSION/$PLATFORM/$BIN_NAME'
+    chmod 0644 \
+      '/project/$PROJECT_NAME/apps/$APP_NAME/$APP_VERSION/$PLATFORM/runner.py' \
+      '/project/$PROJECT_NAME/apps/$APP_NAME/$APP_VERSION/$PLATFORM/task_api.py' \
+      '/project/$PROJECT_NAME/apps/$APP_NAME/$APP_VERSION/$PLATFORM/user_task.py' \
+      '/project/$PROJECT_NAME/apps/$APP_NAME/$APP_VERSION/$PLATFORM/version.xml'
+  "
 
   declare_app_in_project_xml
 
   docker exec boinc-server bash -lc "cd '/project/$PROJECT_NAME' && ./bin/xadd"
   docker exec boinc-server bash -lc "cd '/project/$PROJECT_NAME' && ./bin/update_versions --noconfirm"
+}
+
+assert_app_version_registered() {
+  local registered
+
+  registered="$(
+    docker exec boinc-mysql mariadb -u root -proot -N -B -D "$PROJECT_NAME" -e "
+      SELECT COUNT(*)
+        FROM app_version av
+        JOIN app a ON a.id = av.appid
+        JOIN platform p ON p.id = av.platformid
+       WHERE a.name = '$APP_NAME'
+         AND p.name = '$PLATFORM'
+         AND av.version_num = $APP_VERSION_NUM;
+    " 2>/dev/null | tail -1
+  )"
+
+  if [[ "${registered:-0}" -lt 1 ]]; then
+    echo "BOINC не зарегистрировал app_version для $APP_NAME $APP_VERSION $PLATFORM." >&2
+    echo "Workunit'ы не создаются, потому что клиенты не смогут получить задачи." >&2
+    exit 1
+  fi
 }
 
 create_workunits() {
@@ -301,7 +411,7 @@ create_workunits() {
   local task_number
   local wu_name
 
-  run_id="$(date +%s)"
+  run_id="${PYTHON_TASK_RUN_ID:-$(date +%s)_$$}"
 
   echo "Создание BOINC workunits..."
   for input_file in "$INPUT_DIR"/input_*.json; do
@@ -324,6 +434,17 @@ create_workunits() {
   done
 
   docker exec boinc-server bash -lc "cd '/project/$PROJECT_NAME' && touch reread_db"
+}
+
+restart_project_daemons() {
+  echo "Перезапуск BOINC daemons, чтобы сервер перечитал очередь задач..."
+  docker exec boinc-server bash -lc "
+    cd '/project/$PROJECT_NAME'
+    ./bin/stop || true
+    sleep 2
+    ./bin/start || true
+    touch reread_db
+  "
 }
 
 update_clients() {
@@ -353,9 +474,14 @@ show_summary() {
 }
 
 ensure_server_running
+resolve_app_version
 generate_inputs
 deploy_app_to_server
+assert_app_version_registered
 create_workunits
+restart_project_daemons
+update_clients
+sleep 10
 update_clients
 show_summary
 

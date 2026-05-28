@@ -28,6 +28,7 @@ boinc-data/
 apps/*/build/
 
 # Logs/cache
+reports/
 __pycache__/
 *.pyc
 *.log
