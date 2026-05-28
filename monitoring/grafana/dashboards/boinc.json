@@ -3,7 +3,7 @@
   "title": "BOINC Cluster",
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 3,
+  "version": 4,
   "refresh": "10s",
   "panels": [
     {
@@ -18,7 +18,11 @@
       "targets": [
         {
           "expr": "boinc_db_up",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -33,6 +37,10 @@
             "lastNotNull"
           ]
         }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       }
     },
     {
@@ -47,7 +55,11 @@
       "targets": [
         {
           "expr": "boinc_project_http_up",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -62,6 +74,10 @@
             "lastNotNull"
           ]
         }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       }
     },
     {
@@ -76,7 +92,11 @@
       "targets": [
         {
           "expr": "boinc_hosts_total",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -91,6 +111,10 @@
             "lastNotNull"
           ]
         }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       }
     },
     {
@@ -105,7 +129,11 @@
       "targets": [
         {
           "expr": "boinc_hosts_active_recent_total",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -120,6 +148,10 @@
             "lastNotNull"
           ]
         }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       }
     },
     {
@@ -134,7 +166,11 @@
       "targets": [
         {
           "expr": "boinc_config_replication_factor",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -149,6 +185,10 @@
             "lastNotNull"
           ]
         }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       }
     },
     {
@@ -163,7 +203,11 @@
       "targets": [
         {
           "expr": "boinc_config_min_quorum",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -178,6 +222,10 @@
             "lastNotNull"
           ]
         }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       }
     },
     {
@@ -192,7 +240,11 @@
       "targets": [
         {
           "expr": "boinc_workunits_total",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -207,6 +259,10 @@
             "lastNotNull"
           ]
         }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       }
     },
     {
@@ -221,7 +277,11 @@
       "targets": [
         {
           "expr": "boinc_results_total",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -236,6 +296,10 @@
             "lastNotNull"
           ]
         }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       }
     },
     {
@@ -250,7 +314,11 @@
       "targets": [
         {
           "expr": "boinc_results_finished_total",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -265,6 +333,10 @@
             "lastNotNull"
           ]
         }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       }
     },
     {
@@ -279,7 +351,11 @@
       "targets": [
         {
           "expr": "boinc_results_error_total",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -294,6 +370,10 @@
             "lastNotNull"
           ]
         }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       }
     },
     {
@@ -308,7 +388,11 @@
       "targets": [
         {
           "expr": "boinc_avg_compute_time_per_workunit_seconds",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -323,6 +407,10 @@
             "lastNotNull"
           ]
         }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       }
     },
     {
@@ -337,7 +425,11 @@
       "targets": [
         {
           "expr": "boinc_avg_overhead_time_per_workunit_seconds",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -352,6 +444,10 @@
             "lastNotNull"
           ]
         }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       }
     },
     {
@@ -367,27 +463,47 @@
         {
           "expr": "boinc_queue_remaining_total",
           "refId": "A",
-          "legendFormat": "queue remaining"
+          "legendFormat": "queue remaining",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         },
         {
           "expr": "boinc_results_finished_total",
           "refId": "B",
-          "legendFormat": "finished results"
+          "legendFormat": "finished results",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         },
         {
           "expr": "boinc_completed_workunits_total",
           "refId": "C",
-          "legendFormat": "completed workunits"
+          "legendFormat": "completed workunits",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         },
         {
           "expr": "boinc_results_success_total",
           "refId": "D",
-          "legendFormat": "successful results"
+          "legendFormat": "successful results",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         },
         {
           "expr": "boinc_results_error_total",
           "refId": "E",
-          "legendFormat": "error results"
+          "legendFormat": "error results",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -414,6 +530,10 @@
           "mode": "multi",
           "sort": "none"
         }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       }
     },
     {
@@ -429,7 +549,11 @@
         {
           "expr": "boinc_results_by_outcome_total",
           "refId": "A",
-          "legendFormat": "outcome {{outcome}}"
+          "legendFormat": "outcome {{outcome}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -437,6 +561,10 @@
           "unit": "short"
         },
         "overrides": []
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       }
     },
     {
@@ -452,12 +580,20 @@
         {
           "expr": "clamp_min(delta(boinc_results_success_total[1m]), 0)",
           "refId": "A",
-          "legendFormat": "successful results/min"
+          "legendFormat": "successful results/min",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         },
         {
           "expr": "clamp_min(delta(boinc_completed_workunits_total[1m]), 0)",
           "refId": "B",
-          "legendFormat": "completed workunits/min"
+          "legendFormat": "completed workunits/min",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -466,7 +602,11 @@
         },
         "overrides": []
       },
-      "description": "Tasks completed per minute. Uses delta() because BOINC exporter exposes these values as gauges."
+      "description": "Tasks completed per minute. Uses delta() because BOINC exporter exposes these values as gauges.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     },
     {
       "type": "timeseries",
@@ -481,22 +621,38 @@
         {
           "expr": "boinc_avg_success_turnaround_seconds",
           "refId": "A",
-          "legendFormat": "avg turnaround"
+          "legendFormat": "avg turnaround",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         },
         {
           "expr": "boinc_p95_success_turnaround_seconds",
           "refId": "B",
-          "legendFormat": "p95 turnaround"
+          "legendFormat": "p95 turnaround",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         },
         {
           "expr": "boinc_avg_compute_time_per_workunit_seconds",
           "refId": "C",
-          "legendFormat": "avg compute/WU"
+          "legendFormat": "avg compute/WU",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         },
         {
           "expr": "boinc_avg_overhead_time_per_workunit_seconds",
           "refId": "D",
-          "legendFormat": "avg overhead/WU"
+          "legendFormat": "avg overhead/WU",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -504,6 +660,10 @@
           "unit": "s"
         },
         "overrides": []
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       }
     },
     {
@@ -519,27 +679,47 @@
         {
           "expr": "boinc_config_replication_factor",
           "refId": "A",
-          "legendFormat": "configured replication"
+          "legendFormat": "configured replication",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         },
         {
           "expr": "boinc_actual_results_per_workunit",
           "refId": "B",
-          "legendFormat": "actual results/workunit"
+          "legendFormat": "actual results/workunit",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         },
         {
           "expr": "boinc_target_nresults_avg",
           "refId": "C",
-          "legendFormat": "DB target_nresults avg"
+          "legendFormat": "DB target_nresults avg",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         },
         {
           "expr": "boinc_max_success_results_avg",
           "refId": "D",
-          "legendFormat": "max success avg"
+          "legendFormat": "max success avg",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         },
         {
           "expr": "boinc_max_total_results_avg",
           "refId": "E",
-          "legendFormat": "max total avg"
+          "legendFormat": "max total avg",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -566,6 +746,10 @@
           "mode": "multi",
           "sort": "none"
         }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       }
     },
     {
@@ -581,7 +765,11 @@
         {
           "expr": "boinc_results_error_total",
           "refId": "A",
-          "legendFormat": "error results"
+          "legendFormat": "error results",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -593,6 +781,10 @@
           "displayMode": "list",
           "placement": "bottom"
         }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       }
     },
     {
@@ -608,7 +800,11 @@
         {
           "expr": "100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{job=\"node_exporter_clients\",mode=\"idle\"}[1m])))",
           "refId": "A",
-          "legendFormat": "{{instance}}"
+          "legendFormat": "{{instance}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -616,6 +812,10 @@
           "unit": "percent"
         },
         "overrides": []
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       }
     },
     {
@@ -631,7 +831,11 @@
         {
           "expr": "100 * (1 - node_memory_MemAvailable_bytes{job=\"node_exporter_clients\"} / node_memory_MemTotal_bytes{job=\"node_exporter_clients\"})",
           "refId": "A",
-          "legendFormat": "{{instance}}"
+          "legendFormat": "{{instance}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -639,6 +843,10 @@
           "unit": "percent"
         },
         "overrides": []
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       }
     },
     {
@@ -654,17 +862,29 @@
         {
           "expr": "node_load1{job=\"node_exporter_clients\"}",
           "refId": "A",
-          "legendFormat": "{{instance}} load1"
+          "legendFormat": "{{instance}} load1",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         },
         {
           "expr": "node_load5{job=\"node_exporter_clients\"}",
           "refId": "B",
-          "legendFormat": "{{instance}} load5"
+          "legendFormat": "{{instance}} load5",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         },
         {
           "expr": "node_load15{job=\"node_exporter_clients\"}",
           "refId": "C",
-          "legendFormat": "{{instance}} load15"
+          "legendFormat": "{{instance}} load15",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -672,6 +892,10 @@
           "unit": "short"
         },
         "overrides": []
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       }
     },
     {
@@ -687,12 +911,20 @@
         {
           "expr": "sum by(instance, device) (rate(node_network_receive_bytes_total{job=\"node_exporter_clients\",device!~\"lo|docker.*|veth.*|br.*\"}[1m]))",
           "refId": "A",
-          "legendFormat": "{{instance}} {{device}} rx"
+          "legendFormat": "{{instance}} {{device}} rx",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         },
         {
           "expr": "sum by(instance, device) (rate(node_network_transmit_bytes_total{job=\"node_exporter_clients\",device!~\"lo|docker.*|veth.*|br.*\"}[1m]))",
           "refId": "B",
-          "legendFormat": "{{instance}} {{device}} tx"
+          "legendFormat": "{{instance}} {{device}} tx",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -701,7 +933,11 @@
         },
         "overrides": []
       },
-      "description": "Network traffic on real host interfaces. Docker, bridge, veth and loopback interfaces are excluded."
+      "description": "Network traffic on real host interfaces. Docker, bridge, veth and loopback interfaces are excluded.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     },
     {
       "type": "timeseries",
@@ -716,7 +952,11 @@
         {
           "expr": "sum by(instance) (rate(container_cpu_usage_seconds_total{job=\"cadvisor_clients\",id!=\"/\"}[1m]))",
           "refId": "A",
-          "legendFormat": "{{instance}} cAdvisor CPU"
+          "legendFormat": "{{instance}} cAdvisor CPU",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -725,7 +965,11 @@
         },
         "overrides": []
       },
-      "description": "Aggregated client cAdvisor CPU for tracked cgroups/containers. Some cAdvisor versions do not expose Docker container names, so this is broader than only boinc-client."
+      "description": "Aggregated client cAdvisor CPU for tracked cgroups/containers. Some cAdvisor versions do not expose Docker container names, so this is broader than only boinc-client.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     },
     {
       "type": "timeseries",
@@ -740,7 +984,11 @@
         {
           "expr": "sum by(instance) (container_memory_usage_bytes{job=\"cadvisor_clients\",id!=\"/\"})",
           "refId": "A",
-          "legendFormat": "{{instance}} cAdvisor memory"
+          "legendFormat": "{{instance}} cAdvisor memory",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -749,7 +997,11 @@
         },
         "overrides": []
       },
-      "description": "Aggregated client cAdvisor memory for tracked cgroups/containers. Some cAdvisor versions do not expose Docker container names, so this is broader than only boinc-client."
+      "description": "Aggregated client cAdvisor memory for tracked cgroups/containers. Some cAdvisor versions do not expose Docker container names, so this is broader than only boinc-client.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     },
     {
       "type": "timeseries",
@@ -764,7 +1016,11 @@
         {
           "expr": "sum by(instance) (rate(container_cpu_usage_seconds_total{job=\"cadvisor_server\",id!=\"/\"}[1m]))",
           "refId": "A",
-          "legendFormat": "{{instance}} cAdvisor CPU"
+          "legendFormat": "{{instance}} cAdvisor CPU",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -773,7 +1029,11 @@
         },
         "overrides": []
       },
-      "description": "Aggregated server cAdvisor CPU for tracked cgroups/containers. This avoids depending on unstable Docker name labels."
+      "description": "Aggregated server cAdvisor CPU for tracked cgroups/containers. This avoids depending on unstable Docker name labels.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     },
     {
       "type": "timeseries",
@@ -788,7 +1048,11 @@
         {
           "expr": "sum by(instance) (container_memory_usage_bytes{job=\"cadvisor_server\",id!=\"/\"})",
           "refId": "A",
-          "legendFormat": "{{instance}} cAdvisor memory"
+          "legendFormat": "{{instance}} cAdvisor memory",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -797,7 +1061,11 @@
         },
         "overrides": []
       },
-      "description": "Aggregated server cAdvisor memory for tracked cgroups/containers. This avoids depending on unstable Docker name labels."
+      "description": "Aggregated server cAdvisor memory for tracked cgroups/containers. This avoids depending on unstable Docker name labels.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     },
     {
       "id": 1,
@@ -810,7 +1078,11 @@
         "h": 1
       },
       "collapsed": false,
-      "panels": []
+      "panels": [],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     },
     {
       "id": 2,
@@ -825,7 +1097,11 @@
       "targets": [
         {
           "expr": "boinc_experiment_total_seconds",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -849,6 +1125,10 @@
         "colorMode": "value",
         "graphMode": "area",
         "justifyMode": "auto"
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       }
     },
     {
@@ -864,7 +1144,11 @@
       "targets": [
         {
           "expr": "boinc_experiment_throughput_workunits_per_second",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -888,6 +1172,10 @@
         "colorMode": "value",
         "graphMode": "area",
         "justifyMode": "auto"
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       }
     },
     {
@@ -903,7 +1191,11 @@
       "targets": [
         {
           "expr": "boinc_results_error_percent",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -927,6 +1219,10 @@
         "colorMode": "value",
         "graphMode": "area",
         "justifyMode": "auto"
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       }
     },
     {
@@ -942,7 +1238,11 @@
       "targets": [
         {
           "expr": "avg(100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{job=\"node_exporter_clients\",mode=\"idle\"}[1m]))))",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -966,6 +1266,10 @@
         "colorMode": "value",
         "graphMode": "area",
         "justifyMode": "auto"
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       }
     },
     {
@@ -981,7 +1285,11 @@
       "targets": [
         {
           "expr": "avg(100 * (1 - node_memory_MemAvailable_bytes{job=\"node_exporter_clients\"} / node_memory_MemTotal_bytes{job=\"node_exporter_clients\"}))",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -1005,6 +1313,10 @@
         "colorMode": "value",
         "graphMode": "area",
         "justifyMode": "auto"
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       }
     },
     {
@@ -1020,7 +1332,11 @@
       "targets": [
         {
           "expr": "boinc_avg_overhead_time_per_workunit_seconds",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -1044,6 +1360,10 @@
         "colorMode": "value",
         "graphMode": "area",
         "justifyMode": "auto"
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       }
     },
     {
@@ -1059,7 +1379,11 @@
       "targets": [
         {
           "expr": "boinc_actual_results_per_workunit",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -1083,6 +1407,10 @@
         "colorMode": "value",
         "graphMode": "area",
         "justifyMode": "auto"
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       }
     }
   ]

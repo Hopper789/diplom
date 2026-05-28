@@ -169,3 +169,45 @@ if docker ps --format '{{.Names}}' | grep -qx 'boinc-exporter'; then
 else
   echo "BOINC exporter is not running."
 fi
+
+if command -v curl >/dev/null 2>&1; then
+  echo
+  echo "== Monitoring data checks =="
+  if docker ps --format '{{.Names}}' | grep -qx 'boinc-exporter'; then
+    if curl -fsS "http://$MONITORING_HOST:9101/metrics" | grep -q '^boinc_db_up'; then
+      echo "Exporter metrics: OK"
+    else
+      echo "Exporter metrics: no boinc_db_up metric"
+    fi
+  fi
+
+  if docker ps --format '{{.Names}}' | grep -qx 'boinc-prometheus'; then
+    if curl -fsS "http://$MONITORING_HOST:9090/api/v1/query?query=boinc_db_up" | grep -q '"status":"success"'; then
+      echo "Prometheus query boinc_db_up: OK"
+    else
+      echo "Prometheus query boinc_db_up: failed"
+    fi
+
+    echo "Prometheus targets:"
+    curl -fsS "http://$MONITORING_HOST:9090/api/v1/targets?state=active" \
+      | python3 -c '
+import json
+import sys
+
+try:
+    payload = json.load(sys.stdin)
+except Exception:
+    print("  unable to parse targets response")
+    raise SystemExit(0)
+
+for target in payload.get("data", {}).get("activeTargets", []):
+    labels = target.get("labels", {})
+    job = labels.get("job", "?")
+    instance = labels.get("instance", target.get("scrapeUrl", "?"))
+    health = target.get("health", "?")
+    error = target.get("lastError") or ""
+    suffix = f" - {error}" if error else ""
+    print(f"  {job} {instance}: {health}{suffix}")
+' || true
+  fi
+fi
