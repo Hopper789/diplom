@@ -798,6 +798,292 @@
         "overrides": []
       },
       "description": "Aggregated server cAdvisor memory for tracked cgroups/containers. This avoids depending on unstable Docker name labels."
+    },
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Итоговые метрики эксперимента",
+      "gridPos": {
+        "x": 0,
+        "y": 64,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Общее время эксперимента",
+      "gridPos": {
+        "x": 0,
+        "y": 65,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "boinc_experiment_total_seconds",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 1,
+          "description": "Сколько времени требуется системе для обработки набора задач."
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Пропускная способность, задач/с",
+      "gridPos": {
+        "x": 6,
+        "y": 65,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "boinc_experiment_throughput_workunits_per_second",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "decimals": 3,
+          "description": "Сколько workunit завершается за секунду."
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Ошибки, %",
+      "gridPos": {
+        "x": 12,
+        "y": 65,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "boinc_results_error_percent",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "description": "Доля результатов, завершённых ошибкой или некорректным результатом."
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Средняя загрузка CPU, %",
+      "gridPos": {
+        "x": 18,
+        "y": 65,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "avg(100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{job=\"node_exporter_clients\",mode=\"idle\"}[1m]))))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "description": "Средняя загрузка CPU по клиентским узлам."
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Среднее использование RAM, %",
+      "gridPos": {
+        "x": 0,
+        "y": 69,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "avg(100 * (1 - node_memory_MemAvailable_bytes{job=\"node_exporter_clients\"} / node_memory_MemTotal_bytes{job=\"node_exporter_clients\"}))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "description": "Среднее использование оперативной памяти по клиентским узлам."
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Накладные расходы на задачу",
+      "gridPos": {
+        "x": 6,
+        "y": 69,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "boinc_avg_overhead_time_per_workunit_seconds",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 2,
+          "description": "Время на операции, не связанные напрямую с вычислением."
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "Фактический коэффициент репликации",
+      "gridPos": {
+        "x": 12,
+        "y": 69,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "boinc_actual_results_per_workunit",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 2,
+          "description": "Отношение количества выполненных result-записей к числу workunit."
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      }
     }
   ]
 }

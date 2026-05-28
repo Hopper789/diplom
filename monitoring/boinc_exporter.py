@@ -61,6 +61,10 @@ boinc_results_in_progress_total = Gauge("boinc_results_in_progress_total", "Assi
 # are useful for simple dashboards and diploma tables.
 boinc_success_rate = Gauge("boinc_success_rate", "successful_results / finished_results")
 boinc_error_rate = Gauge("boinc_error_rate", "error_results / finished_results")
+boinc_results_error_percent = Gauge(
+    "boinc_results_error_percent",
+    "Percent of finished BOINC results with error outcomes",
+)
 boinc_queue_remaining_total = Gauge("boinc_queue_remaining_total", "Unfinished BOINC results")
 boinc_completed_workunits_total = Gauge("boinc_completed_workunits_total", "Distinct workunits with at least one successful result")
 boinc_effective_completion_ratio = Gauge("boinc_effective_completion_ratio", "completed_workunits / workunits_total")
@@ -83,6 +87,14 @@ boinc_p95_success_turnaround_seconds = Gauge(
 boinc_oldest_unfinished_result_age_seconds = Gauge(
     "boinc_oldest_unfinished_result_age_seconds",
     "Age of the oldest unfinished result by create_time",
+)
+boinc_experiment_total_seconds = Gauge(
+    "boinc_experiment_total_seconds",
+    "Total experiment wall time from first workunit to latest received result",
+)
+boinc_experiment_throughput_workunits_per_second = Gauge(
+    "boinc_experiment_throughput_workunits_per_second",
+    "Completed workunits divided by experiment total seconds",
 )
 
 # Distributed-computing configuration loaded from config/distributed.env through monitoring/.env.
@@ -205,12 +217,29 @@ def update_db_metrics() -> None:
 
             set_ratio(boinc_success_rate, success, finished)
             set_ratio(boinc_error_rate, errors, finished)
+            boinc_results_error_percent.set((float(errors) / float(finished) * 100.0) if finished else 0)
             set_ratio(boinc_effective_completion_ratio, completed_wu, workunits)
             set_ratio(boinc_replication_overhead, results, workunits)
             set_ratio(boinc_actual_results_per_workunit, results, workunits)
 
-            boinc_latest_result_received_time.set(
+            latest_result_received_time = float(
                 safe_fetch_one(cur, "SELECT COALESCE(MAX(received_time), 0) FROM result")
+            )
+            first_workunit_create_time = float(
+                safe_fetch_one(cur, "SELECT COALESCE(MIN(create_time), 0) FROM workunit")
+            )
+            current_db_time = float(safe_fetch_one(cur, "SELECT UNIX_TIMESTAMP()"))
+            experiment_total_seconds = 0.0
+            if first_workunit_create_time > 0:
+                if unfinished:
+                    experiment_total_seconds = max(0.0, current_db_time - first_workunit_create_time)
+                elif latest_result_received_time > first_workunit_create_time:
+                    experiment_total_seconds = latest_result_received_time - first_workunit_create_time
+
+            boinc_latest_result_received_time.set(latest_result_received_time)
+            boinc_experiment_total_seconds.set(experiment_total_seconds)
+            boinc_experiment_throughput_workunits_per_second.set(
+                (float(completed_wu) / experiment_total_seconds) if experiment_total_seconds else 0
             )
             avg_turnaround = float(
                 safe_fetch_one(

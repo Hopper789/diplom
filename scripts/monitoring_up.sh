@@ -204,13 +204,14 @@ fi
 
 echo
 echo "Monitoring is running:"
-echo "  Prometheus: http://localhost:9090"
-echo "  Grafana:    http://localhost:3000"
-echo "  Exporter:   http://localhost:9101/metrics"
+echo "  Prometheus: http://$SERVER_IP:9090"
+echo "  Grafana:    http://$SERVER_IP:3000"
+echo "  Exporter:   http://$SERVER_IP:9101/metrics"
 echo
 echo "Client agent endpoints are scraped from ansible/inventory.ini:"
 echo "  node-exporter: http://CLIENT_IP:9100/metrics"
 echo "  cAdvisor:      http://CLIENT_IP:8081/metrics"
 echo
-echo "Grafana login:"
-echo "  admin / admin"
+echo "Grafana:"
+echo "  Для просмотра dashboard логин не требуется."
+echo "  Для администрирования: admin / admin"
