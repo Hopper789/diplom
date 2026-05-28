@@ -9,6 +9,7 @@ MAX_SECONDS=600
 INTERVAL_SECONDS=15
 QUIET=0
 SERVER_ONLY=0
+VERBOSE=0
 ANSIBLE_ARGS=()
 
 usage() {
@@ -24,6 +25,7 @@ usage() {
   --max-seconds N          Максимальное время работы. По умолчанию: 600.
   --interval-seconds N     Пауза между update. По умолчанию: 15.
   --quiet                  Меньше вывода.
+  --verbose                Показывать вывод Ansible update каждый цикл.
   --server-only            Только печатать DB-прогресс, без Ansible update.
   --ask-vault-pass|--vault Передать Ansible --ask-vault-pass.
   --vault-password-file F  Передать Ansible --vault-password-file.
@@ -45,6 +47,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --quiet)
       QUIET=1
+      shift
+      ;;
+    --verbose)
+      VERBOSE=1
       shift
       ;;
     --server-only)
@@ -134,27 +140,105 @@ read_progress() {
   ACTIVE_HOSTS="${ACTIVE_HOSTS:-0}"
 }
 
+refresh_server_queue() {
+  if docker ps --format '{{.Names}}' | grep -qx 'boinc-server'; then
+    docker exec boinc-server bash -lc "cd '/project/$PROJECT_NAME' && touch reread_db" >/dev/null 2>&1 || true
+  fi
+}
+
 request_update() {
   if [[ "$SERVER_ONLY" == "1" ]]; then
     return 0
   fi
 
   if [[ ! -f "$ROOT_DIR/ansible/inventory.ini" ]] || ! command -v ansible >/dev/null 2>&1; then
+    if [[ "$QUIET" != "1" ]]; then
+      echo "Ansible недоступен или нет inventory; project update не отправлен."
+    fi
     return 0
   fi
 
-  ANSIBLE_HOST_KEY_CHECKING=False \
-  ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b "${ANSIBLE_ARGS[@]}" -m shell -a "
-    docker exec boinc-client \
-      boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' \
-      --read_global_prefs_override || true
-    docker exec boinc-client \
-      boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' \
-      --set_run_mode always || true
-    docker exec boinc-client \
-      boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' \
-      --project '$BOINC_PROJECT_URL' update
-  " >/dev/null 2>&1 || true
+  local output
+  local rc=0
+
+  set +e
+  output="$(
+    ANSIBLE_HOST_KEY_CHECKING=False \
+    ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b "${ANSIBLE_ARGS[@]}" -m shell -a "
+      docker exec boinc-client \
+        boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' \
+        --read_global_prefs_override || true
+      docker exec boinc-client \
+        boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' \
+        --set_run_mode always || true
+      docker exec boinc-client \
+        boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' \
+        --project '$BOINC_PROJECT_URL' update
+    " 2>&1
+  )"
+  rc=$?
+  set -e
+
+  if [[ "$VERBOSE" == "1" || "$rc" -ne 0 ]]; then
+    echo "$output"
+  fi
+
+  if [[ "$rc" -ne 0 ]]; then
+    echo "WARNING: Ansible project update failed with rc=$rc." >&2
+  fi
+}
+
+print_diagnostics() {
+  echo
+  echo "== Auto-update diagnostics =="
+  echo "Клиенты не получили ни одной задачи: active_hosts=0."
+  echo
+
+  if docker ps --format '{{.Names}}' | grep -qx 'boinc-mysql'; then
+    echo "== BOINC DB app/version/result states =="
+    docker exec boinc-mysql mariadb -u root -proot -D "$PROJECT_NAME" -e "
+      SELECT id, name, user_friendly_name FROM app;
+      SELECT av.id, a.name AS app, av.version_num, p.name AS platform
+        FROM app_version av
+        JOIN app a ON a.id = av.appid
+        JOIN platform p ON p.id = av.platformid
+       ORDER BY av.id DESC
+       LIMIT 20;
+      SELECT server_state, outcome, client_state, hostid, COUNT(*) AS results
+        FROM result
+       GROUP BY server_state, outcome, client_state, hostid
+       ORDER BY hostid, server_state, outcome, client_state;
+    " || true
+    echo
+  fi
+
+  if docker ps --format '{{.Names}}' | grep -qx 'boinc-server'; then
+    echo "== Recent scheduler/feeder logs =="
+    docker exec boinc-server bash -lc "
+      cd '/project/$PROJECT_NAME'
+      tail -80 log_*/scheduler.log log_*/feeder.log 2>/dev/null || true
+    " || true
+    echo
+  fi
+
+  if [[ -f "$ROOT_DIR/ansible/inventory.ini" ]] && command -v ansible >/dev/null 2>&1; then
+    echo "== Remote client status/messages =="
+    ANSIBLE_HOST_KEY_CHECKING=False \
+    ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b "${ANSIBLE_ARGS[@]}" -m shell -a "
+      echo '--- project status ---'
+      docker exec boinc-client \
+        boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' \
+        --get_project_status || true
+      echo '--- task summary ---'
+      docker exec boinc-client \
+        boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' \
+        --get_task_summary || true
+      echo '--- recent messages ---'
+      docker exec boinc-client \
+        boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' \
+        --get_messages 0 | tail -80 || true
+    " || true
+  fi
 }
 
 if [[ "$QUIET" != "1" ]]; then
@@ -166,6 +250,9 @@ fi
 deadline=$((SECONDS + MAX_SECONDS))
 last_completed=-1
 unchanged_rounds=0
+zero_active_rounds=0
+
+refresh_server_queue
 
 while true; do
   read_progress
@@ -196,7 +283,19 @@ while true; do
     last_completed="$COMPLETED"
   fi
 
+  if [[ "$ACTIVE_HOSTS" -eq 0 ]]; then
+    zero_active_rounds=$((zero_active_rounds + 1))
+  else
+    zero_active_rounds=0
+  fi
+
+  refresh_server_queue
   request_update
+
+  if [[ "$zero_active_rounds" -ge 4 ]]; then
+    print_diagnostics
+    exit 1
+  fi
 
   if [[ "$QUIET" != "1" && "$unchanged_rounds" -ge 4 ]]; then
     echo "Прогресс не менялся несколько циклов; продолжаю делать project update до таймаута."

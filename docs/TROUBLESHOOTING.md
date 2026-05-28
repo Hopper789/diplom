@@ -179,6 +179,7 @@ docker exec boinc-grafana env | grep GF_AUTH
 ```
 
 `run_experiment.sh` запускает этот helper автоматически после создания workunits.
+Если `active_hosts=0` держится несколько циклов, helper сам напечатает диагностику app_version, scheduler/feeder logs и последние сообщения клиентов.
 
 ## Ошибки results растут
 

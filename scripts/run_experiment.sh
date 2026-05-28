@@ -99,7 +99,7 @@ echo "Auto-updating BOINC clients so they keep fetching work..."
 ./scripts/pump_clients.sh \
   --max-seconds "$AUTO_UPDATE_SECONDS" \
   --interval-seconds "$AUTO_UPDATE_INTERVAL_SECONDS" \
-  "${ANSIBLE_ARGS[@]}" || true
+  "${ANSIBLE_ARGS[@]}"
 
 echo
 echo "Experiment submitted."

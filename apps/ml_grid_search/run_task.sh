@@ -57,6 +57,19 @@ ANSIBLE_EXTRA_ARGS="${ANSIBLE_EXTRA_ARGS:-}"
 
 mkdir -p "$BUILD_DIR"
 
+version_to_num() {
+  python3 - "$1" <<'PY'
+import decimal
+import sys
+
+value = decimal.Decimal(sys.argv[1])
+if value <= 0:
+    raise SystemExit("APP_VERSION must be positive")
+
+print(int(value * 100))
+PY
+}
+
 require_generated_env() {
   if [[ ! -f "$ENV_FILE" ]]; then
     echo "ERROR: config/generated.env not found."
@@ -284,6 +297,30 @@ deploy_app_to_server() {
   docker exec boinc-server bash -lc "cd '/project/$PROJECT_NAME' && ./bin/update_versions --noconfirm"
 }
 
+assert_app_version_registered() {
+  local app_version_num
+  local registered
+
+  app_version_num="$(version_to_num "$APP_VERSION")"
+  registered="$(
+    docker exec boinc-mysql mariadb -u root -proot -N -B -D "$PROJECT_NAME" -e "
+      SELECT COUNT(*)
+        FROM app_version av
+        JOIN app a ON a.id = av.appid
+        JOIN platform p ON p.id = av.platformid
+       WHERE a.name = '$APP_NAME'
+         AND p.name = '$PLATFORM'
+         AND av.version_num = $app_version_num;
+    " 2>/dev/null | tail -1
+  )"
+
+  if [[ "${registered:-0}" -lt 1 ]]; then
+    echo "BOINC did not register app_version for $APP_NAME $APP_VERSION $PLATFORM." >&2
+    echo "Clients will not receive tasks until app_version is registered." >&2
+    exit 1
+  fi
+}
+
 create_workunits() {
   local task_count
   task_count="$(calc_task_count)"
@@ -338,6 +375,17 @@ EOF
   docker exec boinc-server bash -lc "cd '/project/$PROJECT_NAME' && touch reread_db"
 }
 
+restart_project_daemons() {
+  echo "Restarting BOINC daemons so scheduler/feeder re-read new work..."
+  docker exec boinc-server bash -lc "
+    cd '/project/$PROJECT_NAME'
+    ./bin/stop || true
+    sleep 2
+    ./bin/start || true
+    touch reread_db
+  "
+}
+
 update_real_clients() {
   if [[ ! -f "$ROOT_DIR/ansible/inventory.ini" ]]; then
     echo "ansible/inventory.ini not found; skip client update."
@@ -358,6 +406,12 @@ update_real_clients() {
   # shellcheck disable=SC2086
   ANSIBLE_HOST_KEY_CHECKING=False \
   ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b $ANSIBLE_EXTRA_ARGS -m shell -a "
+    docker exec boinc-client \
+      boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' \
+      --read_global_prefs_override || true
+    docker exec boinc-client \
+      boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' \
+      --set_run_mode always || true
     docker exec boinc-client \
       boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' \
       --project '$BOINC_PROJECT_URL' update
@@ -414,7 +468,11 @@ run_boinc() {
   ensure_templates
 
   deploy_app_to_server
+  assert_app_version_registered
   create_workunits
+  restart_project_daemons
+  update_real_clients
+  sleep 10
   update_real_clients
   show_server_summary
   show_client_summary
