@@ -39,6 +39,14 @@
 ./scripts/run_experiment.sh
 ```
 
+После создания задач он запускает `pump_clients.sh`, чтобы клиенты автоматически забирали следующие порции работы.
+
+`pump_clients.sh` можно запустить отдельно для уже созданного эксперимента:
+
+```bash
+./scripts/pump_clients.sh --max-seconds 600 --interval-seconds 15
+```
+
 `run_quick_benchmarks.sh` запускает короткие бенчмарки для подбора конфигурации вычислений:
 
 ```bash
@@ -92,6 +100,7 @@ apps/python_task_runner/run_task.sh \
 - `deploy_clients.sh` — запускает Ansible playbook клиентов;
 - `deploy_monitoring_agents.sh` — ставит node-exporter и cAdvisor на клиентов;
 - `monitoring_down.sh` — останавливает мониторинг;
+- `pump_clients.sh` — регулярно делает BOINC project update на клиентах;
 - `run_quick_benchmarks.sh` — собирает короткий отчёт по базовой и реплицированной конфигурации;
 - `alerts_up.sh` и `alerts_down.sh` — управляют Telegram notifier;
 - `copy_ssh_keys.sh` — помогает скопировать SSH-ключи на клиентов.

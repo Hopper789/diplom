@@ -170,6 +170,16 @@ docker exec boinc-grafana env | grep GF_AUTH
 ./scripts/status.sh
 ```
 
+## Задачи выполняются только после повторного `bootstrap_clients.sh`
+
+Не нужно повторно разворачивать клиентов ради получения следующей порции задач. Запусти авто-update:
+
+```bash
+./scripts/pump_clients.sh --max-seconds 600 --interval-seconds 15
+```
+
+`run_experiment.sh` запускает этот helper автоматически после создания workunits.
+
 ## Ошибки results растут
 
 Смотри логи серверного контейнера и последние results:

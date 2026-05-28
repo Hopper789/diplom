@@ -3,6 +3,8 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VAULT_PASS_FILE="$ROOT_DIR/ansible/.vault_pass"
+AUTO_UPDATE_SECONDS="${BOINC_AUTO_UPDATE_SECONDS:-600}"
+AUTO_UPDATE_INTERVAL_SECONDS="${BOINC_AUTO_UPDATE_INTERVAL_SECONDS:-15}"
 
 cd "$ROOT_DIR"
 
@@ -91,6 +93,13 @@ apps/ml_grid_search/run_task.sh boinc
 echo
 echo "Status after submitting work:"
 ./scripts/status.sh "${ANSIBLE_ARGS[@]}" || true
+
+echo
+echo "Auto-updating BOINC clients so they keep fetching work..."
+./scripts/pump_clients.sh \
+  --max-seconds "$AUTO_UPDATE_SECONDS" \
+  --interval-seconds "$AUTO_UPDATE_INTERVAL_SECONDS" \
+  "${ANSIBLE_ARGS[@]}" || true
 
 echo
 echo "Experiment submitted."
