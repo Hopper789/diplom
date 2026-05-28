@@ -210,4 +210,40 @@ for target in payload.get("data", {}).get("activeTargets", []):
     print(f"  {job} {instance}: {health}{suffix}")
 ' || true
   fi
+
+  if docker ps --format '{{.Names}}' | grep -qx 'boinc-grafana'; then
+    if curl -fsS "http://$MONITORING_HOST:3000/api/health" | grep -q '"database":'; then
+      echo "Grafana health: OK"
+    else
+      echo "Grafana health: failed"
+    fi
+
+    if curl -fsS -u admin:admin "http://$MONITORING_HOST:3000/api/datasources/uid/prometheus" | grep -q '"uid":"prometheus"'; then
+      echo "Grafana datasource prometheus: OK"
+    else
+      echo "Grafana datasource prometheus: missing"
+    fi
+
+    if curl -fsS -u admin:admin "http://$MONITORING_HOST:3000/api/dashboards/uid/boinc-cluster" | grep -q '"uid":"boinc-cluster"'; then
+      echo "Grafana dashboard boinc-cluster: OK"
+    else
+      echo "Grafana dashboard boinc-cluster: missing"
+    fi
+
+    if curl -fsS -u admin:admin \
+      "http://$MONITORING_HOST:3000/api/datasources/proxy/uid/prometheus/api/v1/query?query=boinc_db_up" \
+      | grep -q '"status":"success"'; then
+      echo "Grafana datasource query boinc_db_up: OK"
+    else
+      echo "Grafana datasource query boinc_db_up: failed"
+    fi
+
+    if docker exec boinc-grafana sh -lc \
+      'wget -qO- "http://prometheus:9090/api/v1/query?query=boinc_db_up" | grep -q "\"status\":\"success\""' \
+      >/dev/null 2>&1; then
+      echo "Grafana container -> Prometheus: OK"
+    else
+      echo "Grafana container -> Prometheus: failed"
+    fi
+  fi
 fi
