@@ -68,9 +68,10 @@ nano config/alerts.env
 Grafana доступна по адресу:
 
 ```text
-http://localhost:3000
-admin / admin
+http://SERVER_IP:3000
 ```
+
+Dashboard можно смотреть без логина. Для администрирования доступен вход `admin / admin`.
 
 ## Telegram-уведомления
 

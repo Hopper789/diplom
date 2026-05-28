@@ -13,7 +13,7 @@
 
 ```bash
 ./scripts/status.sh
-curl -s http://localhost:9101/metrics | grep boinc_
+curl -s http://SERVER_IP:9101/metrics | grep boinc_
 ```
 
 ## Быстрый подбор конфигурации

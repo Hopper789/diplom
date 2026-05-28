@@ -76,6 +76,7 @@ fi
 mkdir -p "$MONITORING_DIR"
 
 cat > "$MONITORING_DIR/.env" <<ENVEOF
+SERVER_IP=$SERVER_IP
 PROJECT_NAME=$PROJECT_NAME
 PROJECT_URL=$BOINC_PROJECT_URL
 MYSQL_HOST=boinc-mysql
@@ -199,7 +200,7 @@ fi
 
 (
   cd "$MONITORING_DIR"
-  docker compose up -d --build
+  docker compose up -d --build --force-recreate
 )
 
 echo

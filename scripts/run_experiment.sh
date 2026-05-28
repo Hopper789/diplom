@@ -48,6 +48,12 @@ if [[ ! -f "$ROOT_DIR/config/generated.env" ]]; then
   exit 1
 fi
 
+set -a
+# shellcheck disable=SC1091
+source "$ROOT_DIR/config/generated.env"
+set +a
+MONITORING_HOST="${SERVER_IP:-localhost}"
+
 if [[ ! -f "$ROOT_DIR/config/experiment.env" && -f "$ROOT_DIR/config/experiment.example.env" ]]; then
   echo "Creating config/experiment.env from example..."
   cp "$ROOT_DIR/config/experiment.example.env" "$ROOT_DIR/config/experiment.env"
@@ -90,4 +96,4 @@ echo
 echo "Experiment submitted."
 echo "Use monitoring or status command to watch progress:"
 echo "  ./scripts/status.sh"
-echo "  http://localhost:3000"
+echo "  http://$MONITORING_HOST:3000"

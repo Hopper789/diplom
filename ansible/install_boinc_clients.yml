@@ -76,7 +76,7 @@
 
           RUN mkdir -p /var/lib/boinc /var/lib/boinc/slots /var/lib/boinc/projects
 
-          CMD ["boinc", "--allow_remote_gui_rpc", "--dir", "/var/lib/boinc"]
+          CMD ["boinc", "--allow_remote_gui_rpc", "--fetch_minimal_work", "--dir", "/var/lib/boinc"]
 
     - name: Write Docker Compose file for BOINC client
       ansible.builtin.copy:
@@ -91,10 +91,25 @@
               restart: unless-stopped
               volumes:
                 - ./data:/var/lib/boinc
-              command: >
-                bash -lc "mkdir -p /var/lib/boinc/slots /var/lib/boinc/projects &&
-                          echo '{{ boinc_client_rpc_password }}' > /var/lib/boinc/gui_rpc_auth.cfg &&
-                          boinc --allow_remote_gui_rpc --dir /var/lib/boinc"
+              command: |
+                bash -lc "
+                  mkdir -p /var/lib/boinc/slots /var/lib/boinc/projects
+                  echo '{{ boinc_client_rpc_password }}' > /var/lib/boinc/gui_rpc_auth.cfg
+                  printf '%s\n' \
+                    '<global_preferences>' \
+                    '  <run_on_batteries>1</run_on_batteries>' \
+                    '  <run_if_user_active>1</run_if_user_active>' \
+                    '  <suspend_cpu_usage>0</suspend_cpu_usage>' \
+                    '  <cpu_usage_limit>100</cpu_usage_limit>' \
+                    '  <max_ncpus_pct>100</max_ncpus_pct>' \
+                    '  <work_buf_min_days>0.001</work_buf_min_days>' \
+                    '  <work_buf_additional_days>0.001</work_buf_additional_days>' \
+                    '  <disk_max_used_gb>20</disk_max_used_gb>' \
+                    '  <disk_interval>60</disk_interval>' \
+                    '</global_preferences>' \
+                    > /var/lib/boinc/global_prefs_override.xml
+                  exec boinc --allow_remote_gui_rpc --fetch_minimal_work --dir /var/lib/boinc
+                "
 
     - name: Remove old BOINC client container
       ansible.builtin.shell: |
@@ -169,6 +184,12 @@
 
     - name: Request project update
       ansible.builtin.shell: |
+        docker exec boinc-client \
+          boinccmd --passwd "{{ boinc_client_rpc_password }}" \
+          --read_global_prefs_override || true
+        docker exec boinc-client \
+          boinccmd --passwd "{{ boinc_client_rpc_password }}" \
+          --set_run_mode always || true
         docker exec boinc-client \
           boinccmd --passwd "{{ boinc_client_rpc_password }}" \
           --project "{{ boinc_project_url }}" update

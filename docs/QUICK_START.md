@@ -109,14 +109,15 @@ nano config/cluster.yml
 Grafana после запуска мониторинга:
 
 ```text
-http://localhost:3000
-admin / admin
+http://SERVER_IP:3000
 ```
+
+Dashboard можно смотреть без логина. Для администрирования доступен вход `admin / admin`.
 
 Метрики BOINC:
 
 ```bash
-curl -s http://localhost:9101/metrics | grep boinc_
+curl -s http://SERVER_IP:9101/metrics | grep boinc_
 ```
 
 ## Если Docker требует sudo локально

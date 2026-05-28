@@ -54,6 +54,8 @@ set -a
 source "$ENV_FILE"
 set +a
 
+MONITORING_HOST="${SERVER_IP:-localhost}"
+
 echo "== Docker containers on server =="
 docker ps --filter name=boinc || true
 docker ps --filter name=monitoring || true
@@ -148,20 +150,22 @@ fi
 
 echo "== Monitoring =="
 if docker ps --format '{{.Names}}' | grep -qx 'boinc-prometheus'; then
-  echo "Prometheus: http://localhost:9090"
+  echo "Prometheus: http://$MONITORING_HOST:9090"
 else
   echo "Prometheus is not running."
 fi
 
 if docker ps --format '{{.Names}}' | grep -qx 'boinc-grafana'; then
-  echo "Grafana:    http://localhost:3000"
-  echo "Login:      admin / admin"
+  echo "Grafana:    http://$MONITORING_HOST:3000"
+  echo "Dashboard:  http://$MONITORING_HOST:3000/d/boinc-cluster/boinc-cluster"
+  echo "View:       без логина"
+  echo "Admin:      admin / admin"
 else
   echo "Grafana is not running."
 fi
 
 if docker ps --format '{{.Names}}' | grep -qx 'boinc-exporter'; then
-  echo "Exporter:   http://localhost:9101/metrics"
+  echo "Exporter:   http://$MONITORING_HOST:9101/metrics"
 else
   echo "BOINC exporter is not running."
 fi

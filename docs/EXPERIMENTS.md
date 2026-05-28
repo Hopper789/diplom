@@ -107,5 +107,5 @@ DISTRIBUTED_MIN_QUORUM=2
 Метрики:
 
 ```bash
-curl -s http://localhost:9101/metrics | grep boinc_
+curl -s http://SERVER_IP:9101/metrics | grep boinc_
 ```

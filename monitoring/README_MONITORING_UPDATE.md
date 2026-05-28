@@ -21,12 +21,12 @@ docs/MONITORING.md
 После запуска:
 
 ```text
-Prometheus: http://localhost:9090
-Grafana:    http://localhost:3000
-Exporter:   http://localhost:9101/metrics
+Prometheus: http://SERVER_IP:9090
+Grafana:    http://SERVER_IP:3000
+Exporter:   http://SERVER_IP:9101/metrics
 ```
 
-Grafana login:
+Dashboard можно смотреть без логина. Для администрирования:
 
 ```text
 admin / admin

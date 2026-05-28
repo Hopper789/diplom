@@ -128,13 +128,46 @@ docker ps --filter name=boinc-exporter
 Проверь exporter:
 
 ```bash
-curl -s http://localhost:9101/metrics | grep boinc_
+curl -s http://SERVER_IP:9101/metrics | grep boinc_
+```
+
+Проверь, что Prometheus видит targets:
+
+```bash
+curl -s http://SERVER_IP:9090/api/v1/targets | grep -E '"health":"up"|lastError'
+```
+
+Проверь anonymous-доступ Grafana внутри контейнера:
+
+```bash
+docker exec boinc-grafana env | grep GF_AUTH
 ```
 
 Если Prometheus не видит клиентов, перезапусти мониторинг:
 
 ```bash
 ./scripts/monitoring_up.sh
+```
+
+Если в логах Grafana остаётся `user token not found`, пересоздай контейнеры мониторинга:
+
+```bash
+./scripts/monitoring_down.sh
+./scripts/monitoring_up.sh
+```
+
+## BOINC-клиент показывает `suspended`
+
+Обычно это локальные preferences BOINC: клиент приостанавливает задачи из-за фоновой CPU-нагрузки. Переразверни клиентов, чтобы применить override:
+
+```bash
+./scripts/bootstrap_clients.sh
+```
+
+После этого проверь, что задачи больше не в `suspended`:
+
+```bash
+./scripts/status.sh
 ```
 
 ## Ошибки results растут
