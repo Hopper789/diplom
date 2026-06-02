@@ -59,12 +59,31 @@ path = sys.argv[1]
 with open(path, "r", encoding="utf-8") as f:
     cfg = yaml.safe_load(f) or {}
 
-clients = cfg.get("clients") or []
+def get_nested(data, *keys, default=None):
+    cur = data
+    for key in keys:
+        if not isinstance(cur, dict) or key not in cur:
+            return default
+        cur = cur[key]
+    return cur
+
+clients = cfg.get("clients") or get_nested(cfg, "cluster", "clients") or []
+default_user = (
+    get_nested(cfg, "clients_defaults", "username")
+    or get_nested(cfg, "clients_defaults", "user")
+)
 
 for client in clients:
-    name = client.get("name", "")
-    ip = client.get("ip")
-    user = client.get("user")
+    if isinstance(client, str):
+        name = ""
+        ip = client
+        user = default_user
+    elif isinstance(client, dict):
+        name = client.get("name", "")
+        ip = client.get("ip") or client.get("host") or client.get("hostname") or client.get("ansible_host")
+        user = client.get("user") or client.get("username") or client.get("ansible_user") or default_user
+    else:
+        continue
 
     if not ip or not user:
         continue

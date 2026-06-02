@@ -8,20 +8,7 @@
     boinc_client_data_dir: /opt/boinc-client
     boinc_client_image: local/boinc-client:ubuntu24
 
-    client_packages:
-      - docker.io
-      - docker-compose-v2
-      - python3
-      - curl
-      - ca-certificates
-
   pre_tasks:
-    - name: Check supported OS family
-      ansible.builtin.assert:
-        that:
-          - ansible_facts["os_family"] == "Debian"
-        fail_msg: "This playbook currently supports Debian/Ubuntu clients only."
-
     - name: Check required BOINC variables
       ansible.builtin.assert:
         that:
@@ -33,21 +20,9 @@
           - boinc_client_rpc_password | length > 0
         fail_msg: "Missing BOINC variables. Run ./scripts/init_config.sh and ./scripts/create_account_db.sh first."
 
-    - name: Update apt cache
-      ansible.builtin.apt:
-        update_cache: true
-        cache_valid_time: 3600
-
-    - name: Install required packages
-      ansible.builtin.apt:
-        name: "{{ client_packages }}"
-        state: present
-
-    - name: Enable and start Docker
-      ansible.builtin.systemd:
-        name: docker
-        enabled: true
-        state: started
+    - name: Check Docker
+      ansible.builtin.command: docker version
+      changed_when: false
 
   tasks:
     - name: Stop native BOINC client if installed

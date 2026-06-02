@@ -6,31 +6,19 @@ ENV_FILE="$ROOT_DIR/config/generated.env"
 EXPERIMENT_ENV_FILE="$ROOT_DIR/config/experiment.env"
 DISTRIBUTED_ENV_FILE="$ROOT_DIR/config/distributed.env"
 MONITORING_DIR="$ROOT_DIR/monitoring"
-VAULT_PASS_FILE="$ROOT_DIR/ansible/.vault_pass"
+
+# shellcheck source=scripts/lib/ansible_args.sh
+source "$ROOT_DIR/scripts/lib/ansible_args.sh"
 
 cd "$ROOT_DIR"
 
-ANSIBLE_ARGS=()
 DEPLOY_CLIENT_AGENTS=1
+
+build_ansible_args "$@"
+set -- "${ANSIBLE_REMAINING_ARGS[@]}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --ask-vault-pass|--vault)
-      ANSIBLE_ARGS+=(--ask-vault-pass)
-      shift
-      ;;
-    --vault-password-file)
-      if [[ $# -lt 2 ]]; then
-        echo "ERROR: --vault-password-file requires a path."
-        exit 2
-      fi
-      ANSIBLE_ARGS+=(--vault-password-file "$2")
-      shift 2
-      ;;
-    --ask-become-pass|-K)
-      ANSIBLE_ARGS+=(--ask-become-pass)
-      shift
-      ;;
     --skip-client-agents)
       DEPLOY_CLIENT_AGENTS=0
       shift
@@ -42,10 +30,6 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
-
-if [[ "${#ANSIBLE_ARGS[@]}" -eq 0 && -f "$VAULT_PASS_FILE" ]]; then
-  ANSIBLE_ARGS+=(--vault-password-file "$VAULT_PASS_FILE")
-fi
 
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "ERROR: config/generated.env not found."

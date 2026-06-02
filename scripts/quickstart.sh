@@ -2,21 +2,33 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-VAULT_PASS_FILE="$ROOT_DIR/ansible/.vault_pass"
-VAULT_FILE="$ROOT_DIR/ansible/group_vars/all/vault.yml"
 
 WITH_MONITORING=0
 RUN_EXPERIMENT=0
+INSTALL_LOCAL=0
+COPY_SSH_KEYS=0
+SKIP_PREPARE=0
+SKIP_LAUNCH=0
+ASK_BECOME_PASS=0
 
 usage() {
   cat <<'USAGE'
-Использование:
-  ./scripts/quickstart.sh [--with-monitoring] [--run-experiment]
+Usage:
+  ./scripts/quickstart.sh [options]
 
-Варианты:
+Options:
+  --with-monitoring     start monitoring during launch
+  --run-experiment      submit and pump the experiment during launch
+  --install-local       install local control-machine dependencies during preparation
+  --copy-ssh-keys       copy SSH keys to clients during preparation
+  --skip-prepare        run only launch_cluster.sh
+  --skip-launch         run only prepare_system.sh
+  --ask-become-pass, -K ask sudo password for Ansible steps
+  --help, -h
+
+Examples:
   ./scripts/quickstart.sh
   ./scripts/quickstart.sh --with-monitoring
-  ./scripts/quickstart.sh --run-experiment
   ./scripts/quickstart.sh --with-monitoring --run-experiment
 USAGE
 }
@@ -33,58 +45,77 @@ while [[ $# -gt 0 ]]; do
       RUN_EXPERIMENT=1
       shift
       ;;
+    --install-local)
+      INSTALL_LOCAL=1
+      shift
+      ;;
+    --copy-ssh-keys)
+      COPY_SSH_KEYS=1
+      shift
+      ;;
+    --skip-prepare)
+      SKIP_PREPARE=1
+      shift
+      ;;
+    --skip-launch)
+      SKIP_LAUNCH=1
+      shift
+      ;;
+    --ask-become-pass|-K)
+      ASK_BECOME_PASS=1
+      shift
+      ;;
     --help|-h)
       usage
       exit 0
       ;;
     *)
-      echo "Неизвестный аргумент: $1"
+      echo "Unknown argument: $1" >&2
       usage
       exit 2
       ;;
   esac
 done
 
-if [[ ! -f "$ROOT_DIR/config/cluster.yml" ]]; then
-  echo "Не найден config/cluster.yml."
-  echo
-  echo "Создай его перед запуском:"
-  echo "  cp config/cluster.example.yml config/cluster.yml"
-  echo "  nano config/cluster.yml"
-  exit 1
+if [[ "$SKIP_PREPARE" == "1" && "$SKIP_LAUNCH" == "1" ]]; then
+  echo "ERROR: --skip-prepare and --skip-launch cannot be used together." >&2
+  exit 2
 fi
 
-if [[ ! -f "$VAULT_PASS_FILE" || ! -f "$VAULT_FILE" ]]; then
-  echo "Не найдены файлы Ansible Vault."
-  echo
-  echo "Создай их перед запуском:"
-  echo "  ./scripts/init_vault.sh"
-  exit 1
+prepare_args=()
+launch_args=()
+
+if [[ "$INSTALL_LOCAL" == "1" ]]; then
+  prepare_args+=(--install-local)
 fi
 
-if command -v docker >/dev/null 2>&1; then
-  if ! docker ps >/dev/null 2>&1; then
-    echo "Docker недоступен текущему пользователю."
-    echo "Добавьте пользователя в группу docker: sudo usermod -aG docker \"\$USER\", затем перелогиньтесь"
-    exit 1
-  fi
+if [[ "$COPY_SSH_KEYS" == "1" ]]; then
+  prepare_args+=(--copy-ssh-keys)
 fi
-
-echo "== Быстрый запуск BOINC-кластера =="
-echo
-
-./scripts/bootstrap_server.sh
-./scripts/bootstrap_clients.sh
 
 if [[ "$WITH_MONITORING" == "1" ]]; then
-  ./scripts/monitoring_up.sh
+  launch_args+=(--with-monitoring)
 fi
 
 if [[ "$RUN_EXPERIMENT" == "1" ]]; then
-  ./scripts/run_experiment.sh
+  launch_args+=(--run-experiment)
 fi
 
-./scripts/status.sh
+if [[ "$ASK_BECOME_PASS" == "1" ]]; then
+  prepare_args+=(--ask-become-pass)
+  launch_args+=(--ask-become-pass)
+fi
+
+echo "== BOINC cluster quickstart =="
+echo
+
+if [[ "$SKIP_PREPARE" != "1" ]]; then
+  ./scripts/prepare_system.sh "${prepare_args[@]}"
+fi
+
+if [[ "$SKIP_LAUNCH" != "1" ]]; then
+  ./scripts/launch_cluster.sh "${launch_args[@]}"
+fi
 
 echo
-echo "Быстрый запуск завершён."
+echo "Quickstart completed."

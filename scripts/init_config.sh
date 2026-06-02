@@ -96,9 +96,12 @@ account_password = (
 
 rpc_password = (
     get_nested(cfg, "boinc", "client_rpc_password")
+    or get_nested(cfg, "boinc", "rpc_password")
     or cfg.get("boinc_client_rpc_password")
-    or secrets.token_urlsafe(24)
 )
+
+if not rpc_password or str(rpc_password).lower() == "auto":
+    rpc_password = secrets.token_urlsafe(24)
 
 clients = cfg.get("clients") or get_nested(cfg, "cluster", "clients") or []
 

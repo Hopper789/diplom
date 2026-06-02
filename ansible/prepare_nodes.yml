@@ -1,0 +1,41 @@
+---
+- name: Prepare BOINC client nodes
+  hosts: boinc_clients
+  become: true
+  gather_facts: true
+
+  vars:
+    node_packages:
+      - docker.io
+      - docker-compose-v2
+      - python3
+      - curl
+      - ca-certificates
+
+  pre_tasks:
+    - name: Check supported OS family
+      ansible.builtin.assert:
+        that:
+          - ansible_facts["os_family"] == "Debian"
+        fail_msg: "This playbook currently supports Debian/Ubuntu clients only."
+
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install required packages
+      ansible.builtin.apt:
+        name: "{{ node_packages }}"
+        state: present
+
+    - name: Enable and start Docker
+      ansible.builtin.systemd:
+        name: docker
+        enabled: true
+        state: started
+
+    - name: Check Docker
+      ansible.builtin.command: docker version
+      changed_when: false
