@@ -201,6 +201,29 @@ curl -s http://SERVER_IP:9090/api/v1/targets | grep -E '"health":"up"|lastError'
 ./scripts/monitoring_up.sh
 ```
 
+## Loki пустой или dashboard ошибок не показывает логи
+
+Проверь server-side Loki и Promtail:
+
+```bash
+docker ps --filter name=boinc-loki
+docker ps --filter name=boinc-promtail
+curl -s http://SERVER_IP:3100/ready
+```
+
+Проверь datasource и dashboard:
+
+```bash
+./scripts/status.sh
+```
+
+Если нужны логи клиентов, перезапусти monitoring agents:
+
+```bash
+./scripts/monitoring_down.sh --with-client-agents
+./scripts/monitoring_up.sh
+```
+
 ## Ошибки results растут
 
 Смотри логи серверного контейнера и последние results:

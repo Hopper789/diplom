@@ -29,6 +29,34 @@ services:
       - boinc-exporter
     restart: unless-stopped
 
+  loki:
+    image: grafana/loki:2.9.8
+    container_name: boinc-loki
+    command:
+      - "-config.file=/etc/loki/loki.yml"
+    volumes:
+      - ./loki.yml:/etc/loki/loki.yml:ro
+      - loki-data:/loki
+    ports:
+      - "3100:3100"
+    networks:
+      - monitoring
+    restart: unless-stopped
+
+  promtail:
+    image: grafana/promtail:2.9.8
+    container_name: boinc-promtail
+    command:
+      - "-config.file=/etc/promtail/promtail.yml"
+    volumes:
+      - ./promtail.yml:/etc/promtail/promtail.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - monitoring
+    depends_on:
+      - loki
+    restart: unless-stopped
+
   grafana:
     image: grafana/grafana:11.3.1
     container_name: boinc-grafana
@@ -41,7 +69,7 @@ services:
       GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
       GF_AUTH_DISABLE_LOGIN_FORM: "false"
       GF_SERVER_HTTP_ADDR: "0.0.0.0"
-      GF_SERVER_ROOT_URL: "http://${SERVER_IP}:3000"
+      GF_SERVER_ROOT_URL: "http://${SERVER_IP:-localhost}:3000"
       GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:
       - grafana-data:/var/lib/grafana
@@ -53,6 +81,7 @@ services:
       - monitoring
     depends_on:
       - prometheus
+      - loki
     restart: unless-stopped
 
   cadvisor:
@@ -98,3 +127,4 @@ networks:
 volumes:
   prometheus-data:
   grafana-data:
+  loki-data:

@@ -6,6 +6,8 @@
 
 - `boinc-exporter` — отдаёт BOINC-метрики из MariaDB;
 - Prometheus — собирает временные ряды;
+- Loki — хранит логи контейнеров;
+- Promtail — собирает Docker logs на управляющей машине и клиентах;
 - Grafana — показывает dashboard;
 - node-exporter на клиентах — CPU, RAM, load average, сеть, диск;
 - cAdvisor на клиентах — нагрузка Docker-контейнеров.
@@ -36,12 +38,20 @@
 Prometheus: http://SERVER_IP:9090
 Grafana:    http://SERVER_IP:3000
 Exporter:   http://SERVER_IP:9101/metrics
+Loki:       http://SERVER_IP:3100
 ```
 
 Dashboard Grafana можно смотреть без логина. Для администрирования:
 
 ```text
 admin / admin
+```
+
+Основные dashboard:
+
+```text
+BOINC Cluster: http://SERVER_IP:3000/d/boinc-cluster/boinc-cluster
+BOINC Errors:  http://SERVER_IP:3000/d/boinc-errors/boinc-errors
 ```
 
 ## Основные BOINC-метрики
@@ -66,7 +76,29 @@ admin / admin
 
 ```bash
 curl -s http://SERVER_IP:9101/metrics | grep boinc_
+curl -s http://SERVER_IP:3100/ready
 ```
+
+## Логи и ошибки
+
+Loki хранит логи контейнеров. Promtail собирает Docker logs:
+
+- на управляющей машине — server, MariaDB, exporter, Prometheus, Grafana, Loki;
+- на клиентских узлах — `boinc-client` и monitoring agents.
+
+Открыть dashboard ошибок:
+
+```text
+http://SERVER_IP:3000/d/boinc-errors/boinc-errors
+```
+
+Пример LogQL-запроса:
+
+```logql
+{cluster="boinc"} |~ "(?i)(error|failed|exception|traceback|fatal|panic|timeout|denied|refused)"
+```
+
+Подробнее: [Error handling](ERROR_HANDLING.md).
 
 ## Остановка
 

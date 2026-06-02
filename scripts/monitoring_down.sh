@@ -40,7 +40,7 @@ if [[ "$STOP_CLIENT_AGENTS" == "1" ]]; then
   if [[ -f "$ROOT_DIR/ansible/inventory.ini" ]] && command -v ansible >/dev/null 2>&1; then
     echo "Stopping monitoring agents on BOINC clients..."
     ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b "${ANSIBLE_ARGS[@]}" -m shell -a '
-      docker rm -f boinc-node-exporter boinc-client-cadvisor 2>/dev/null || true
+      docker rm -f boinc-node-exporter boinc-client-cadvisor boinc-client-promtail 2>/dev/null || true
       rm -rf /opt/boinc-monitoring
     ' || true
   else

@@ -76,6 +76,46 @@
                 - "/var/lib/docker/:/var/lib/docker:ro"
                 - "/dev/disk/:/dev/disk:ro"
 
+            promtail:
+              image: grafana/promtail:2.9.8
+              container_name: boinc-client-promtail
+              restart: unless-stopped
+              command:
+                - "-config.file=/etc/promtail/promtail.yml"
+              volumes:
+                - "./promtail.yml:/etc/promtail/promtail.yml:ro"
+                - "/var/run/docker.sock:/var/run/docker.sock:ro"
+
+    - name: Write Promtail config for client logs
+      ansible.builtin.copy:
+        dest: "{{ monitoring_agent_dir }}/promtail.yml"
+        mode: "0644"
+        content: |
+          server:
+            http_listen_port: 9080
+            grpc_listen_port: 0
+
+          clients:
+            - url: http://{{ server_ip }}:3100/loki/api/v1/push
+
+          scrape_configs:
+            - job_name: docker
+              docker_sd_configs:
+                - host: unix:///var/run/docker.sock
+                  refresh_interval: 5s
+              relabel_configs:
+                - source_labels: ["__meta_docker_container_name"]
+                  regex: "/(.*)"
+                  target_label: container
+                - source_labels: ["__meta_docker_container_label_com_docker_compose_service"]
+                  target_label: compose_service
+                - target_label: node
+                  replacement: "{{ inventory_hostname }}"
+                - target_label: node_role
+                  replacement: client
+                - target_label: cluster
+                  replacement: boinc
+
     - name: Start monitoring agent containers
       ansible.builtin.shell: |
         cd "{{ monitoring_agent_dir }}"
@@ -102,7 +142,7 @@
 
     - name: Show monitoring agent containers
       ansible.builtin.shell: |
-        docker ps --filter name=boinc-node-exporter --filter name=boinc-client-cadvisor
+        docker ps --filter name=boinc-node-exporter --filter name=boinc-client-cadvisor --filter name=boinc-client-promtail
       register: monitoring_agents_status
       changed_when: false
 

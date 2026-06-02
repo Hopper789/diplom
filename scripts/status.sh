@@ -120,7 +120,7 @@ if [[ -f "$ROOT_DIR/ansible/inventory.ini" ]]; then
     echo "== Remote monitoring agents =="
     ANSIBLE_HOST_KEY_CHECKING=False \
     ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b "${ANSIBLE_ARGS[@]}" -m shell -a "
-      docker ps --filter name=boinc-node-exporter --filter name=boinc-client-cadvisor
+      docker ps --filter name=boinc-node-exporter --filter name=boinc-client-cadvisor --filter name=boinc-client-promtail
     " || true
     echo
   else
@@ -152,6 +152,12 @@ if docker ps --format '{{.Names}}' | grep -qx 'boinc-exporter'; then
   echo "Exporter:   http://$MONITORING_HOST:9101/metrics"
 else
   echo "BOINC exporter is not running."
+fi
+
+if docker ps --format '{{.Names}}' | grep -qx 'boinc-loki'; then
+  echo "Loki:       http://$MONITORING_HOST:3100"
+else
+  echo "Loki is not running."
 fi
 
 if command -v curl >/dev/null 2>&1; then
@@ -195,6 +201,14 @@ for target in payload.get("data", {}).get("activeTargets", []):
 ' || true
   fi
 
+  if docker ps --format '{{.Names}}' | grep -qx 'boinc-loki'; then
+    if curl -fsS "http://$MONITORING_HOST:3100/ready" | grep -qi 'ready'; then
+      echo "Loki ready: OK"
+    else
+      echo "Loki ready: failed"
+    fi
+  fi
+
   if docker ps --format '{{.Names}}' | grep -qx 'boinc-grafana'; then
     if curl -fsS "http://$MONITORING_HOST:3000/api/health" | grep -q '"database":'; then
       echo "Grafana health: OK"
@@ -208,10 +222,22 @@ for target in payload.get("data", {}).get("activeTargets", []):
       echo "Grafana datasource prometheus: missing"
     fi
 
+    if curl -fsS -u admin:admin "http://$MONITORING_HOST:3000/api/datasources/uid/loki" | grep -q '"uid":"loki"'; then
+      echo "Grafana datasource loki: OK"
+    else
+      echo "Grafana datasource loki: missing"
+    fi
+
     if curl -fsS -u admin:admin "http://$MONITORING_HOST:3000/api/dashboards/uid/boinc-cluster" | grep -q '"uid":"boinc-cluster"'; then
       echo "Grafana dashboard boinc-cluster: OK"
     else
       echo "Grafana dashboard boinc-cluster: missing"
+    fi
+
+    if curl -fsS -u admin:admin "http://$MONITORING_HOST:3000/api/dashboards/uid/boinc-errors" | grep -q '"uid":"boinc-errors"'; then
+      echo "Grafana dashboard boinc-errors: OK"
+    else
+      echo "Grafana dashboard boinc-errors: missing"
     fi
 
     if curl -fsS -u admin:admin \
@@ -222,12 +248,28 @@ for target in payload.get("data", {}).get("activeTargets", []):
       echo "Grafana datasource query boinc_db_up: failed"
     fi
 
+    if curl -fsS -u admin:admin \
+      "http://$MONITORING_HOST:3000/api/datasources/proxy/uid/loki/loki/api/v1/labels" \
+      | grep -q '"status":"success"'; then
+      echo "Grafana datasource query loki labels: OK"
+    else
+      echo "Grafana datasource query loki labels: failed"
+    fi
+
     if docker exec boinc-grafana sh -lc \
       'wget -qO- "http://prometheus:9090/api/v1/query?query=boinc_db_up" | grep -q "\"status\":\"success\""' \
       >/dev/null 2>&1; then
       echo "Grafana container -> Prometheus: OK"
     else
       echo "Grafana container -> Prometheus: failed"
+    fi
+
+    if docker exec boinc-grafana sh -lc \
+      'wget -qO- "http://loki:3100/ready" | grep -qi "ready"' \
+      >/dev/null 2>&1; then
+      echo "Grafana container -> Loki: OK"
+    else
+      echo "Grafana container -> Loki: failed"
     fi
   fi
 fi

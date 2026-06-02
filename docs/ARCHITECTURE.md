@@ -6,7 +6,7 @@
 управляющая машина
   boinc-server
   boinc-mysql
-  Prometheus/Grafana
+  Prometheus/Grafana/Loki/Promtail
   scripts/
   ansible/
         |
@@ -17,6 +17,7 @@
   boinc-client
   node-exporter
   cAdvisor
+  Promtail
 ```
 
 ## Жизненный цикл запуска
@@ -31,8 +32,8 @@ quickstart.sh
  │
  └── launch_cluster.sh
      ├── bootstrap_server.sh
-     ├── bootstrap_clients.sh
-     ├── monitoring_up.sh, если указан --with-monitoring
+    ├── bootstrap_clients.sh
+    ├── monitoring_up.sh, если указан --with-monitoring
      ├── run_experiment.sh, если указан --run-experiment
      └── status.sh
 ```

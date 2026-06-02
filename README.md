@@ -113,6 +113,8 @@ nano config/alerts.env
 - [Архитектура](docs/ARCHITECTURE.md)
 - [Эксперименты](docs/EXPERIMENTS.md)
 - [Мониторинг и метрики](docs/MONITORING.md)
+- [Обработка ошибок и Loki](docs/ERROR_HANDLING.md)
+- [Словарь терминов](docs/GLOSSARY.md)
 - [Скрипты](docs/SCRIPTS.md)
 - [Очистка](docs/CLEANUP.md)
 - [Диагностика](docs/TROUBLESHOOTING.md)

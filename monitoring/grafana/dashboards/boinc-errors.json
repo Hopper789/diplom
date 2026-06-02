@@ -1,0 +1,223 @@
+{
+  "uid": "boinc-errors",
+  "title": "BOINC Errors",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "tags": [
+    "boinc",
+    "errors",
+    "loki"
+  ],
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Errors in last 5m",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "sum(count_over_time({cluster=\"boinc\"} |~ \"(?i)(error|failed|exception|traceback|fatal|panic|timeout|denied|refused|bad WU template|no <file_info>|no <workunit>)\"[5m]))",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Error categories",
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 18,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "sum(count_over_time({cluster=\"boinc\"} |~ \"(?i)(bad WU template|no <file_info>|no <workunit>|create_work|xadd|update_versions|template)\"[5m]))",
+          "legendFormat": "templates/workunits",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        },
+        {
+          "expr": "sum(count_over_time({cluster=\"boinc\"} |~ \"(?i)(boinccmd|project attach|project_attach|scheduler request failed|no tasks|client.*error|gui_rpc_auth)\"[5m]))",
+          "legendFormat": "client/rpc",
+          "refId": "B",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        },
+        {
+          "expr": "sum(count_over_time({cluster=\"boinc\"} |~ \"(?i)(mariadb|mysql|database|db.*error|connection refused|can't connect)\"[5m]))",
+          "legendFormat": "database",
+          "refId": "C",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        },
+        {
+          "expr": "sum(count_over_time({cluster=\"boinc\"} |~ \"(?i)(docker.*error|no such container|cannot connect to docker|permission denied|denied|pull access denied)\"[5m]))",
+          "legendFormat": "docker/permissions",
+          "refId": "D",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        },
+        {
+          "expr": "sum(count_over_time({cluster=\"boinc\"} |~ \"(?i)(ansible|ssh|unreachable|host key verification|permission denied|failed to connect)\"[5m]))",
+          "legendFormat": "ansible/ssh",
+          "refId": "E",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      }
+    },
+    {
+      "type": "logs",
+      "title": "Recent error logs",
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 24,
+        "h": 12
+      },
+      "targets": [
+        {
+          "expr": "{cluster=\"boinc\"} |~ \"(?i)(error|failed|exception|traceback|fatal|panic|timeout|denied|refused|bad WU template|no <file_info>|no <workunit>|scheduler|boinccmd)\"",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        }
+      ],
+      "options": {
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      }
+    },
+    {
+      "type": "logs",
+      "title": "BOINC server and scheduler logs",
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "expr": "{cluster=\"boinc\", container=~\"boinc-server|boinc-exporter|boinc-mysql\"}",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        }
+      ],
+      "options": {
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      }
+    },
+    {
+      "type": "logs",
+      "title": "Remote client logs",
+      "gridPos": {
+        "x": 12,
+        "y": 20,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "expr": "{cluster=\"boinc\", node_role=\"client\"}",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        }
+      ],
+      "options": {
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      }
+    }
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  }
+}
