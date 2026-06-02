@@ -1,116 +1,108 @@
 # Скрипты
 
-Все основные действия выполняются из каталога `scripts/`.
-
-## Главный путь
-
-```bash
-./scripts/init_vault.sh
-./scripts/quickstart.sh --with-monitoring --run-experiment
-./scripts/status.sh
-```
+Все команды запускаются из корня репозитория.
 
 ## Основные скрипты
 
-`quickstart.sh` запускает сервер, клиентов, опционально мониторинг и эксперимент.
+| Скрипт | Назначение |
+|---|---|
+| `quickstart.sh` | Полный запуск: подготовка системы + запуск BOINC-кластера |
+| `prepare_system.sh` | Первичная подготовка сервера и клиентских узлов |
+| `launch_cluster.sh` | Запуск уже подготовленного BOINC-кластера |
+| `status.sh` | Проверка состояния сервера, клиентов, задач и мониторинга |
+
+Основной путь:
 
 ```bash
-./scripts/quickstart.sh
-./scripts/quickstart.sh --with-monitoring
-./scripts/quickstart.sh --run-experiment
 ./scripts/quickstart.sh --with-monitoring --run-experiment
 ```
 
-`bootstrap_server.sh` поднимает локальную серверную часть:
+Раздельный путь:
 
 ```bash
-./scripts/bootstrap_server.sh
+./scripts/prepare_system.sh
+./scripts/launch_cluster.sh --with-monitoring --run-experiment
 ```
 
-`bootstrap_clients.sh` разворачивает BOINC clients на узлах из `config/cluster.yml`:
+## Ручной запуск и отладка
 
-```bash
-./scripts/bootstrap_clients.sh
-```
+| Скрипт | Назначение |
+|---|---|
+| `bootstrap_server.sh` | Ручной запуск серверной части |
+| `bootstrap_clients.sh` | Ручной запуск клиентской части |
+| `server_up.sh` | Запуск Docker Compose сервера |
+| `create_account_db.sh` | Создание BOINC account в MariaDB |
+| `deploy_clients.sh` | Ручной запуск Ansible playbook для клиентов |
+| `deploy_monitoring_agents.sh` | Ручной запуск Ansible playbook для агентов мониторинга |
+| `monitoring_up.sh` | Ручной запуск мониторинга |
+| `monitoring_down.sh` | Остановка мониторинга |
+| `run_experiment.sh` | Ручная отправка задач |
+| `pump_clients.sh` | Принудительный опрос сервера клиентами |
+| `run_quick_benchmarks.sh` | Короткие benchmark-сценарии |
+| `alerts_up.sh` | Ручной запуск Telegram notifier |
+| `alerts_down.sh` | Остановка Telegram notifier |
 
-`run_experiment.sh` создаёт workunits и просит клиентов забрать задачи:
+Эти скрипты полезны для диагностики и повторных отдельных операций. Они не являются основным способом первого запуска.
 
-```bash
-./scripts/run_experiment.sh
-```
+## Подготовка
 
-После создания задач он запускает `pump_clients.sh`, чтобы клиенты автоматически забирали следующие порции работы.
+| Скрипт | Назначение |
+|---|---|
+| `install_server_requirements.sh` | Установка зависимостей на управляющей машине |
+| `copy_ssh_keys.sh` | Копирование SSH-ключей на клиентские узлы |
+| `init_config.sh` | Генерация `generated.env`, `inventory.ini` и `group_vars` |
+| `init_vault.sh` | Ручное создание Vault |
 
-`pump_clients.sh` можно запустить отдельно для уже созданного эксперимента:
+В обычном сценарии `prepare_system.sh` сам вызывает `init_config.sh`, проверяет Vault и при необходимости запускает `init_vault.sh`.
 
-```bash
-./scripts/pump_clients.sh --max-seconds 600 --interval-seconds 15
-```
+## Очистка
 
-`run_quick_benchmarks.sh` запускает короткие бенчмарки для подбора конфигурации вычислений:
+| Скрипт | Назначение |
+|---|---|
+| `clean_runtime.sh` | Очистка runtime-данных сервера и задач клиентов |
 
-```bash
-./scripts/run_quick_benchmarks.sh --yes --replicas 2
-```
-
-`apps/python_task_runner/run_task.sh` запускает пользовательские Python-задачи:
-
-```bash
-apps/python_task_runner/run_task.sh \
-  --task apps/python_task_runner/examples/sum_params/user_task.py \
-  --params apps/python_task_runner/examples/sum_params/params.jsonl
-```
-
-`monitoring_up.sh` запускает Prometheus/Grafana и клиентские агенты:
-
-```bash
-./scripts/monitoring_up.sh
-```
-
-`alerts_up.sh` запускает Telegram notifier:
-
-```bash
-./scripts/alerts_up.sh
-```
-
-`alerts_down.sh` останавливает Telegram notifier:
-
-```bash
-./scripts/alerts_down.sh
-```
-
-`status.sh` показывает состояние сервера, клиентов, задач и мониторинга:
-
-```bash
-./scripts/status.sh
-```
-
-`clean_runtime.sh` очищает runtime-состояние:
+Обычная очистка:
 
 ```bash
 ./scripts/clean_runtime.sh
 ```
 
-## Вспомогательные скрипты
+- очищает сервер;
+- очищает runtime-данные;
+- сбрасывает задачи на клиентах;
+- не удаляет BOINC client с клиентских узлов.
 
-- `init_config.sh` — генерирует `config/generated.env`, inventory и Ansible vars;
-- `init_vault.sh` — создаёт Vault и `ansible/.vault_pass`;
-- `server_up.sh` — запускает Docker Compose сервера;
-- `create_account_db.sh` — создаёт BOINC account в MariaDB;
-- `deploy_clients.sh` — запускает Ansible playbook клиентов;
-- `deploy_monitoring_agents.sh` — ставит node-exporter и cAdvisor на клиентов;
-- `monitoring_down.sh` — останавливает мониторинг;
-- `pump_clients.sh` — регулярно делает BOINC project update на клиентах;
-- `run_quick_benchmarks.sh` — собирает короткий отчёт по базовой и реплицированной конфигурации;
-- `alerts_up.sh` и `alerts_down.sh` — управляют Telegram notifier;
-- `copy_ssh_keys.sh` — помогает скопировать SSH-ключи на клиентов.
-
-## Vault
-
-Основной сценарий такой:
+Полная очистка:
 
 ```bash
-./scripts/init_vault.sh
+./scripts/clean_runtime.sh --purge-clients
 ```
 
-После этого скрипты автоматически используют `ansible/.vault_pass`. Ручной ввод Vault-пароля описан только в [диагностике](TROUBLESHOOTING.md), потому что это аварийный сценарий.
+- очищает сервер;
+- удаляет BOINC client с клиентских узлов.
+
+Очистить только задачи клиентов:
+
+```bash
+./scripts/clean_runtime.sh --clients-only
+```
+
+Очистить только серверную часть:
+
+```bash
+./scripts/clean_runtime.sh --server-only
+```
+
+Подробнее: [Cleanup](CLEANUP.md).
+
+## Vault-аргументы
+
+Если существует `ansible/.vault_pass`, Ansible-скрипты используют его автоматически. Обычно не нужно передавать `--vault-password-file ansible/.vault_pass`.
+
+Для нестандартных случаев поддерживаются:
+
+```bash
+--ask-vault-pass
+--vault-password-file FILE
+--ask-become-pass
+```

@@ -9,17 +9,39 @@ cp config/cluster.example.yml config/cluster.yml
 nano config/cluster.yml
 ```
 
-## Нет Vault-файлов
-
-Если отсутствует `ansible/.vault_pass` или `ansible/group_vars/all/vault.yml`, запусти:
+Потом запусти:
 
 ```bash
-./scripts/init_vault.sh
+./scripts/prepare_system.sh
 ```
 
-## Если удалён ansible/.vault_pass
+## `ansible ping` failed
 
-Основной сценарий — восстановить файл через известный Vault-пароль:
+Проверь, что IP-адреса и пользователи в `config/cluster.yml` указаны правильно.
+
+Можно попробовать автоматически скопировать SSH-ключи:
+
+```bash
+./scripts/prepare_system.sh --copy-ssh-keys
+```
+
+Или проверить вручную:
+
+```bash
+ssh USER@CLIENT_IP
+```
+
+## Vault file not found
+
+В обычном сценарии достаточно запустить:
+
+```bash
+./scripts/prepare_system.sh
+```
+
+Он создаст Vault, если его нет.
+
+Если удалён только `ansible/.vault_pass`, восстанови файл через известный Vault-пароль:
 
 ```bash
 nano ansible/.vault_pass
@@ -27,19 +49,29 @@ chmod 600 ansible/.vault_pass
 ansible-vault view ansible/group_vars/all/vault.yml --vault-password-file ansible/.vault_pass
 ```
 
-Аварийно можно один раз передать пароль вручную:
+Аварийный ручной ввод Vault-пароля:
 
 ```bash
 ./scripts/status.sh --ask-vault-pass
 ```
 
-Если sudo-пароль клиентов тоже приходится вводить вручную, Ansible поддерживает:
+## System is not prepared
+
+Если `launch_cluster.sh` сообщает, что система не подготовлена, сначала выполни:
 
 ```bash
-./scripts/bootstrap_clients.sh --ask-become-pass
+./scripts/prepare_system.sh
 ```
 
-Это не основной сценарий. Для обычной работы вернись к `./scripts/init_vault.sh`.
+## Docker требует sudo на управляющей машине
+
+Пользователь управляющей машины должен иметь доступ к Docker без постоянного sudo:
+
+```bash
+sudo usermod -aG docker "$USER"
+```
+
+После этого выйди из сессии и зайди снова.
 
 ## Ansible: `Host key verification failed`
 
@@ -50,52 +82,49 @@ ssh-keygen -R CLIENT_IP
 ssh USER@CLIENT_IP
 ```
 
-Затем повтори запуск.
-
-## Ansible не видит переменные проекта
-
-Проверь, что есть:
-
-```text
-config/generated.env
-ansible/inventory.ini
-ansible/group_vars/all/main.yml
-```
-
-Если файлов нет:
+Затем повтори:
 
 ```bash
-./scripts/init_config.sh
-./scripts/create_account_db.sh
-```
-
-## Docker требует sudo на управляющей машине
-
-Добавь пользователя в группу Docker и перелогинься:
-
-```bash
-sudo usermod -aG docker "$USER"
+./scripts/prepare_system.sh
 ```
 
 ## Клиенты подключены, но сервер не видит hosts
 
-Частая причина — сервер очищен, а на клиентах остались старые BOINC volume.
+Проверь статус:
+
+```bash
+./scripts/status.sh
+```
+
+Если серверный runtime очищался, а клиенты сохранили старое состояние проекта, обычная очистка сбросит задачи клиентов без удаления BOINC client:
 
 ```bash
 ./scripts/clean_runtime.sh
-./scripts/bootstrap_server.sh
-./scripts/bootstrap_clients.sh
+./scripts/prepare_system.sh
+./scripts/launch_cluster.sh
 ```
 
-## `bad WU template - no <workunit>`
+## Как полностью удалить BOINC client с узлов
 
-Проверь BOINC input template приложения. Для текущего примера:
+Обычная очистка не удаляет BOINC client.
+
+Для полного удаления используй:
+
+```bash
+./scripts/clean_runtime.sh --purge-clients
+```
+
+## `bad WU template - no <file_info>`
+
+Проверь input template приложения.
+
+Для текущего примера:
 
 ```text
 apps/ml_grid_search/templates/ml_grid_search_in
 ```
 
-В файле должен быть блок `<workunit>...</workunit>`.
+В template должен быть корректный блок `<file_info>` и блок `<workunit>`.
 
 ## `workunits=0`, `results=0`
 
@@ -103,6 +132,12 @@ apps/ml_grid_search/templates/ml_grid_search_in
 
 ```bash
 ./scripts/run_experiment.sh
+```
+
+Или запусти кластер с отправкой эксперимента:
+
+```bash
+./scripts/launch_cluster.sh --run-experiment
 ```
 
 ## Задачи созданы, но клиенты их не забирают
@@ -113,7 +148,29 @@ apps/ml_grid_search/templates/ml_grid_search_in
 ./scripts/status.sh
 ```
 
-Потом проверь, что клиенты видят проект и контейнер `boinc-client` запущен.
+Если клиенты уже развёрнуты, не нужно повторно запускать весь кластер ради получения следующей порции задач. Запусти auto-update:
+
+```bash
+./scripts/pump_clients.sh --max-seconds 600 --interval-seconds 15
+```
+
+`run_experiment.sh` запускает этот helper автоматически после создания workunits.
+
+## BOINC-клиент показывает `suspended`
+
+Обычно это локальные preferences BOINC: клиент приостанавливает задачи из-за фоновой CPU-нагрузки.
+
+Переразверни клиентскую часть:
+
+```bash
+./scripts/bootstrap_clients.sh
+```
+
+После этого проверь:
+
+```bash
+./scripts/status.sh
+```
 
 ## Grafana открывается, но графики пустые
 
@@ -137,49 +194,12 @@ curl -s http://SERVER_IP:9101/metrics | grep boinc_
 curl -s http://SERVER_IP:9090/api/v1/targets | grep -E '"health":"up"|lastError'
 ```
 
-Проверь anonymous-доступ Grafana внутри контейнера:
-
-```bash
-docker exec boinc-grafana env | grep GF_AUTH
-```
-
 Если Prometheus не видит клиентов, перезапусти мониторинг:
 
 ```bash
+./scripts/monitoring_down.sh --with-client-agents
 ./scripts/monitoring_up.sh
 ```
-
-Если в логах Grafana остаётся `user token not found`, пересоздай контейнеры мониторинга:
-
-```bash
-./scripts/monitoring_down.sh
-./scripts/monitoring_up.sh
-```
-
-## BOINC-клиент показывает `suspended`
-
-Обычно это локальные preferences BOINC: клиент приостанавливает задачи из-за фоновой CPU-нагрузки. Переразверни клиентов, чтобы применить override:
-
-```bash
-./scripts/bootstrap_clients.sh
-```
-
-После этого проверь, что задачи больше не в `suspended`:
-
-```bash
-./scripts/status.sh
-```
-
-## Задачи выполняются только после повторного `bootstrap_clients.sh`
-
-Не нужно повторно разворачивать клиентов ради получения следующей порции задач. Запусти авто-update:
-
-```bash
-./scripts/pump_clients.sh --max-seconds 600 --interval-seconds 15
-```
-
-`run_experiment.sh` запускает этот helper автоматически после создания workunits.
-Если `active_hosts=0` держится несколько циклов, helper сам напечатает диагностику app_version, scheduler/feeder logs и последние сообщения клиентов.
 
 ## Ошибки results растут
 

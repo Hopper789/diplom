@@ -2,11 +2,17 @@
 
 Бенчмарки нужны, чтобы понять сильные и слабые стороны кластера. Один тест может хорошо масштабироваться по CPU, другой покажет накладные расходы BOINC scheduler, третий упрётся в память, диск или сеть.
 
-Перед запуском любого benchmark:
+Перед запуском бенчмарков кластер должен быть подготовлен и запущен:
 
 ```bash
-./scripts/init_vault.sh
 ./scripts/quickstart.sh --with-monitoring
+```
+
+или:
+
+```bash
+./scripts/prepare_system.sh
+./scripts/launch_cluster.sh --with-monitoring
 ```
 
 Проверка прогресса:
@@ -59,7 +65,7 @@ reports/quick_benchmarks/YYYYMMDD_HHMMSS/
 - `summary.md` — короткий человекочитаемый вывод;
 - `summary.csv` — таблица для сравнения сценариев;
 - `network_probe.json` — ping и пробная SSH-пропускная способность;
-- `<scenario>/metrics.json` — подробные метрики сценария.
+- `reports/quick_benchmarks/<timestamp>/<scenario>/metrics.json` — подробные метрики сценария.
 
 Как читать результат:
 
@@ -262,7 +268,8 @@ DISTRIBUTED_MIN_QUORUM=2
 
 ```bash
 ./scripts/clean_runtime.sh
-./scripts/quickstart.sh --with-monitoring
+./scripts/prepare_system.sh
+./scripts/launch_cluster.sh --with-monitoring
 ```
 
 Метрики:

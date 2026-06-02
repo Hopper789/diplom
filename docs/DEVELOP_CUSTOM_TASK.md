@@ -60,13 +60,17 @@ python3 apps/python_task_runner/runner.py \
   --output /tmp/output.json
 ```
 
-Запуск через BOINC:
+Основной способ проверить пользовательскую задачу через BOINC:
 
 ```bash
+./scripts/quickstart.sh
+
 apps/python_task_runner/run_task.sh \
   --task apps/python_task_runner/examples/sum_params/user_task.py \
   --params apps/python_task_runner/examples/sum_params/params.jsonl
 ```
+
+Если кластер уже подготовлен и запущен, достаточно повторять только `apps/python_task_runner/run_task.sh`.
 
 ## C++
 

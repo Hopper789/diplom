@@ -12,14 +12,22 @@
 
 ## Запуск
 
+Основная команда:
+
 ```bash
-./scripts/monitoring_up.sh
+./scripts/quickstart.sh --with-monitoring
 ```
 
-В полном quickstart:
+Раздельная команда:
 
 ```bash
-./scripts/quickstart.sh --with-monitoring --run-experiment
+./scripts/launch_cluster.sh --with-monitoring
+```
+
+Ручная команда для отладки:
+
+```bash
+./scripts/monitoring_up.sh
 ```
 
 Адреса:
@@ -53,35 +61,12 @@ admin / admin
 | `boinc_p95_success_turnaround_seconds` | p95 времени возврата результата |
 | `boinc_avg_compute_time_per_workunit_seconds` | среднее вычислительное время |
 | `boinc_avg_overhead_time_per_workunit_seconds` | средние накладные расходы |
-| `boinc_config_replication_factor` | настроенная репликация |
-| `boinc_config_min_quorum` | настроенный quorum |
-
-## Метрики для сравнения экспериментов
-
-Эти панели добавлены отдельным блоком `Итоговые метрики эксперимента` в Grafana:
-
-| Панель | Метрика или запрос |
-|---|---|
-| Общее время эксперимента | `boinc_experiment_total_seconds` |
-| Пропускная способность, задач/с | `boinc_experiment_throughput_workunits_per_second` |
-| Ошибки, % | `boinc_results_error_percent` |
-| Средняя загрузка CPU, % | среднее по `node_cpu_seconds_total` клиентов |
-| Среднее использование RAM, % | среднее по `node_memory_MemAvailable_bytes` и `node_memory_MemTotal_bytes` клиентов |
-| Накладные расходы на задачу | `boinc_avg_overhead_time_per_workunit_seconds` |
-| Фактический коэффициент репликации | `boinc_actual_results_per_workunit` |
 
 ## Быстрая проверка
 
 ```bash
 curl -s http://SERVER_IP:9101/metrics | grep boinc_
 ```
-
-## Как читать графики
-
-- CPU клиентов высокий, очередь уменьшается — кластер считает.
-- CPU низкий, очередь большая — клиенты не получают задачи или ждут сервер.
-- Ошибки растут — проблема в приложении, входных данных или окружении.
-- Накладные расходы велики — задачи слишком короткие или слишком много файлового обмена.
 
 ## Остановка
 
@@ -95,7 +80,15 @@ curl -s http://SERVER_IP:9101/metrics | grep boinc_
 ./scripts/monitoring_down.sh --with-client-agents
 ```
 
+Очистка server runtime и monitoring stack:
+
+```bash
+./scripts/clean_runtime.sh
+```
+
 ## Telegram alerts
+
+Telegram alerts не запускаются автоматически через обычный quickstart.
 
 Если нужно получить сообщение о завершении эксперимента:
 

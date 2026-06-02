@@ -1,10 +1,8 @@
 # Что это такое
 
-Проект помогает развернуть небольшой BOINC-кластер и запустить на нём первые вычисления без ручной настройки каждого узла.
+Проект разворачивает BOINC-кластер в локальной сети.
 
-## Идея простыми словами
-
-Обычная программа обычно работает на одной машине. BOINC нужен, когда работу можно разбить на много независимых частей и раздать их нескольким компьютерам.
+BOINC нужен, когда работу можно разбить на много независимых частей и раздать нескольким компьютерам.
 
 Основные термины:
 
@@ -15,25 +13,25 @@
 - **result** — попытка выполнить workunit на конкретном клиенте;
 - **project** — BOINC-проект, к которому подключаются клиенты.
 
-## Что делает репозиторий
-
-1. Читает `config/cluster.yml`.
-2. Поднимает BOINC server и MariaDB в Docker.
-3. Создаёт BOINC account для клиентов.
-4. Разворачивает Docker-клиенты на удалённых узлах через Ansible.
-5. Создаёт workunits для эксперимента.
-6. Просит клиентов забрать задачи.
-7. Показывает статус и метрики.
-
-## Главный сценарий
+## Основной запуск
 
 ```bash
-cp config/cluster.example.yml config/cluster.yml
-nano config/cluster.yml
-
-./scripts/init_vault.sh
-./scripts/quickstart.sh --with-monitoring --run-experiment
-./scripts/status.sh
+./scripts/quickstart.sh
 ```
 
-После `init_vault` все основные скрипты автоматически используют `ansible/.vault_pass`.
+Для мониторинга и тестового эксперимента:
+
+```bash
+./scripts/quickstart.sh --with-monitoring --run-experiment
+```
+
+## Ручной контроль этапов
+
+```bash
+./scripts/prepare_system.sh
+./scripts/launch_cluster.sh
+```
+
+`prepare_system.sh` готовит управляющую машину, Vault, SSH, inventory и клиентские узлы.
+
+`launch_cluster.sh` запускает BOINC server, BOINC clients, мониторинг и задачи.

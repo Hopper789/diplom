@@ -19,6 +19,30 @@
   cAdvisor
 ```
 
+## Жизненный цикл запуска
+
+```text
+quickstart.sh
+ ├── prepare_system.sh
+ │   ├── init_config.sh
+ │   ├── init_vault.sh, если Vault отсутствует
+ │   ├── проверка SSH
+ │   └── ansible/prepare_nodes.yml
+ │
+ └── launch_cluster.sh
+     ├── bootstrap_server.sh
+     ├── bootstrap_clients.sh
+     ├── monitoring_up.sh, если указан --with-monitoring
+     ├── run_experiment.sh, если указан --run-experiment
+     └── status.sh
+```
+
+`prepare_system.sh` отвечает за готовность машин.
+
+`launch_cluster.sh` отвечает за запуск BOINC-сервера, клиентов, мониторинга и задач.
+
+`quickstart.sh` объединяет оба этапа.
+
 ## Сервер
 
 Серверная часть находится в `server/` и запускается через Docker Compose:
@@ -34,9 +58,11 @@ http://SERVER_IP:8080/PROJECT_NAME/
 
 ## Клиенты
 
-Клиентские узлы описаны в `config/cluster.yml`. Ansible подключается к ним по SSH, устанавливает Docker и запускает контейнер `boinc-client`.
+Клиентские узлы описаны в `config/cluster.yml`.
 
-Клиент подключается к BOINC-проекту через account key, который создаёт `./scripts/create_account_db.sh`.
+`ansible/prepare_nodes.yml` готовит узлы: проверяет Debian/Ubuntu, устанавливает Docker, Python, curl и запускает Docker.
+
+`ansible/install_boinc_clients.yml` запускает контейнер `boinc-client` и подключает его к BOINC-проекту через account key, который создаёт `./scripts/create_account_db.sh`.
 
 ## Workunit и result
 
@@ -69,8 +95,10 @@ server/project/
 server/mysql-data/
 ```
 
-Полная очистка:
+Обычная очистка:
 
 ```bash
 ./scripts/clean_runtime.sh
 ```
+
+Она очищает server runtime и сбрасывает задачи клиентов, но не удаляет BOINC client с клиентских узлов.

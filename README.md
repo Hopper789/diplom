@@ -12,88 +12,85 @@ BOINC можно представить так: сервер хранит зад
 - запускает пример `ml_grid_search`;
 - запускает пользовательские Python-задачи через `apps/python_task_runner`;
 - собирает метрики BOINC и нагрузки клиентов в Prometheus/Grafana;
-- отправляет базовое Telegram-уведомление о завершении эксперимента.
+- позволяет вручную включить Telegram-уведомление о завершении эксперимента.
 
 ## Архитектура в 5 строк
 
 1. Управляющая машина запускает `boinc-server` и `boinc-mysql`.
 2. `config/cluster.yml` описывает сервер, клиентов и BOINC-проект.
-3. Ansible по SSH ставит Docker на клиентские узлы.
+3. Ansible по SSH готовит клиентские узлы.
 4. Клиентский контейнер `boinc-client` подключается к проекту.
 5. Workunit создаётся на сервере, result выполняется клиентом и возвращается обратно.
 
 ## Самый быстрый запуск
 
 ```bash
+git clone https://github.com/Hopper789/diplom.git
+cd diplom
+
 cp config/cluster.example.yml config/cluster.yml
 nano config/cluster.yml
 
-./scripts/init_vault.sh
 ./scripts/quickstart.sh --with-monitoring --run-experiment
-./scripts/status.sh
 ```
 
-Если нужны Telegram-уведомления о завершении эксперимента, перед запуском alerts создай локальный файл с токеном бота:
+`quickstart.sh` выполняет полный сценарий:
+
+1. подготавливает конфигурацию;
+2. проверяет зависимости;
+3. создаёт Vault при первом запуске;
+4. проверяет SSH-доступ к клиентским узлам;
+5. подготавливает узлы;
+6. запускает BOINC server;
+7. запускает BOINC clients;
+8. при необходимости запускает мониторинг;
+9. при необходимости отправляет тестовые задачи;
+10. показывает статус системы.
+
+## Раздельный запуск
 
 ```bash
-cp config/alerts.example.env config/alerts.env
-nano config/alerts.env
-./scripts/alerts_up.sh
+./scripts/prepare_system.sh
+./scripts/launch_cluster.sh --with-monitoring --run-experiment
 ```
 
-`./scripts/init_vault.sh` создаёт:
+Раздельный запуск нужен, если требуется отдельно проверить подготовку системы и отдельно запуск BOINC-кластера.
 
-- `ansible/group_vars/all/vault.yml` — зашифрованный sudo-пароль клиентов;
-- `ansible/.vault_pass` — пароль от Vault, чтобы скрипты могли читать Vault автоматически.
-
-`ansible/.vault_pass` не коммитится. После `init_vault` скрипты сами используют `--vault-password-file ansible/.vault_pass`.
-
-## Пошаговый запуск
+## Повторный запуск
 
 ```bash
-./scripts/init_vault.sh
-./scripts/bootstrap_server.sh
-./scripts/bootstrap_clients.sh
-./scripts/monitoring_up.sh
-./scripts/run_experiment.sh
-./scripts/status.sh
+./scripts/launch_cluster.sh --with-monitoring
 ```
 
-## Запуск мониторинга
+Если система уже подготовлена, повторно выполнять prepare не обязательно.
 
-```bash
-./scripts/monitoring_up.sh
-```
+## Интерфейсы
 
-Grafana доступна по адресу:
+BOINC server:
 
 ```text
-http://SERVER_IP:3000
+http://SERVER_IP:8080/PROJECT_NAME/
+```
+
+Grafana:
+
+```text
+http://SERVER_IP:3000/
 ```
 
 Dashboard можно смотреть без логина. Для администрирования доступен вход `admin / admin`.
 
-## Telegram-уведомления
+## Ручные инструменты
 
-После запуска мониторинга:
+Отдельные скрипты вроде `init_vault.sh`, `bootstrap_server.sh`, `bootstrap_clients.sh`, `monitoring_up.sh` и `run_experiment.sh` остаются ручными инструментами диагностики и отладки. Основной путь запуска описан выше.
+
+Telegram alerts не запускаются автоматически через обычный quickstart. Их можно включить вручную:
 
 ```bash
 cp config/alerts.example.env config/alerts.env
 nano config/alerts.env
 ./scripts/alerts_up.sh
 ```
-
-В `config/alerts.env` нужно указать `TELEGRAM_BOT_TOKEN` и `TELEGRAM_CHAT_ID`. Файл содержит секреты и не коммитится.
-
-## Запуск своего Python task
-
-```bash
-apps/python_task_runner/run_task.sh \
-  --task apps/python_task_runner/examples/sum_params/user_task.py \
-  --params apps/python_task_runner/examples/sum_params/params.jsonl
-```
-
-`user_task.py` должен содержать функцию `run(params)`. Каждая строка `params.jsonl` становится отдельной BOINC workunit.
 
 ## Быстрые бенчмарки
 
@@ -110,12 +107,14 @@ apps/python_task_runner/run_task.sh \
 
 - [Что это такое](docs/WHAT_IS_THIS.md)
 - [Быстрый запуск](docs/QUICK_START.md)
+- [Развёртывание](docs/DEPLOYMENT.md)
 - [Конфигурация](docs/CONFIGURATION.md)
 - [Ansible Vault и sudo-пароль клиентов](docs/VAULT.md)
 - [Архитектура](docs/ARCHITECTURE.md)
 - [Эксперименты](docs/EXPERIMENTS.md)
 - [Мониторинг и метрики](docs/MONITORING.md)
 - [Скрипты](docs/SCRIPTS.md)
+- [Очистка](docs/CLEANUP.md)
 - [Диагностика](docs/TROUBLESHOOTING.md)
 - [Разработка пользовательских задач](docs/DEVELOP_CUSTOM_TASK.md)
 - [Telegram alerts](docs/ALERTS.md)

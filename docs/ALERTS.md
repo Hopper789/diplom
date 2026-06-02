@@ -4,6 +4,8 @@ Telegram notifier сообщает, когда BOINC-эксперимент за
 
 В текущей версии поддерживается одно уведомление: все workunits завершены, незавершённых results нет.
 
+Telegram alerts не запускаются автоматически через обычный quickstart.
+
 ## Создать бота
 
 1. Открой Telegram и найди `@BotFather`.
@@ -36,10 +38,16 @@ ALERT_STATE_FILE=/state/alerts_state.json
 Сначала должен работать мониторинг:
 
 ```bash
-./scripts/monitoring_up.sh
+./scripts/quickstart.sh --with-monitoring
 ```
 
-Затем:
+Или, если кластер уже подготовлен:
+
+```bash
+./scripts/launch_cluster.sh --with-monitoring
+```
+
+Затем включи notifier вручную:
 
 ```bash
 ./scripts/alerts_up.sh

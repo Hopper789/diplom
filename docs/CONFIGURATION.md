@@ -12,16 +12,22 @@ config/distributed.env   # правила выдачи и репликации w
 config/alerts.env        # Telegram notifier
 ```
 
-## config/cluster.yml
+## `config/cluster.yml`
 
-Создаётся так:
+Основной файл конфигурации:
+
+```text
+config/cluster.yml
+```
+
+Создаётся из примера:
 
 ```bash
 cp config/cluster.example.yml config/cluster.yml
 nano config/cluster.yml
 ```
 
-Пример структуры:
+Минимально пользователь должен проверить адрес сервера, адреса клиентов и SSH-пользователей:
 
 ```yaml
 project:
@@ -34,22 +40,33 @@ server:
 clients:
   - name: node1
     ip: 192.168.1.11
-    user: ubuntu
+    user: user
+  - name: node2
+    ip: 192.168.1.12
+    user: user
 
 boinc:
   client_rpc_password: auto
-
-account:
-  email: nodes@local.test
-  name: nodes
-  password: manual
 ```
 
-`server.ip` должен быть доступен клиентам. `clients[].user` должен подключаться по SSH и иметь sudo-доступ.
+`server.ip` должен быть доступен клиентам. `clients[].user` должен подключаться по SSH и иметь sudo-доступ. Для клиентских узлов также поддерживаются поля `host`, `hostname`, `ansible_host`, `username` и `ansible_user`.
+
+## BOINC RPC password
+
+Правильный вариант для новых конфигураций:
+
+```yaml
+boinc:
+  client_rpc_password: auto
+```
+
+Если указано `auto`, пароль для RPC-доступа BOINC client будет сгенерирован автоматически во время `prepare_system.sh` / `init_config.sh`.
+
+Для совместимости также поддерживается старый ключ `boinc.rpc_password`, но в новых конфигурациях следует использовать `boinc.client_rpc_password`.
 
 ## Сгенерированные файлы
 
-`./scripts/init_config.sh` создаёт:
+`prepare_system.sh` вызывает `init_config.sh` и создаёт:
 
 ```text
 config/generated.env
@@ -60,7 +77,7 @@ monitoring/.env
 
 Эти файлы можно пересоздавать. Они описывают текущее runtime-состояние и не должны попадать в Git.
 
-## config/experiment.env
+## `config/experiment.env`
 
 Если файла нет, скрипты используют значения из `config/experiment.example.env` или создают локальную копию.
 
@@ -86,7 +103,7 @@ TASK_SEED_BASE=1000
 EXPERIMENT_WALL_SECONDS * EXPERIMENT_CORES / TASK_SECONDS
 ```
 
-## config/distributed.env
+## `config/distributed.env`
 
 Этот файл отвечает не за содержимое задачи, а за правила BOINC:
 
@@ -105,33 +122,15 @@ DISTRIBUTED_MAX_ERROR_RESULTS=3
 DISTRIBUTED_MAX_TOTAL_RESULTS=3
 ```
 
-Смысл параметров:
-
-- `DISTRIBUTED_TARGET_NRESULTS` — сколько result-записей сервер создаёт на workunit;
-- `DISTRIBUTED_MIN_QUORUM` — сколько совпадающих успешных результатов нужно для подтверждения;
-- `DISTRIBUTED_MAX_SUCCESS_RESULTS` — максимум успешных результатов;
-- `DISTRIBUTED_MAX_ERROR_RESULTS` — допустимое число ошибочных попыток;
-- `DISTRIBUTED_MAX_TOTAL_RESULTS` — общий предел попыток.
-
 Для учебного первого запуска оставь значения по умолчанию.
 
-## config/alerts.env
+## `config/alerts.env`
 
 Этот файл нужен только для Telegram-уведомлений. Создаётся из примера:
 
 ```bash
 cp config/alerts.example.env config/alerts.env
 nano config/alerts.env
-```
-
-Основные параметры:
-
-```env
-TELEGRAM_BOT_TOKEN=
-TELEGRAM_CHAT_ID=
-ALERT_POLL_INTERVAL_SECONDS=30
-BOINC_EXPORTER_URL=http://boinc-exporter:9101/metrics
-ALERT_STATE_FILE=/state/alerts_state.json
 ```
 
 `config/alerts.env` содержит секреты и не должен попадать в Git. Запуск notifier:

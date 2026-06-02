@@ -2,7 +2,7 @@
 
 Эксперимент в этом репозитории — это набор независимых задач, которые BOINC раздаёт клиентам.
 
-## Текущий пример: ml_grid_search
+## Текущий пример: `ml_grid_search`
 
 Приложение находится в:
 
@@ -11,6 +11,41 @@ apps/ml_grid_search/
 ```
 
 Оно создаёт много workunits для перебора параметров. Каждая задача получает входные параметры, считает синтетическую работу и возвращает результат.
+
+## Запуск эксперимента
+
+Основной запуск:
+
+```bash
+./scripts/quickstart.sh --run-experiment
+```
+
+С мониторингом:
+
+```bash
+./scripts/quickstart.sh --with-monitoring --run-experiment
+```
+
+Раздельный запуск:
+
+```bash
+./scripts/prepare_system.sh
+./scripts/launch_cluster.sh --run-experiment
+```
+
+Если кластер уже подготовлен:
+
+```bash
+./scripts/launch_cluster.sh --run-experiment
+```
+
+Ручной запуск:
+
+```bash
+./scripts/run_experiment.sh
+```
+
+`run_experiment.sh` нужен для повторной отправки задач без повторного запуска всего кластера.
 
 ## Пользовательские Python-задачи
 
@@ -29,27 +64,6 @@ apps/python_task_runner/run_task.sh \
 ```
 
 Подробнее: [Разработка пользовательских задач](DEVELOP_CUSTOM_TASK.md).
-
-## Запуск
-
-Сначала должны быть подняты сервер и клиенты:
-
-```bash
-./scripts/bootstrap_server.sh
-./scripts/bootstrap_clients.sh
-```
-
-Затем:
-
-```bash
-./scripts/run_experiment.sh
-```
-
-Или одной командой с первого запуска:
-
-```bash
-./scripts/quickstart.sh --with-monitoring --run-experiment
-```
 
 ## Размер эксперимента
 

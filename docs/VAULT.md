@@ -1,10 +1,40 @@
 # Ansible Vault
 
+Vault используется для хранения паролей и секретных значений Ansible.
+
 Ansible выполняет часть команд на клиентах через `sudo`: устанавливает Docker, создаёт каталоги и запускает контейнеры. Если sudo требует пароль, его нельзя хранить открытым текстом.
 
-Для этого используется Ansible Vault.
+## Обычный сценарий
 
-## Основной сценарий
+При обычном запуске вручную создавать Vault не нужно:
+
+```bash
+./scripts/quickstart.sh
+```
+
+или:
+
+```bash
+./scripts/prepare_system.sh
+```
+
+Если `ansible/group_vars/all/vault.yml` и `ansible/.vault_pass` отсутствуют, `prepare_system.sh` создаст их через `init_vault.sh`.
+
+## Путь по умолчанию
+
+```text
+ansible/.vault_pass
+```
+
+Это стандартный файл пароля Vault. Если он существует, скрипты автоматически используют его. Поэтому при повторном запуске не нужно писать:
+
+```bash
+--vault-password-file ansible/.vault_pass
+```
+
+## Ручной режим
+
+Ручное создание Vault:
 
 ```bash
 ./scripts/init_vault.sh
@@ -17,25 +47,19 @@ ansible/group_vars/all/vault.yml   # sudo-пароль клиентов, заш�
 ansible/.vault_pass                # пароль от Vault
 ```
 
-`ansible/.vault_pass` нужен, чтобы остальные скрипты могли читать Vault без ручного ввода пароля. Этот файл не коммитится.
-
-После этого запускай команды обычно:
+Нестандартные режимы:
 
 ```bash
-./scripts/bootstrap_clients.sh
-./scripts/run_experiment.sh
-./scripts/status.sh
+--ask-vault-pass
+--vault-password-file FILE
 ```
 
-## Посмотреть Vault
+Эти ключи нужны только для нестандартных случаев. В обычном сценарии используется `ansible/.vault_pass`.
+
+## Посмотреть или изменить Vault
 
 ```bash
 ansible-vault view ansible/group_vars/all/vault.yml --vault-password-file ansible/.vault_pass
-```
-
-## Изменить sudo-пароль клиентов
-
-```bash
 ansible-vault edit ansible/group_vars/all/vault.yml --vault-password-file ansible/.vault_pass
 ```
 
