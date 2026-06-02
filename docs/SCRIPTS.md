@@ -38,6 +38,7 @@
 | `monitoring_down.sh` | Остановка мониторинга |
 | `run_experiment.sh` | Ручная отправка задач |
 | `pump_clients.sh` | Принудительный опрос сервера клиентами |
+| `dump_grafana_results.sh` | Dump Grafana-панелей и итоговых метрик после завершения вычислений |
 | `run_quick_benchmarks.sh` | Короткие benchmark-сценарии |
 | `alerts_up.sh` | Ручной запуск Telegram notifier |
 | `alerts_down.sh` | Остановка Telegram notifier |
@@ -45,6 +46,14 @@
 Эти скрипты полезны для диагностики и повторных отдельных операций. Они не являются основным способом первого запуска.
 
 `monitoring_up.sh` запускает Prometheus/Grafana, Loki/Promtail и клиентские monitoring agents.
+
+`dump_grafana_results.sh` можно запустить вручную после завершения задач:
+
+```bash
+./scripts/dump_grafana_results.sh --wait --max-seconds 600
+```
+
+Отчёт сохраняется в `reports/grafana_dumps/<timestamp>/`.
 
 ## Подготовка
 

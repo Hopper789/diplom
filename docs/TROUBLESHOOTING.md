@@ -224,6 +224,28 @@ curl -s http://SERVER_IP:3100/ready
 ./scripts/monitoring_up.sh
 ```
 
+## Dump Grafana не создался после эксперимента
+
+Dump создаётся только если:
+
+- запущен мониторинг;
+- `boinc-grafana`, `boinc-grafana-renderer` и Prometheus доступны;
+- все текущие BOINC results завершены.
+
+Проверь:
+
+```bash
+docker ps --filter name=boinc-grafana
+docker ps --filter name=boinc-grafana-renderer
+./scripts/status.sh
+```
+
+Ручной повтор:
+
+```bash
+./scripts/dump_grafana_results.sh --wait --max-seconds 600
+```
+
 ## Ошибки results растут
 
 Смотри логи серверного контейнера и последние results:

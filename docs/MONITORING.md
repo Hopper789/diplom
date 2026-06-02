@@ -9,6 +9,7 @@
 - Loki — хранит логи контейнеров;
 - Promtail — собирает Docker logs на управляющей машине и клиентах;
 - Grafana — показывает dashboard;
+- Grafana image renderer — сохраняет панели dashboard в PNG;
 - node-exporter на клиентах — CPU, RAM, load average, сеть, диск;
 - cAdvisor на клиентах — нагрузка Docker-контейнеров.
 
@@ -99,6 +100,36 @@ http://SERVER_IP:3000/d/boinc-errors/boinc-errors
 ```
 
 Подробнее: [Error handling](ERROR_HANDLING.md).
+
+## Dump графиков и итоговых метрик
+
+После завершения всех вычислений `run_experiment.sh` пытается автоматически сохранить:
+
+- PNG всех панелей Grafana dashboards;
+- `final_metrics.md` с итоговыми метриками из нижнего блока `BOINC Cluster`;
+- `final_metrics.json` с сырыми ответами Prometheus;
+- копии dashboard JSON.
+
+Путь:
+
+```text
+reports/grafana_dumps/<timestamp>/
+```
+
+Ручной запуск:
+
+```bash
+./scripts/dump_grafana_results.sh --wait --max-seconds 600
+```
+
+Полезные переменные:
+
+```bash
+BOINC_AUTO_DUMP_RESULTS=0      # отключить автоматический dump в run_experiment.sh
+BOINC_DUMP_WAIT_SECONDS=600    # сколько ждать завершения перед dump; по умолчанию как BOINC_AUTO_UPDATE_SECONDS
+GRAFANA_DUMP_FROM=now-6h       # диапазон рендера графиков
+GRAFANA_DUMP_TO=now
+```
 
 ## Остановка
 

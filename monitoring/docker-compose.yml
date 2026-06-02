@@ -70,6 +70,8 @@ services:
       GF_AUTH_DISABLE_LOGIN_FORM: "false"
       GF_SERVER_HTTP_ADDR: "0.0.0.0"
       GF_SERVER_ROOT_URL: "http://${SERVER_IP:-localhost}:3000"
+      GF_RENDERING_SERVER_URL: "http://grafana-renderer:8081/render"
+      GF_RENDERING_CALLBACK_URL: "http://grafana:3000/"
       GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:
       - grafana-data:/var/lib/grafana
@@ -82,6 +84,16 @@ services:
     depends_on:
       - prometheus
       - loki
+      - grafana-renderer
+    restart: unless-stopped
+
+  grafana-renderer:
+    image: grafana/grafana-image-renderer:3.11.6
+    container_name: boinc-grafana-renderer
+    environment:
+      ENABLE_METRICS: "true"
+    networks:
+      - monitoring
     restart: unless-stopped
 
   cadvisor:

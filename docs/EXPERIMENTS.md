@@ -47,6 +47,18 @@ apps/ml_grid_search/
 
 `run_experiment.sh` нужен для повторной отправки задач без повторного запуска всего кластера.
 
+Если мониторинг запущен, после завершения всех вычислений `run_experiment.sh` сохраняет dump графиков Grafana и итоговых метрик:
+
+```text
+reports/grafana_dumps/<timestamp>/
+```
+
+Ручной dump:
+
+```bash
+./scripts/dump_grafana_results.sh --wait --max-seconds 600
+```
+
 ## Пользовательские Python-задачи
 
 Для независимых задач можно использовать:

@@ -160,6 +160,12 @@ else
   echo "Loki is not running."
 fi
 
+if docker ps --format '{{.Names}}' | grep -qx 'boinc-grafana-renderer'; then
+  echo "Renderer:   boinc-grafana-renderer is running"
+else
+  echo "Grafana renderer is not running."
+fi
+
 if command -v curl >/dev/null 2>&1; then
   echo
   echo "== Monitoring data checks =="
@@ -271,5 +277,6 @@ for target in payload.get("data", {}).get("activeTargets", []):
     else
       echo "Grafana container -> Loki: failed"
     fi
+
   fi
 fi

@@ -193,6 +193,7 @@ echo "  Prometheus: http://$SERVER_IP:9090"
 echo "  Grafana:    http://$SERVER_IP:3000"
 echo "  Exporter:   http://$SERVER_IP:9101/metrics"
 echo "  Loki:       http://$SERVER_IP:3100"
+echo "  Renderer:   boinc-grafana-renderer"
 echo
 echo "Client agent endpoints are scraped from ansible/inventory.ini:"
 echo "  node-exporter: http://CLIENT_IP:9100/metrics"

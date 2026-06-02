@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 AUTO_UPDATE_SECONDS="${BOINC_AUTO_UPDATE_SECONDS:-600}"
 AUTO_UPDATE_INTERVAL_SECONDS="${BOINC_AUTO_UPDATE_INTERVAL_SECONDS:-15}"
+AUTO_DUMP_RESULTS="${BOINC_AUTO_DUMP_RESULTS:-1}"
 
 # shellcheck source=scripts/lib/ansible_args.sh
 source "$ROOT_DIR/scripts/lib/ansible_args.sh"
@@ -77,6 +78,26 @@ echo "Auto-updating BOINC clients so they keep fetching work..."
   --max-seconds "$AUTO_UPDATE_SECONDS" \
   --interval-seconds "$AUTO_UPDATE_INTERVAL_SECONDS" \
   "${ANSIBLE_ARGS[@]}"
+
+echo
+if [[ "$AUTO_DUMP_RESULTS" == "1" ]]; then
+  if docker ps --format '{{.Names}}' | grep -qx 'boinc-grafana'; then
+    echo "Dumping Grafana panels and final metrics if computations are complete..."
+    if ./scripts/dump_grafana_results.sh \
+      --wait \
+      --max-seconds "${BOINC_DUMP_WAIT_SECONDS:-$AUTO_UPDATE_SECONDS}" \
+      --interval-seconds "${BOINC_DUMP_INTERVAL_SECONDS:-15}"; then
+      echo "Grafana dump saved."
+    else
+      echo "WARNING: Grafana dump was skipped or failed. Check computations and monitoring, then run:"
+      echo "  ./scripts/dump_grafana_results.sh --wait --max-seconds 600"
+    fi
+  else
+    echo "Skipping Grafana dump: boinc-grafana is not running."
+    echo "Start monitoring to enable graph dumps:"
+    echo "  ./scripts/launch_cluster.sh --with-monitoring"
+  fi
+fi
 
 echo
 echo "Experiment submitted."
