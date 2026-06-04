@@ -16,8 +16,6 @@ sudo apt install -y \
   bash \
   python3 \
   python3-pip \
-  python3-numpy \
-  python3-numba \
   python3-yaml \
   ansible \
   openssh-client \
@@ -33,7 +31,32 @@ sudo apt install -y \
   docker.io \
   docker-compose-v2
 
-pip install pyyaml
+echo
+echo "Installing Python compute packages..."
+if ! python3 - <<'PY' >/dev/null 2>&1
+import numpy
+import numba
+PY
+then
+  if ! sudo apt install -y python3-numpy python3-numba; then
+    python3 -m pip install \
+      --break-system-packages \
+      --user \
+      numpy \
+      numba
+  fi
+fi
+
+python3 - <<'PY'
+import numpy
+import numba
+import yaml
+
+print(f"OK: numpy -> {numpy.__version__}")
+print(f"OK: numba -> {numba.__version__}")
+print(f"OK: yaml -> {yaml.__version__}")
+PY
+
 echo
 echo "Checking installed tools..."
 

@@ -24,8 +24,6 @@ then
   echo "ERROR: PyYAML is required"
   echo "Install it with:"
   echo "  sudo apt install -y python3-yaml"
-  echo "or:"
-  echo "  pip3 install pyyaml"
   exit 1
 fi
 

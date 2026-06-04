@@ -131,7 +131,7 @@ import numpy
 import numba
 PY
     then
-      MISSING_DEPS+=("python3-numpy and python3-numba")
+      MISSING_DEPS+=("numpy and numba Python packages")
     fi
   fi
 

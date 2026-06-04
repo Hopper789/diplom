@@ -14,7 +14,7 @@ try:
 except ModuleNotFoundError as exc:  # pragma: no cover - validated on client image
     raise RuntimeError(
         "ml_grid_search requires numpy and numba. "
-        "Install python3-numpy and python3-numba, then redeploy BOINC clients."
+        "Run ./scripts/prepare_system.sh --install-local and redeploy BOINC clients."
     ) from exc
 
 
