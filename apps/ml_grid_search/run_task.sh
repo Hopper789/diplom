@@ -6,7 +6,8 @@ EXPERIMENT_ENV_FILE="$ROOT_DIR/config/experiment.env"
 DISTRIBUTED_ENV_FILE="$ROOT_DIR/config/distributed.env"
 BUILD_DIR="$ROOT_DIR/apps/ml_grid_search/build"
 PARAMS_FILE="$BUILD_DIR/params.jsonl"
-TASK_FILE="$ROOT_DIR/apps/ml_grid_search/task.py"
+PREPARE_FILE="$ROOT_DIR/apps/ml_grid_search/prepare.py"
+MAIN_FILE="$ROOT_DIR/apps/ml_grid_search/main.py"
 PYTHON_RUNNER="$ROOT_DIR/apps/python_task_runner/run_task.sh"
 
 MODE="${1:-boinc}"
@@ -51,11 +52,12 @@ Environment:
 USAGE
 }
 
-generate_params() {
+prepare_task() {
   mkdir -p "$BUILD_DIR"
 
   local args=(
-    "$ROOT_DIR/apps/ml_grid_search/generate_params.py"
+    "$PREPARE_FILE"
+    --main "$MAIN_FILE"
     --out "$PARAMS_FILE"
     --wall-seconds "$EXPERIMENT_WALL_SECONDS"
     --cores "$EXPERIMENT_CORES"
@@ -73,7 +75,7 @@ generate_params() {
 }
 
 run_boinc() {
-  generate_params
+  prepare_task
 
   export PYTHON_TASK_APP_NAME="${PYTHON_TASK_APP_NAME:-$APP_NAME}"
   export PYTHON_TASK_PLATFORM="${PYTHON_TASK_PLATFORM:-$PLATFORM}"
@@ -90,11 +92,11 @@ run_boinc() {
     export PYTHON_TASK_APP_VERSION=""
   fi
 
-  "$PYTHON_RUNNER" --task "$TASK_FILE" --params "$PARAMS_FILE" --device cpu
+  "$PYTHON_RUNNER" --task "$MAIN_FILE" --params "$PARAMS_FILE" --device cpu
 }
 
 run_local() {
-  generate_params
+  prepare_task
 
   local input_dir="$BUILD_DIR/local_inputs"
   local output_dir="$BUILD_DIR/local_outputs"
@@ -114,7 +116,7 @@ run_local() {
     local name
     name="$(basename "$input_file")"
     python3 "$ROOT_DIR/apps/python_task_runner/runner.py" \
-      --task "$TASK_FILE" \
+      --task "$MAIN_FILE" \
       --input "$input_file" \
       --output "$output_dir/${name%.json}.output.json" \
       --fail-on-error

@@ -9,7 +9,6 @@ config/cluster.yml       # машины кластера и BOINC project
 config/generated.env     # сгенерированные параметры запуска
 config/experiment.env    # параметры конкретного эксперимента
 config/distributed.env   # правила выдачи и репликации workunits
-config/alerts.env        # Telegram notifier
 ```
 
 ## `config/cluster.yml`
@@ -131,18 +130,3 @@ DISTRIBUTED_MAX_TOTAL_RESULTS=3
 ```
 
 Для учебного первого запуска оставь значения по умолчанию.
-
-## `config/alerts.env`
-
-Этот файл нужен только для Telegram-уведомлений. Создаётся из примера:
-
-```bash
-cp config/alerts.example.env config/alerts.env
-nano config/alerts.env
-```
-
-`config/alerts.env` содержит секреты и не должен попадать в Git. Запуск notifier:
-
-```bash
-./scripts/alerts_up.sh
-```

@@ -148,17 +148,3 @@ GRAFANA_DUMP_TO=now
 ```bash
 ./scripts/clean_runtime.sh
 ```
-
-## Telegram alerts
-
-Telegram alerts не запускаются автоматически через обычный quickstart.
-
-Если нужно получить сообщение о завершении эксперимента:
-
-```bash
-cp config/alerts.example.env config/alerts.env
-nano config/alerts.env
-./scripts/alerts_up.sh
-```
-
-Подробнее: [Telegram alerts](ALERTS.md).

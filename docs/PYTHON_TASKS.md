@@ -89,7 +89,9 @@ apps/python_task_runner/run_task.sh \
 
 ## Текущий пример
 
-`apps/ml_grid_search/task.py` — пример parameter sweep на Python с `numpy` и `numba`.
+`apps/ml_grid_search/main.py` — пример parameter sweep на Python с `numpy` и `numba`.
+
+`apps/ml_grid_search/prepare.py` готовит `params.jsonl` для этого примера и проверяет, что основной файл содержит `run(params)`.
 
 Запуск через стандартный сценарий:
 

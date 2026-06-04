@@ -1,8 +1,8 @@
 # Эксперимент ml_grid_search
 
-`run_task.sh` создаёт много маленьких BOINC workunits и отправляет Python-задачу `task.py` через `apps/python_task_runner`.
+`run_task.sh` создаёт много маленьких BOINC workunits и отправляет Python-задачу `main.py` через `apps/python_task_runner`.
 
-Задача выполняет parameter sweep для ridge-регрессии. Вычислительная часть ускоряется через `numpy` и `numba`.
+`prepare.py` готовит `params.jsonl` и проверяет, что в `main.py` есть функция `run(params)`. `main.py` содержит вычислительный код parameter sweep для ridge-регрессии. Вычислительная часть ускоряется через `numpy` и `numba`.
 
 ```bash
 EXPERIMENT_WALL_SECONDS=180

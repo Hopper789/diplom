@@ -12,8 +12,7 @@ BOINC можно представить так: сервер хранит зад
 - запускает пример `ml_grid_search` на Python/Numba;
 - запускает пользовательские Python-задачи через `apps/python_task_runner`;
 - собирает метрики BOINC и нагрузки клиентов в Prometheus/Grafana;
-- сохраняет dump графиков Grafana и итоговых метрик после завершения вычислений;
-- позволяет вручную включить Telegram-уведомление о завершении эксперимента.
+- сохраняет dump графиков Grafana и итоговых метрик после завершения вычислений.
 
 ## Архитектура в 5 строк
 
@@ -85,14 +84,6 @@ Dashboard можно смотреть без логина. Для админис
 
 Отдельные скрипты вроде `init_vault.sh`, `bootstrap_server.sh`, `bootstrap_clients.sh`, `monitoring_up.sh` и `run_experiment.sh` остаются ручными инструментами диагностики и отладки. Основной путь запуска описан выше.
 
-Telegram alerts не запускаются автоматически через обычный quickstart. Их можно включить вручную:
-
-```bash
-cp config/alerts.example.env config/alerts.env
-nano config/alerts.env
-./scripts/alerts_up.sh
-```
-
 ## Быстрые бенчмарки
 
 Чтобы быстро понять, какие задачи и настройки лучше подходят кластеру:
@@ -121,7 +112,6 @@ nano config/alerts.env
 - [Очистка](docs/CLEANUP.md)
 - [Диагностика](docs/TROUBLESHOOTING.md)
 - [Разработка пользовательских задач](docs/DEVELOP_CUSTOM_TASK.md)
-- [Telegram alerts](docs/ALERTS.md)
 - [Обоснование технологий](docs/TECH_DECISIONS.md)
 - [Бенчмарки](docs/BENCHMARKS.md)
 
@@ -132,7 +122,6 @@ nano config/alerts.env
 - `config/cluster.yml`, `config/generated.env` — локальная и сгенерированная конфигурация;
 - `config/experiment.env` — параметры конкретного эксперимента;
 - `config/distributed.env` — локальные параметры репликации;
-- `config/alerts.env` — токен Telegram-бота и chat id;
 - `ansible/inventory.ini` — сгенерированный список клиентов;
 - `ansible/group_vars/all/main.yml` — сгенерированные Ansible-переменные;
 - `ansible/group_vars/all/vault.yml` — зашифрованный sudo-пароль клиентов;

@@ -3,7 +3,6 @@ config/cluster.yml
 config/generated.env
 config/experiment.env
 config/distributed.env
-config/alerts.env
 
 # Generated Ansible runtime files
 ansible/inventory.ini
@@ -19,7 +18,6 @@ server/mysql-data/
 
 # Monitoring runtime
 monitoring/.env
-monitoring/alert-state/
 
 # Old/local BOINC client runtime, should not be committed
 boinc-data/

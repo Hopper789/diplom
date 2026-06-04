@@ -113,23 +113,6 @@ services:
       - monitoring
     restart: unless-stopped
 
-  boinc-alerts:
-    profiles:
-      - alerts
-    build:
-      context: ../alerts
-    container_name: boinc-alerts
-    env_file:
-      - .env
-      - ../config/alerts.env
-    volumes:
-      - ./alert-state:/state
-    networks:
-      - monitoring
-    depends_on:
-      - boinc-exporter
-    restart: unless-stopped
-
 networks:
   monitoring:
     name: boinc_monitoring

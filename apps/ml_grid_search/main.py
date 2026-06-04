@@ -120,11 +120,7 @@ def _burn_for_seconds(target_seconds: float, seed: int) -> tuple[int, float, flo
 
 
 def run(params: dict[str, Any]) -> dict[str, Any]:
-    """Run one ridge-regression parameter point.
-
-    The BOINC Python runner calls this function once per workunit and serializes
-    the returned dictionary to output.json.
-    """
+    """Run one ridge-regression parameter point."""
 
     task_id = _as_int(params, "task_id", 0)
     regularization = float(params.get("lambda", params.get("regularization", 0.0)))
