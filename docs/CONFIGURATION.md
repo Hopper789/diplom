@@ -44,12 +44,17 @@ clients:
   - name: node2
     ip: 192.168.1.12
     user: user
+    port: 2222
 
 boinc:
   client_rpc_password: auto
 ```
 
-`server.ip` должен быть доступен клиентам. `clients[].user` должен подключаться по SSH и иметь sudo-доступ. Для клиентских узлов также поддерживаются поля `host`, `hostname`, `ansible_host`, `username` и `ansible_user`.
+`server.ip` должен быть доступен клиентам. `clients[].user` должен подключаться по SSH и иметь sudo-доступ.
+
+`clients[].port` задаёт SSH-порт клиента. Если порт не указан, используется стандартный SSH-порт `22`.
+
+Для клиентских узлов также поддерживаются поля `host`, `hostname`, `ansible_host`, `username`, `ansible_user` и `ansible_port`.
 
 ## BOINC RPC password
 

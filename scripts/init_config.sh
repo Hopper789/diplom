@@ -104,6 +104,11 @@ if not rpc_password or str(rpc_password).lower() == "auto":
     rpc_password = secrets.token_urlsafe(24)
 
 clients = cfg.get("clients") or get_nested(cfg, "cluster", "clients") or []
+default_client_user = (
+    get_nested(cfg, "clients_defaults", "username")
+    or get_nested(cfg, "clients_defaults", "user")
+)
+default_client_port = get_nested(cfg, "clients_defaults", "port")
 
 env_path.parent.mkdir(parents=True, exist_ok=True)
 inventory_path.parent.mkdir(parents=True, exist_ok=True)
@@ -134,12 +139,12 @@ inventory_lines = ["[boinc_clients]\n"]
 for item in clients:
     if isinstance(item, str):
         host = item
-        user = get_nested(cfg, "clients_defaults", "username") or get_nested(cfg, "clients_defaults", "user")
-        port = get_nested(cfg, "clients_defaults", "port")
+        user = default_client_user
+        port = default_client_port
     elif isinstance(item, dict):
         host = item.get("ip") or item.get("host") or item.get("hostname") or item.get("ansible_host")
-        user = item.get("username") or item.get("user") or item.get("ansible_user")
-        port = item.get("port") or item.get("ansible_port")
+        user = item.get("username") or item.get("user") or item.get("ansible_user") or default_client_user
+        port = item.get("port") or item.get("ansible_port") or default_client_port
     else:
         continue
 

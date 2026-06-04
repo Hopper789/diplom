@@ -72,23 +72,26 @@ default_user = (
     get_nested(cfg, "clients_defaults", "username")
     or get_nested(cfg, "clients_defaults", "user")
 )
+default_port = get_nested(cfg, "clients_defaults", "port")
 
 for client in clients:
     if isinstance(client, str):
         name = ""
         ip = client
         user = default_user
+        port = default_port
     elif isinstance(client, dict):
         name = client.get("name", "")
         ip = client.get("ip") or client.get("host") or client.get("hostname") or client.get("ansible_host")
         user = client.get("user") or client.get("username") or client.get("ansible_user") or default_user
+        port = client.get("port") or client.get("ansible_port") or default_port
     else:
         continue
 
     if not ip or not user:
         continue
 
-    print(f"{name}|{user}|{ip}")
+    print(f"{name}|{user}|{ip}|{port or ''}")
 PY
 )"
 
@@ -100,6 +103,7 @@ if [[ -z "$NODES" ]]; then
   echo "  - name: laptop"
   echo "    ip: 192.168.1.189"
   echo "    user: hopper"
+  echo "    port: 2222"
   exit 1
 fi
 
@@ -111,19 +115,29 @@ echo
 echo "Copying SSH public key to clients from $CLUSTER_FILE..."
 echo
 
-while IFS="|" read -r NAME USER IP; do
+while IFS="|" read -r NAME USER IP PORT; do
   [[ -z "$USER" || -z "$IP" ]] && continue
 
   LABEL="$IP"
   if [[ -n "$NAME" ]]; then
     LABEL="$NAME ($IP)"
   fi
+  if [[ -n "$PORT" ]]; then
+    LABEL="$LABEL:$PORT"
+  fi
 
   echo "==> $LABEL as $USER"
 
+  SSH_COPY_ID_ARGS=(
+    -i "$PUB_KEY"
+    -o StrictHostKeyChecking=accept-new
+  )
+  if [[ -n "$PORT" ]]; then
+    SSH_COPY_ID_ARGS+=(-p "$PORT")
+  fi
+
   ssh-copy-id \
-    -i "$PUB_KEY" \
-    -o StrictHostKeyChecking=accept-new \
+    "${SSH_COPY_ID_ARGS[@]}" \
     "$USER@$IP"
 
   echo
