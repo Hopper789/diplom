@@ -101,6 +101,7 @@ reports/quick_benchmarks/YYYYMMDD_HHMMSS/
 
 - `boinc_completed_workunits_total`;
 - `boinc_results_error_total`;
+- `boinc_results_redundant_total`, если включена репликация;
 - `boinc_avg_success_turnaround_seconds`;
 - CPU usage клиентов.
 
@@ -263,6 +264,8 @@ DISTRIBUTED_MIN_QUORUM=1
 DISTRIBUTED_TARGET_NRESULTS=2
 DISTRIBUTED_MIN_QUORUM=2
 ```
+
+При репликации число `results` обычно больше числа `workunits`. Results с `outcome=5` (`didnt_need`) считаются redundant, а не ошибкой клиента.
 
 После смены `config/distributed.env` лучше запускать эксперимент на чистом runtime:
 

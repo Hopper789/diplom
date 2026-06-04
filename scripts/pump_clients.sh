@@ -109,18 +109,20 @@ read_progress() {
     SELECT
       COUNT(DISTINCT w.id),
       COUNT(DISTINCT CASE WHEN r.outcome = 1 THEN w.id END),
-      SUM(CASE WHEN r.outcome = 0 THEN 1 ELSE 0 END),
-      SUM(CASE WHEN r.outcome NOT IN (0, 1) THEN 1 ELSE 0 END),
+      COALESCE(SUM(CASE WHEN r.outcome = 0 THEN 1 ELSE 0 END), 0),
+      COALESCE(SUM(CASE WHEN r.outcome IN (2, 3, 4, 6) THEN 1 ELSE 0 END), 0),
+      COALESCE(SUM(CASE WHEN r.outcome = 5 THEN 1 ELSE 0 END), 0),
       COUNT(DISTINCT CASE WHEN r.hostid != 0 THEN r.hostid END)
     FROM workunit w
     LEFT JOIN result r ON r.workunitid = w.id;
   ")"
 
-  IFS=$'\t' read -r WORKUNITS COMPLETED UNFINISHED ERRORS ACTIVE_HOSTS <<< "$row"
+  IFS=$'\t' read -r WORKUNITS COMPLETED UNFINISHED CLIENT_ERRORS REDUNDANT ACTIVE_HOSTS <<< "$row"
   WORKUNITS="${WORKUNITS:-0}"
   COMPLETED="${COMPLETED:-0}"
   UNFINISHED="${UNFINISHED:-0}"
-  ERRORS="${ERRORS:-0}"
+  CLIENT_ERRORS="${CLIENT_ERRORS:-0}"
+  REDUNDANT="${REDUNDANT:-0}"
   ACTIVE_HOSTS="${ACTIVE_HOSTS:-0}"
 }
 
@@ -265,7 +267,7 @@ while true; do
   read_progress
 
   if [[ "$QUIET" != "1" ]]; then
-    echo "workunits=$WORKUNITS completed=$COMPLETED unfinished=$UNFINISHED errors=$ERRORS active_hosts=$ACTIVE_HOSTS"
+    echo "workunits=$WORKUNITS completed=$COMPLETED unfinished=$UNFINISHED client_errors=$CLIENT_ERRORS redundant=$REDUNDANT active_hosts=$ACTIVE_HOSTS"
   fi
 
   if [[ "$WORKUNITS" -gt 0 && "$UNFINISHED" -eq 0 ]]; then

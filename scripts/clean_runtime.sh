@@ -102,7 +102,6 @@ remove_generated_runtime_configs() {
   echo "Removing generated runtime configs..."
   rm -f "$ROOT_DIR/config/generated.env"
   rm -f "$ROOT_DIR/ansible/inventory.ini"
-  rm -f "$ROOT_DIR/ansible/group_vars/all.yml"
   rm -f "$ROOT_DIR/ansible/group_vars/all/main.yml"
   rm -f "$ROOT_DIR/monitoring/.env"
 }

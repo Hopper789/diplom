@@ -33,6 +33,7 @@
 | `server_up.sh` | Запуск Docker Compose сервера |
 | `create_account_db.sh` | Создание BOINC account в MariaDB |
 | `deploy_clients.sh` | Ручной запуск Ansible playbook для клиентов |
+| `check_client_runtime.sh` | Проверка Docker, `boinc-client`, Python, `numpy`, `numba` и BOINC RPC на клиентах |
 | `deploy_monitoring_agents.sh` | Ручной запуск Ansible playbook для агентов мониторинга |
 | `monitoring_up.sh` | Ручной запуск мониторинга |
 | `monitoring_down.sh` | Остановка мониторинга |

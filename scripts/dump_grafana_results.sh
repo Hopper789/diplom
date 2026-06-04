@@ -141,16 +141,18 @@ read_progress() {
       COUNT(DISTINCT w.id),
       COUNT(DISTINCT CASE WHEN r.outcome = 1 THEN w.id END),
       COALESCE(SUM(CASE WHEN r.outcome = 0 THEN 1 ELSE 0 END), 0),
-      COALESCE(SUM(CASE WHEN r.outcome NOT IN (0, 1) THEN 1 ELSE 0 END), 0)
+      COALESCE(SUM(CASE WHEN r.outcome IN (2, 3, 4, 6) THEN 1 ELSE 0 END), 0),
+      COALESCE(SUM(CASE WHEN r.outcome = 5 THEN 1 ELSE 0 END), 0)
     FROM workunit w
     LEFT JOIN result r ON r.workunitid = w.id;
   ")"
 
-  IFS=$'\t' read -r WORKUNITS COMPLETED UNFINISHED ERRORS <<< "$row"
+  IFS=$'\t' read -r WORKUNITS COMPLETED UNFINISHED CLIENT_ERRORS REDUNDANT <<< "$row"
   WORKUNITS="${WORKUNITS:-0}"
   COMPLETED="${COMPLETED:-0}"
   UNFINISHED="${UNFINISHED:-0}"
-  ERRORS="${ERRORS:-0}"
+  CLIENT_ERRORS="${CLIENT_ERRORS:-0}"
+  REDUNDANT="${REDUNDANT:-0}"
 }
 
 is_complete() {
@@ -169,11 +171,11 @@ if [[ "$WAIT" == "1" ]]; then
 
   while true; do
     if is_complete; then
-      echo "BOINC computations completed: workunits=$WORKUNITS completed=$COMPLETED unfinished=$UNFINISHED errors=$ERRORS"
+      echo "BOINC computations completed: workunits=$WORKUNITS completed=$COMPLETED unfinished=$UNFINISHED client_errors=$CLIENT_ERRORS redundant=$REDUNDANT"
       break
     fi
 
-    echo "BOINC still running: workunits=$WORKUNITS completed=$COMPLETED unfinished=$UNFINISHED errors=$ERRORS"
+    echo "BOINC still running: workunits=$WORKUNITS completed=$COMPLETED unfinished=$UNFINISHED client_errors=$CLIENT_ERRORS redundant=$REDUNDANT"
 
     if [[ "$MAX_SECONDS" -eq 0 || "$SECONDS" -ge "$deadline" ]]; then
       echo "ERROR: computations are not complete; Grafana dump skipped." >&2

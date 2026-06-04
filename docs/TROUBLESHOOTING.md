@@ -104,6 +104,57 @@ ssh USER@CLIENT_IP
 ./scripts/launch_cluster.sh
 ```
 
+## Проверить Python/Numba на клиентах
+
+Python-задачи выполняются внутри контейнера `boinc-client`, поэтому `numpy` и `numba` должны быть установлены именно там.
+
+Проверка:
+
+```bash
+./scripts/check_client_runtime.sh
+```
+
+Если проверка показывает, что `numpy` или `numba` отсутствуют, переразверни клиентскую часть:
+
+```bash
+./scripts/bootstrap_clients.sh
+```
+
+## `results` сильно больше `workunits`
+
+Это нормально, если включена BOINC-репликация. Например, `workunits=50` и `results=150` означает примерно три result-записи на одну workunit.
+
+Results с `outcome=5` (`didnt_need`) не считаются ошибкой клиента. Проверяй реальные ошибки через:
+
+```bash
+./scripts/status.sh
+```
+
+Или во время ожидания задач:
+
+```bash
+./scripts/pump_clients.sh
+```
+
+В выводе `client_errors` показывает настоящие проблемные outcomes, а `redundant` показывает лишние results от replication/quorum.
+
+## Loki отвечает `503 ready: failed`
+
+Это проблема готовности хранилища логов и она не блокирует выполнение BOINC-задач.
+
+Перезапусти monitoring stack:
+
+```bash
+./scripts/monitoring_down.sh
+./scripts/monitoring_up.sh
+```
+
+Если ошибка повторяется, проверь логи Loki:
+
+```bash
+docker logs boinc-loki --tail 100
+```
+
 ## Как полностью удалить BOINC client с узлов
 
 Обычная очистка не удаляет BOINC client.

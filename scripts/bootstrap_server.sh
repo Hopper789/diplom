@@ -25,7 +25,7 @@ fi
 
 if [[ $# -gt 0 ]]; then
   echo "Примечание: bootstrap_server.sh игнорирует аргументы Ansible, потому что выполняет только серверные шаги."
-  echo "Для клиентов используй ./scripts/bootstrap_clients.sh после ./scripts/init_vault.sh."
+  echo "Для полного запуска используй ./scripts/launch_cluster.sh или ./scripts/bootstrap_clients.sh вручную."
   echo
 fi
 

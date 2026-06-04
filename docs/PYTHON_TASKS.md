@@ -35,6 +35,12 @@ BOINC clients запускают Python-код внутри контейнера
 
 Они устанавливаются в клиентский Docker-образ через `ansible/install_boinc_clients.yml`. На управляющей машине они также входят в `install_server_requirements.sh` и проверяются `prepare_system.sh`.
 
+Проверить runtime на уже развёрнутых клиентах:
+
+```bash
+./scripts/check_client_runtime.sh
+```
+
 Пример с Numba:
 
 ```python

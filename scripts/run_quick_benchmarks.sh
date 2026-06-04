@@ -2,9 +2,11 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-VAULT_PASS_FILE="$ROOT_DIR/ansible/.vault_pass"
 GENERATED_ENV_FILE="$ROOT_DIR/config/generated.env"
 REPORT_ROOT="$ROOT_DIR/reports/quick_benchmarks/$(date +%Y%m%d_%H%M%S)"
+
+# shellcheck source=scripts/lib/ansible_args.sh
+source "$ROOT_DIR/scripts/lib/ansible_args.sh"
 
 ASSUME_YES=0
 REPLICA_COUNT="auto"
@@ -32,6 +34,9 @@ usage() {
   --network-probe-mib N    Размер SSH network probe на клиента, MiB. По умолчанию: 8.
   --skip-network-probe     Не делать SSH network probe.
   --no-replication         Не запускать replicated-сценарий.
+  --ask-vault-pass|--vault Передать Ansible --ask-vault-pass.
+  --vault-password-file F  Передать Ansible --vault-password-file.
+  --ask-become-pass|-K     Передать Ansible --ask-become-pass.
 
 Перед запуском:
   ./scripts/quickstart.sh --with-monitoring
@@ -43,6 +48,9 @@ USAGE
 
 cd "$ROOT_DIR"
 export ANSIBLE_HOST_KEY_CHECKING=False
+
+build_ansible_args "$@"
+set -- "${ANSIBLE_REMAINING_ARGS[@]}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -255,12 +263,7 @@ request_client_update() {
     return 0
   fi
 
-  local ansible_args=()
-  if [[ -f "$VAULT_PASS_FILE" ]]; then
-    ansible_args+=(--vault-password-file "$VAULT_PASS_FILE")
-  fi
-
-  ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b "${ansible_args[@]}" -m shell -a "
+  ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b "${ANSIBLE_ARGS[@]}" -m shell -a "
     docker exec boinc-client sh -lc \"cat > /var/lib/boinc/global_prefs_override.xml <<'EOF'
 <global_preferences>
   <run_on_batteries>1</run_on_batteries>
@@ -299,31 +302,33 @@ wait_for_case() {
 
   echo "Ожидание завершения: $prefix"
   while true; do
-    local row workunits completed unfinished errors
+    local row workunits completed unfinished client_errors redundant
     row="$(sql_tsv "
       SELECT
         COUNT(DISTINCT w.id),
         COUNT(DISTINCT CASE WHEN r.outcome = 1 THEN w.id END),
-        SUM(CASE WHEN r.outcome = 0 THEN 1 ELSE 0 END),
-        SUM(CASE WHEN r.outcome NOT IN (0, 1) THEN 1 ELSE 0 END)
+        COALESCE(SUM(CASE WHEN r.outcome = 0 THEN 1 ELSE 0 END), 0),
+        COALESCE(SUM(CASE WHEN r.outcome IN (2, 3, 4, 6) THEN 1 ELSE 0 END), 0),
+        COALESCE(SUM(CASE WHEN r.outcome = 5 THEN 1 ELSE 0 END), 0)
       FROM workunit w
       LEFT JOIN result r ON r.workunitid = w.id
       WHERE w.name LIKE '${prefix}\\_%';
     ")"
 
-    IFS=$'\t' read -r workunits completed unfinished errors <<< "$row"
+    IFS=$'\t' read -r workunits completed unfinished client_errors redundant <<< "$row"
     workunits="${workunits:-0}"
     completed="${completed:-0}"
     unfinished="${unfinished:-0}"
-    errors="${errors:-0}"
+    client_errors="${client_errors:-0}"
+    redundant="${redundant:-0}"
 
-    echo "  workunits=$workunits completed=$completed unfinished=$unfinished errors=$errors"
+    echo "  workunits=$workunits completed=$completed unfinished=$unfinished client_errors=$client_errors redundant=$redundant"
 
     if [[ "$workunits" -gt 0 && "$unfinished" -eq 0 ]]; then
       return 0
     fi
 
-    if [[ "$errors" -gt 0 ]]; then
+    if [[ "$client_errors" -gt 0 ]]; then
       echo "В сценарии появились ошибки BOINC; сценарий завершается как проблемный."
       return 0
     fi
@@ -387,7 +392,8 @@ SELECT
   COUNT(r.id),
   COUNT(DISTINCT CASE WHEN r.outcome = 1 THEN w.id END),
   SUM(CASE WHEN r.outcome = 0 THEN 1 ELSE 0 END),
-  SUM(CASE WHEN r.outcome NOT IN (0, 1) THEN 1 ELSE 0 END),
+  SUM(CASE WHEN r.outcome IN (2, 3, 4, 6) THEN 1 ELSE 0 END),
+  SUM(CASE WHEN r.outcome = 5 THEN 1 ELSE 0 END),
   COALESCE(MIN(w.create_time), 0),
   COALESCE(MAX(CASE WHEN r.received_time > 0 THEN r.received_time ELSE 0 END), 0),
   COALESCE(AVG(CASE WHEN r.outcome = 1 AND r.received_time > 0 THEN r.received_time - w.create_time END), 0),
@@ -408,10 +414,11 @@ results = as_float(1)
 completed = as_float(2)
 unfinished = as_float(3)
 errors = as_float(4)
-first_create_time = as_float(5)
-last_received_time = as_float(6)
-avg_turnaround = as_float(7)
-avg_compute = as_float(8)
+redundant = as_float(5)
+first_create_time = as_float(6)
+last_received_time = as_float(7)
+avg_turnaround = as_float(8)
+avg_compute = as_float(9)
 
 if first_create_time > 0 and last_received_time > first_create_time:
     total_seconds = last_received_time - first_create_time
@@ -476,6 +483,7 @@ data = {
         "completed_workunits": completed,
         "unfinished_results": unfinished,
         "error_results": errors,
+        "redundant_results": redundant,
         "error_percent": error_percent,
         "total_seconds": total_seconds,
         "throughput_workunits_per_second": throughput,
@@ -606,6 +614,7 @@ for path in sorted(root.glob("*/metrics.json")):
         "workunits": boinc["workunits"],
         "completed": boinc["completed_workunits"],
         "errors": boinc["error_results"],
+        "redundant": boinc.get("redundant_results", 0),
         "error_percent": boinc["error_percent"],
         "total_seconds": boinc["total_seconds"],
         "throughput_wu_s": boinc["throughput_workunits_per_second"],

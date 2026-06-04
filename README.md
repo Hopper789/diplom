@@ -82,7 +82,7 @@ Dashboard можно смотреть без логина. Для админис
 
 ## Ручные инструменты
 
-Отдельные скрипты вроде `init_vault.sh`, `bootstrap_server.sh`, `bootstrap_clients.sh`, `monitoring_up.sh` и `run_experiment.sh` остаются ручными инструментами диагностики и отладки. Основной путь запуска описан выше.
+Отдельные скрипты вроде `init_vault.sh`, `bootstrap_server.sh`, `bootstrap_clients.sh`, `check_client_runtime.sh`, `monitoring_up.sh` и `run_experiment.sh` остаются ручными инструментами диагностики и отладки. Основной путь запуска описан выше.
 
 ## Быстрые бенчмарки
 

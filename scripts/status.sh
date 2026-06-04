@@ -72,6 +72,33 @@ if docker ps --format '{{.Names}}' | grep -qx 'boinc-mysql'; then
       SELECT COUNT(*) AS results FROM result;
       SELECT id, name, appid, create_time FROM workunit ORDER BY id DESC LIMIT 10;
       SELECT id, workunitid, server_state, outcome, client_state, hostid FROM result ORDER BY id DESC LIMIT 10;
+      SELECT
+        outcome,
+        CASE outcome
+          WHEN 0 THEN 'unfinished'
+          WHEN 1 THEN 'success'
+          WHEN 2 THEN 'couldnt_send'
+          WHEN 3 THEN 'client_error'
+          WHEN 4 THEN 'no_reply'
+          WHEN 5 THEN 'didnt_need'
+          WHEN 6 THEN 'validate_error'
+          ELSE 'other'
+        END AS outcome_name,
+        COUNT(*) AS results
+      FROM result
+      GROUP BY outcome
+      ORDER BY outcome;
+      SELECT
+        id,
+        workunitid,
+        outcome,
+        client_state,
+        hostid,
+        LEFT(REPLACE(REPLACE(COALESCE(stderr_out, ''), '\n', ' '), '\r', ' '), 500) AS stderr_preview
+      FROM result
+      WHERE outcome IN (2, 3, 4, 6) OR LENGTH(COALESCE(stderr_out, '')) > 0
+      ORDER BY id DESC
+      LIMIT 10;
     " || true
   echo
 else

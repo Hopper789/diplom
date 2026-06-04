@@ -5,6 +5,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # shellcheck source=scripts/lib/ansible_args.sh
 source "$ROOT_DIR/scripts/lib/ansible_args.sh"
+# shellcheck source=scripts/lib/inventory.sh
+source "$ROOT_DIR/scripts/lib/inventory.sh"
 
 cd "$ROOT_DIR"
 
@@ -32,19 +34,7 @@ if [[ ! -f "$ROOT_DIR/ansible/inventory.ini" ]]; then
   exit 1
 fi
 
-echo "Refreshing SSH known_hosts for remote clients..."
-awk '
-  /^\[/ {next}
-  /^[[:space:]]*$/ {next}
-  /^[[:space:]]*#/ {next}
-  {print $1}
-' "$ROOT_DIR/ansible/inventory.ini" | while read -r host; do
-  if [[ -n "$host" ]]; then
-    echo "  removing old SSH host key for $host"
-    ssh-keygen -R "$host" >/dev/null 2>&1 || true
-  fi
-done
-echo
+refresh_client_known_hosts "$ROOT_DIR/ansible/inventory.ini"
 
 echo "Checking SSH access to clients..."
 if ! ANSIBLE_HOST_KEY_CHECKING=False \
@@ -66,6 +56,10 @@ echo "Deploying BOINC Docker clients..."
 echo
 echo "Clients status:"
 ./scripts/status.sh "${ANSIBLE_ARGS[@]}" || true
+
+echo
+echo "Client runtime check:"
+./scripts/check_client_runtime.sh "${ANSIBLE_ARGS[@]}" || true
 
 echo
 echo "Clients bootstrap completed."

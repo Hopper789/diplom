@@ -9,6 +9,8 @@ MONITORING_DIR="$ROOT_DIR/monitoring"
 
 # shellcheck source=scripts/lib/ansible_args.sh
 source "$ROOT_DIR/scripts/lib/ansible_args.sh"
+# shellcheck source=scripts/lib/inventory.sh
+source "$ROOT_DIR/scripts/lib/inventory.sh"
 
 cd "$ROOT_DIR"
 
@@ -160,18 +162,7 @@ PY
 
 if [[ "$DEPLOY_CLIENT_AGENTS" == "1" && -f "$ROOT_DIR/ansible/inventory.ini" ]]; then
   echo
-  echo "Refreshing SSH known_hosts for remote clients..."
-  awk '
-    /^\[/ {next}
-    /^[[:space:]]*$/ {next}
-    /^[[:space:]]*#/ {next}
-    {print $1}
-  ' "$ROOT_DIR/ansible/inventory.ini" | while read -r host; do
-    if [[ -n "$host" ]]; then
-      echo "  removing old SSH host key for $host"
-      ssh-keygen -R "$host" >/dev/null 2>&1 || true
-    fi
-  done
+  refresh_client_known_hosts "$ROOT_DIR/ansible/inventory.ini"
 
   echo
   echo "Deploying monitoring agents on BOINC clients..."
