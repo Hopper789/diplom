@@ -86,7 +86,7 @@ ANSIBLE_HOST_KEY_CHECKING=False \
     docker version >/dev/null
     echo 'docker: OK'
 
-    if ! docker ps --format '{{.Names}}' | grep -qx boinc-client; then
+    if ! docker ps --quiet --filter 'name=^/boinc-client$' | grep -q .; then
       echo 'boinc-client container: MISSING'
       exit 1
     fi

@@ -140,7 +140,7 @@ reset_client_tasks() {
       BOINC_CLIENT_RPC_PASSWORD=$rpc_password_q
       export BOINC_PROJECT_URL BOINC_CLIENT_RPC_PASSWORD
 
-      if docker ps --format '{{.Names}}' | grep -qx boinc-client; then
+      if docker ps --quiet --filter 'name=^/boinc-client$' | grep -q .; then
         docker exec \
           -e BOINC_PROJECT_URL \
           -e BOINC_CLIENT_RPC_PASSWORD \
