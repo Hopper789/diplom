@@ -9,7 +9,7 @@ BOINC можно представить так: сервер хранит зад
 - поднимает BOINC server и MariaDB в Docker;
 - разворачивает BOINC clients на удалённых узлах по SSH;
 - хранит sudo-пароль клиентов через Ansible Vault;
-- запускает пример `ml_grid_search`;
+- запускает пример `ml_grid_search` на Python/Numba;
 - запускает пользовательские Python-задачи через `apps/python_task_runner`;
 - собирает метрики BOINC и нагрузки клиентов в Prometheus/Grafana;
 - сохраняет dump графиков Grafana и итоговых метрик после завершения вычислений;
@@ -113,6 +113,7 @@ nano config/alerts.env
 - [Ansible Vault и sudo-пароль клиентов](docs/VAULT.md)
 - [Архитектура](docs/ARCHITECTURE.md)
 - [Эксперименты](docs/EXPERIMENTS.md)
+- [Python-задачи](docs/PYTHON_TASKS.md)
 - [Мониторинг и метрики](docs/MONITORING.md)
 - [Обработка ошибок и Loki](docs/ERROR_HANDLING.md)
 - [Словарь терминов](docs/GLOSSARY.md)

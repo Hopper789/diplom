@@ -95,7 +95,7 @@ reports/quick_benchmarks/YYYYMMDD_HHMMSS/
 
 - parameter sweep;
 - много независимых задач;
-- базовую интеграцию C++ BOINC-приложения.
+- базовую интеграцию Python/Numba-задачи через BOINC.
 
 Метрики:
 

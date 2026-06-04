@@ -100,6 +100,7 @@ TASK_SECONDS=8
 TASK_COUNT=
 TASK_DATASET_SIZE=500
 TASK_SEED_BASE=1000
+TASK_LAMBDA_GRID=0,0.001,0.003,0.01,0.03,0.1,0.3,1,3,10
 ```
 
 Если `TASK_COUNT` пустой, число задач считается примерно как:
@@ -107,6 +108,8 @@ TASK_SEED_BASE=1000
 ```text
 EXPERIMENT_WALL_SECONDS * EXPERIMENT_CORES / TASK_SECONDS
 ```
+
+`TASK_LAMBDA_GRID` задаёт сетку параметров для примера `ml_grid_search`.
 
 ## `config/distributed.env`
 

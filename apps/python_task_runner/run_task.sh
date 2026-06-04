@@ -9,6 +9,7 @@ VAULT_PASS_FILE="$ROOT_DIR/ansible/.vault_pass"
 
 APP_NAME="${PYTHON_TASK_APP_NAME:-python_task_runner}"
 APP_VERSION="${PYTHON_TASK_APP_VERSION:-}"
+APP_FRIENDLY_NAME="${PYTHON_TASK_APP_FRIENDLY_NAME:-Python task runner}"
 PLATFORM="${PYTHON_TASK_PLATFORM:-x86_64-pc-linux-gnu}"
 APP_VERSION_NUM=""
 BIN_NAME=""
@@ -325,7 +326,7 @@ declare_app_in_project_xml() {
 from pathlib import Path
 
 app_name = '$APP_NAME'
-friendly_name = 'Python task runner'
+friendly_name = '$APP_FRIENDLY_NAME'
 path = Path('project.xml')
 text = path.read_text()
 insert = f'''

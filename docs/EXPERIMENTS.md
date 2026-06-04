@@ -12,6 +12,8 @@ apps/ml_grid_search/
 
 Оно создаёт много workunits для перебора параметров. Каждая задача получает входные параметры, считает синтетическую работу и возвращает результат.
 
+Текущий пример реализован на Python и использует `numpy`/`numba` для ускорения вычислений на клиентах.
+
 ## Запуск эксперимента
 
 Основной запуск:
@@ -75,7 +77,7 @@ apps/python_task_runner/run_task.sh \
   --params apps/python_task_runner/examples/sum_params/params.jsonl
 ```
 
-Подробнее: [Разработка пользовательских задач](DEVELOP_CUSTOM_TASK.md).
+Подробнее: [Python-задачи](PYTHON_TASKS.md) и [Разработка пользовательских задач](DEVELOP_CUSTOM_TASK.md).
 
 ## Размер эксперимента
 
@@ -94,6 +96,7 @@ nano config/experiment.env
 - `TASK_COUNT` — точное число задач, если нужно задать вручную;
 - `TASK_DATASET_SIZE` — размер синтетических данных;
 - `TASK_SEED_BASE` — базовый seed.
+- `TASK_LAMBDA_GRID` — сетка regularization/lambda для перебора.
 
 ## Репликация и quorum
 

@@ -16,6 +16,8 @@ sudo apt install -y \
   bash \
   python3 \
   python3-pip \
+  python3-numpy \
+  python3-numba \
   python3-yaml \
   ansible \
   openssh-client \

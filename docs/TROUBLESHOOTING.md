@@ -118,13 +118,17 @@ ssh USER@CLIENT_IP
 
 Проверь input template приложения.
 
-Для текущего примера:
+Для Python task runner template генерируется автоматически в:
 
 ```text
-apps/ml_grid_search/templates/ml_grid_search_in
+apps/python_task_runner/build/<app_name>_in.generated
 ```
 
-В template должен быть корректный блок `<file_info>` и блок `<workunit>`.
+В template должен быть корректный блок `<file_info>` и блок `<workunit>`. Если файл выглядит старым или пустым, перезапусти отправку задачи:
+
+```bash
+./scripts/run_experiment.sh
+```
 
 ## `workunits=0`, `results=0`
 

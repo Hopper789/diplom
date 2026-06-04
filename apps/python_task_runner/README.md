@@ -94,12 +94,10 @@ cat /tmp/output.json
 
 ## Запуск через BOINC
 
-Сначала должен быть поднят сервер и клиенты:
+Сначала должен быть подготовлен и запущен кластер:
 
 ```bash
-./scripts/init_vault.sh
-./scripts/bootstrap_server.sh
-./scripts/bootstrap_clients.sh
+./scripts/quickstart.sh
 ```
 
 Затем:
@@ -120,6 +118,10 @@ apps/python_task_runner/run_task.sh \
 ```
 
 В этой версии реально поддержан CPU. Значение `resources.device` оставлено в формате входа для будущей маршрутизации GPU-задач.
+
+## Оптимизация
+
+Клиентский контейнер устанавливает `numpy` и `numba`. Пользовательские задачи могут использовать их напрямую, например для JIT-компиляции горячих циклов.
 
 ## Benchmark-примеры
 

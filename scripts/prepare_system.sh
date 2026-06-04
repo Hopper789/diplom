@@ -125,6 +125,14 @@ PY
     then
       MISSING_DEPS+=("python3-yaml or PyYAML")
     fi
+
+    if ! python3 - <<'PY' >/dev/null 2>&1
+import numpy
+import numba
+PY
+    then
+      MISSING_DEPS+=("python3-numpy and python3-numba")
+    fi
   fi
 
   if command -v docker >/dev/null 2>&1; then

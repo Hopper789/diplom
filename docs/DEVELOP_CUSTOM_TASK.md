@@ -1,8 +1,6 @@
-# Разработка пользовательских задач
+# Разработка пользовательских Python-задач
 
 Кластер лучше всего подходит для независимых задач: каждая задача получает свой вход, считает без общения с другими задачами и возвращает результат.
-
-## CPU: базовый режим
 
 Основной пользовательский формат — Python task runner.
 
@@ -72,16 +70,29 @@ apps/python_task_runner/run_task.sh \
 
 Если кластер уже подготовлен и запущен, достаточно повторять только `apps/python_task_runner/run_task.sh`.
 
-## C++
+## Оптимизация Python
 
-Для C++ сейчас используй текущий подход `apps/ml_grid_search` как пример:
+На клиентах обязательны `numpy` и `numba`. Они устанавливаются в Docker-образ BOINC client, поэтому пользовательская задача может использовать JIT-компиляцию:
 
-1. исходник компилируется внутри `boinc-server`;
-2. бинарник кладётся в runtime-каталог BOINC-приложения внутри project directory;
-3. приложение регистрируется через `xadd` и `update_versions`;
-4. workunits создаются через `create_work`.
+```python
+from numba import njit
+import numpy as np
 
-Даже для C++ лучше держать вход и выход в JSON или простом `key=value`, чтобы результаты было легко проверять и сравнивать.
+
+@njit
+def compute(values):
+    total = 0.0
+    for value in values:
+        total += value * value
+    return total
+
+
+def run(params):
+    values = np.arange(int(params["n"]), dtype=np.float64)
+    return {"score": float(compute(values))}
+```
+
+Подробнее: [Python-задачи](PYTHON_TASKS.md).
 
 ## GPU
 
