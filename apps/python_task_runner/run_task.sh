@@ -355,11 +355,42 @@ copy_output_to_boinc_files() {
 
   local copied=0
   local boinc_output
+  local cwd
+  cwd="\$(pwd -P)"
+
+  copy_output_target() {
+    local target="\$1"
+
+    [[ -n "\$target" && "\$target" != "output.json" ]] || return 1
+    if [[ "\$target" == */* ]]; then
+      mkdir -p "\$(dirname "\$target")" 2>/dev/null || true
+    fi
+
+    if cp output.json "\$target" 2>/dev/null; then
+      echo "BOINC output copied: \$target" >&2
+      return 0
+    fi
+
+    return 1
+  }
+
   while IFS= read -r boinc_output; do
     [[ -n "\$boinc_output" ]] || continue
     if [[ "\$boinc_output" != "output.json" ]]; then
-      cp output.json "\$boinc_output"
-      copied=1
+      copy_output_target "\$boinc_output" && copied=1
+      if [[ "\$boinc_output" != /* ]]; then
+        copy_output_target "\$cwd/\$boinc_output" && copied=1
+
+        for slot_dir in /var/lib/boinc/slots/*; do
+          [[ -d "\$slot_dir" ]] || continue
+          copy_output_target "\$slot_dir/\$boinc_output" && copied=1
+        done
+
+        for project_dir in /var/lib/boinc/projects/*; do
+          [[ -d "\$project_dir" ]] || continue
+          copy_output_target "\$project_dir/\$boinc_output" && copied=1
+        done
+      fi
     fi
   done < <(resolve_output_files || true)
 
