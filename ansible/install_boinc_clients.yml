@@ -7,6 +7,7 @@
   vars:
     boinc_client_data_dir: /opt/boinc-client
     boinc_client_image: local/boinc-client:ubuntu24
+    boinc_client_base_image: ubuntu:24.04
 
   pre_tasks:
     - name: Check required BOINC variables
@@ -43,7 +44,7 @@
         dest: "{{ boinc_client_data_dir }}/Dockerfile"
         mode: "0644"
         content: |
-          FROM ubuntu:24.04
+          FROM {{ boinc_client_base_image }}
 
           RUN apt-get update && \
               apt-get install -y \
@@ -103,11 +104,36 @@
         docker rm -f boinc-client 2>/dev/null || true
       changed_when: false
 
+    - name: Check existing BOINC client image
+      ansible.builtin.shell: |
+        docker image inspect "{{ boinc_client_image }}" >/dev/null 2>&1
+      register: boinc_client_image_check
+      failed_when: false
+      changed_when: false
+
+    - name: Pull BOINC client base image when local image is missing
+      ansible.builtin.shell: |
+        docker pull "{{ boinc_client_base_image }}"
+      register: boinc_client_base_pull
+      changed_when: "'Downloaded newer image' in boinc_client_base_pull.stdout or 'Pull complete' in boinc_client_base_pull.stdout"
+      retries: 5
+      delay: 20
+      until: boinc_client_base_pull.rc == 0
+      when: boinc_client_image_check.rc != 0
+
     - name: Start BOINC client container
       ansible.builtin.shell: |
         cd "{{ boinc_client_data_dir }}"
-        docker compose up -d --build
+        if docker image inspect "{{ boinc_client_image }}" >/dev/null 2>&1; then
+          COMPOSE_BAKE=false docker compose up -d
+        else
+          COMPOSE_BAKE=false docker compose up -d --build
+        fi
+      register: boinc_client_compose_up
       changed_when: true
+      retries: 3
+      delay: 20
+      until: boinc_client_compose_up.rc == 0
 
     - name: Wait for BOINC client container
       ansible.builtin.shell: |

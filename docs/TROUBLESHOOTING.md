@@ -120,6 +120,25 @@ Python-задачи выполняются внутри контейнера `bo
 ./scripts/bootstrap_clients.sh
 ```
 
+## `failed to fetch anonymous token` при запуске `boinc-client`
+
+Это ошибка доступа клиентских узлов к Docker Hub при первом build образа `local/boinc-client:ubuntu24`.
+BOINC ещё не дошёл до запуска задач: Docker не смог скачать базовый образ `ubuntu:24.04`.
+
+Проверь на каждом клиенте:
+
+```bash
+docker pull ubuntu:24.04
+```
+
+Если pull падает с `TLS handshake timeout`, проблема в сети/registry/DNS/proxy на клиентских узлах. После восстановления доступа перезапусти только клиентскую часть:
+
+```bash
+./scripts/launch_cluster.sh --clients-only
+```
+
+Playbook делает несколько повторных попыток и не пересобирает клиентский образ, если `local/boinc-client:ubuntu24` уже есть на узле.
+
 ## `results` сильно больше `workunits`
 
 Это нормально, если включена BOINC-репликация. Например, `workunits=50` и `results=150` означает примерно три result-записи на одну workunit.
