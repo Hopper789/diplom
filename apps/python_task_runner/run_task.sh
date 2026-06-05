@@ -289,32 +289,59 @@ set -uo pipefail
 SCRIPT_DIR="\$(cd "\$(dirname "\$0")" && pwd)"
 
 resolve_output_files() {
-  if [[ ! -f init_data.xml ]]; then
-    return 1
-  fi
-
   python3 - <<'PY'
 from pathlib import Path
 import re
 
-path = Path("init_data.xml")
-if not path.exists():
+def first_tag(text: str, names: tuple[str, ...]) -> str:
+    for name in names:
+        match = re.search(rf"<{name}>(.*?)</{name}>", text, flags=re.S)
+        if match:
+            return match.group(1).strip()
+    return ""
+
+init_text = Path("init_data.xml").read_text(encoding="utf-8", errors="replace") if Path("init_data.xml").exists() else ""
+result_name = first_tag(init_text, ("result_name", "result"))
+wu_name = first_tag(init_text, ("wu_name", "wu"))
+
+if not result_name and not wu_name:
     raise SystemExit(1)
 
-text = path.read_text(encoding="utf-8", errors="replace")
+state_paths = [
+    Path("/var/lib/boinc-client/client_state.xml"),
+    Path("/var/lib/boinc/client_state.xml"),
+    Path("../../client_state.xml"),
+    Path("../client_state.xml"),
+]
+
+state_text = ""
+for path in state_paths:
+    if path.exists():
+        state_text = path.read_text(encoding="utf-8", errors="replace")
+        break
+
+if not state_text:
+    raise SystemExit(1)
+
+matches = []
+for block in re.findall(r"<result>.*?</result>", state_text, flags=re.S):
+    block_result_name = first_tag(block, ("name",))
+    block_wu_name = first_tag(block, ("wu_name",))
+
+    if result_name and block_result_name != result_name:
+        continue
+    if not result_name and wu_name and block_wu_name != wu_name:
+        continue
+
+    for ref in re.findall(r"<file_ref>.*?</file_ref>", block, flags=re.S):
+        open_name = first_tag(ref, ("open_name",))
+        file_name = first_tag(ref, ("file_name",))
+        if open_name == "output.json" and file_name and file_name != "output.json":
+            matches.append(file_name)
+
 seen = set()
-
-for block in re.findall(r"<file_ref>.*?</file_ref>", text, flags=re.S):
-    open_name = re.search(r"<open_name>(.*?)</open_name>", block, flags=re.S)
-    file_name = re.search(r"<file_name>(.*?)</file_name>", block, flags=re.S)
-
-    if not open_name or not file_name:
-        continue
-    if open_name.group(1).strip() != "output.json":
-        continue
-
-    name = file_name.group(1).strip()
-    if name and name != "output.json" and name not in seen:
+for name in matches:
+    if name not in seen:
         seen.add(name)
         print(name)
 PY
@@ -337,7 +364,7 @@ copy_output_to_boinc_files() {
   done < <(resolve_output_files || true)
 
   if [[ "\$copied" -eq 0 ]]; then
-    echo "ERROR: no BOINC physical output filename found in init_data.xml" >&2
+    echo "ERROR: no BOINC physical output filename found in client_state.xml" >&2
     return 1
   fi
 }

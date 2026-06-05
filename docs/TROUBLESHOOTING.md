@@ -209,7 +209,7 @@ Results с `outcome=5` (`didnt_need`) не считаются ошибкой к�
 BOINC-клиент завершил вычисление, но не нашёл output-файл для загрузки.
 Для Python runner это обычно означает, что приложение записало удобное имя `output.json`, а BOINC ожидал физическое имя result-файла вроде `py_..._r123_0`.
 
-После исправления runner читает `init_data.xml`, находит physical filename для `open_name=output.json` и пишет output сразу туда.
+После исправления runner читает `result_name`/`wu_name` из `init_data.xml`, находит physical filename для `open_name=output.json` в `client_state.xml` и копирует output туда.
 Текущий эксперимент с такими ошибками нужно перезапустить:
 
 ```bash
