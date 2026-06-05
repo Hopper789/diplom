@@ -6,6 +6,8 @@ ENV_FILE="$ROOT_DIR/config/generated.env"
 EXPERIMENT_ENV_FILE="$ROOT_DIR/config/experiment.env"
 DISTRIBUTED_ENV_FILE="$ROOT_DIR/config/distributed.env"
 MONITORING_DIR="$ROOT_DIR/monitoring"
+BOINC_EXPORTER_IMAGE="${BOINC_EXPORTER_IMAGE:-monitoring-boinc-exporter:latest}"
+BOINC_EXPORTER_BASE_IMAGE="${BOINC_EXPORTER_BASE_IMAGE:-python:3.12-slim}"
 
 # shellcheck source=scripts/lib/ansible_args.sh
 source "$ROOT_DIR/scripts/lib/ansible_args.sh"
@@ -63,6 +65,7 @@ mkdir -p "$MONITORING_DIR"
 
 cat > "$MONITORING_DIR/.env" <<ENVEOF
 SERVER_IP=$SERVER_IP
+BOINC_EXPORTER_IMAGE=$BOINC_EXPORTER_IMAGE
 PROJECT_NAME=$PROJECT_NAME
 PROJECT_URL=$BOINC_PROJECT_URL
 MYSQL_HOST=boinc-mysql
@@ -77,6 +80,52 @@ DISTRIBUTED_MAX_SUCCESS_RESULTS=${DISTRIBUTED_MAX_SUCCESS_RESULTS:-1}
 DISTRIBUTED_MAX_ERROR_RESULTS=${DISTRIBUTED_MAX_ERROR_RESULTS:-3}
 DISTRIBUTED_MAX_TOTAL_RESULTS=${DISTRIBUTED_MAX_TOTAL_RESULTS:-3}
 ENVEOF
+
+retry_command() {
+  local attempts="$1"
+  local delay_seconds="$2"
+  shift 2
+
+  local attempt
+  for attempt in $(seq 1 "$attempts"); do
+    if "$@"; then
+      return 0
+    fi
+
+    if [[ "$attempt" -lt "$attempts" ]]; then
+      echo "Command failed, retrying in ${delay_seconds}s ($attempt/$attempts): $*" >&2
+      sleep "$delay_seconds"
+    fi
+  done
+
+  return 1
+}
+
+ensure_boinc_exporter_image() {
+  if docker image inspect "$BOINC_EXPORTER_IMAGE" >/dev/null 2>&1; then
+    echo "Using existing BOINC exporter image: $BOINC_EXPORTER_IMAGE"
+    return 0
+  fi
+
+  echo "BOINC exporter image not found locally: $BOINC_EXPORTER_IMAGE"
+  echo "Building it from base image: $BOINC_EXPORTER_BASE_IMAGE"
+
+  if ! retry_command 5 20 docker pull "$BOINC_EXPORTER_BASE_IMAGE"; then
+    echo
+    echo "ERROR: failed to pull BOINC exporter base image: $BOINC_EXPORTER_BASE_IMAGE" >&2
+    echo "Docker Hub may be unavailable from this machine." >&2
+    echo "Try a cached tag or local registry, for example:" >&2
+    echo "  BOINC_EXPORTER_BASE_IMAGE=python:3 ./scripts/monitoring_up.sh" >&2
+    echo "  BOINC_EXPORTER_BASE_IMAGE=registry.local/library/python:3.12-slim ./scripts/monitoring_up.sh" >&2
+    exit 1
+  fi
+
+  retry_command 3 20 \
+    docker build \
+      --build-arg "PYTHON_BASE_IMAGE=$BOINC_EXPORTER_BASE_IMAGE" \
+      -t "$BOINC_EXPORTER_IMAGE" \
+      "$MONITORING_DIR"
+}
 
 python3 - "$ROOT_DIR" "$MONITORING_DIR/prometheus.yml" <<'PY'
 import sys
@@ -173,9 +222,11 @@ else
   echo "Skipping client monitoring agent deployment."
 fi
 
+ensure_boinc_exporter_image
+
 (
   cd "$MONITORING_DIR"
-  docker compose up -d --build --force-recreate
+  COMPOSE_BAKE=false docker compose up -d --force-recreate
 )
 
 echo

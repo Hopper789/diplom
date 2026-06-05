@@ -139,6 +139,33 @@ docker pull ubuntu:24.04
 
 Playbook делает несколько повторных попыток и не пересобирает клиентский образ, если `local/boinc-client:ubuntu24` уже есть на узле.
 
+## `failed to fetch anonymous token` при запуске `boinc-exporter`
+
+Это та же сетевая проблема с Docker Hub, но уже на управляющей машине, где запускается monitoring stack.
+Exporter собирается из Python-образа:
+
+```text
+python:3.12-slim
+```
+
+Проверь:
+
+```bash
+docker pull python:3.12-slim
+```
+
+Если pull падает, можно попробовать другой тег или локальное зеркало:
+
+```bash
+BOINC_EXPORTER_BASE_IMAGE=python:3 ./scripts/monitoring_up.sh
+```
+
+```bash
+BOINC_EXPORTER_BASE_IMAGE=registry.local/library/python:3.12-slim ./scripts/monitoring_up.sh
+```
+
+Если образ `monitoring-boinc-exporter:latest` уже собран локально, `monitoring_up.sh` больше не пересобирает его при каждом запуске.
+
 ## `results` сильно больше `workunits`
 
 Это нормально, если включена BOINC-репликация. Например, `workunits=50` и `results=150` означает примерно три result-записи на одну workunit.

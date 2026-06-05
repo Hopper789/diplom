@@ -1,7 +1,6 @@
 services:
   boinc-exporter:
-    build: .
-    image: monitoring-boinc-exporter:latest
+    image: ${BOINC_EXPORTER_IMAGE:-monitoring-boinc-exporter:latest}
     container_name: boinc-exporter
     env_file:
       - .env
