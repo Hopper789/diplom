@@ -18,7 +18,13 @@ mkdir -p "$ROOT_DIR/server/project" "$ROOT_DIR/server/mysql-data"
 
 (
   cd "$ROOT_DIR/server"
-  docker compose up -d --build
+  if [[ "${BOINC_SERVER_FORCE_BUILD:-0}" == "1" ]]; then
+    COMPOSE_BAKE=false docker compose up -d --build
+  elif docker image inspect boinc-server-build >/dev/null 2>&1; then
+    COMPOSE_BAKE=false docker compose up -d
+  else
+    COMPOSE_BAKE=false docker compose up -d --build
+  fi
 )
 
 echo "Waiting for MariaDB to be ready..."

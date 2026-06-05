@@ -33,6 +33,14 @@ nano config/cluster.yml
 ./scripts/status.sh
 ```
 
+## Быстрый повторный запуск
+
+Если `prepare_system.sh` уже выполнялся и нужно просто быстро поднять кластер снова:
+
+```bash
+./scripts/quickstart.sh --skip-prepare --with-monitoring --skip-status
+```
+
 ## 6. Открыть интерфейсы
 
 BOINC server:

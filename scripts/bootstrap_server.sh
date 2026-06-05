@@ -2,11 +2,12 @@
 set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
+SKIP_STATUS=0
 
 usage() {
   cat <<'USAGE'
 Использование:
-  ./scripts/bootstrap_server.sh
+  ./scripts/bootstrap_server.sh [--skip-status]
 
 Скрипт поднимает только локальную серверную часть:
   init_config.sh
@@ -18,16 +19,22 @@ Vault здесь не нужен, потому что удалённые кли�
 USAGE
 }
 
-if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
-  usage
-  exit 0
-fi
-
-if [[ $# -gt 0 ]]; then
-  echo "Примечание: bootstrap_server.sh игнорирует аргументы Ansible, потому что выполняет только серверные шаги."
-  echo "Для полного запуска используй ./scripts/launch_cluster.sh или ./scripts/bootstrap_clients.sh вручную."
-  echo
-fi
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --skip-status)
+      SKIP_STATUS=1
+      shift
+      ;;
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Примечание: bootstrap_server.sh игнорирует аргумент: $1"
+      shift
+      ;;
+  esac
+done
 
 echo "== Запуск BOINC server =="
 
@@ -47,7 +54,10 @@ chmod +x server/scripts/*.sh 2>/dev/null || true
 ./scripts/init_config.sh
 ./scripts/server_up.sh
 ./scripts/create_account_db.sh
-./scripts/status.sh --server-only || true
+
+if [[ "$SKIP_STATUS" != "1" ]]; then
+  ./scripts/status.sh --server-only || true
+fi
 
 echo
 echo "Серверная часть готова."

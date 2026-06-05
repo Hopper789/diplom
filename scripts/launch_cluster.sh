@@ -107,11 +107,11 @@ echo "== Launching BOINC cluster =="
 echo
 
 if [[ "$CLIENTS_ONLY" != "1" ]]; then
-  ./scripts/bootstrap_server.sh
+  ./scripts/bootstrap_server.sh --skip-status
 fi
 
 if [[ "$SERVER_ONLY" != "1" ]]; then
-  ./scripts/bootstrap_clients.sh "${ANSIBLE_ARGS[@]}"
+  ./scripts/bootstrap_clients.sh --skip-status --skip-runtime-check "${ANSIBLE_ARGS[@]}"
 fi
 
 if [[ "$WITH_MONITORING" == "1" ]]; then

@@ -17,6 +17,22 @@ source "$ROOT_DIR/scripts/lib/inventory.sh"
 cd "$ROOT_DIR"
 
 DEPLOY_CLIENT_AGENTS=1
+FORCE_RECREATE=0
+
+usage() {
+  cat <<'USAGE'
+Usage:
+  ./scripts/monitoring_up.sh [options]
+
+Options:
+  --skip-client-agents       do not deploy node-exporter/cAdvisor/promtail on BOINC clients
+  --force-recreate           force Docker Compose to recreate monitoring containers
+  --ask-vault-pass, --vault  ask Vault password manually
+  --vault-password-file F    use custom Vault password file
+  --ask-become-pass, -K      ask sudo password
+  --help, -h
+USAGE
+}
 
 build_ansible_args "$@"
 set -- "${ANSIBLE_REMAINING_ARGS[@]}"
@@ -27,9 +43,17 @@ while [[ $# -gt 0 ]]; do
       DEPLOY_CLIENT_AGENTS=0
       shift
       ;;
+    --force-recreate)
+      FORCE_RECREATE=1
+      shift
+      ;;
+    --help|-h)
+      usage
+      exit 0
+      ;;
     *)
       echo "Unknown argument: $1"
-      echo "Usage: ./scripts/monitoring_up.sh [--ask-vault-pass|--vault] [--vault-password-file FILE] [--ask-become-pass|-K] [--skip-client-agents]"
+      usage
       exit 2
       ;;
   esac
@@ -226,7 +250,11 @@ ensure_boinc_exporter_image
 
 (
   cd "$MONITORING_DIR"
-  COMPOSE_BAKE=false docker compose up -d --force-recreate
+  compose_args=(up -d)
+  if [[ "$FORCE_RECREATE" == "1" ]]; then
+    compose_args+=(--force-recreate)
+  fi
+  COMPOSE_BAKE=false docker compose "${compose_args[@]}"
 )
 
 echo

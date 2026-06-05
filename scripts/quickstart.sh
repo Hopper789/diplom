@@ -9,6 +9,7 @@ INSTALL_LOCAL=0
 COPY_SSH_KEYS=0
 SKIP_PREPARE=0
 SKIP_LAUNCH=0
+SKIP_STATUS=0
 ASK_BECOME_PASS=0
 
 usage() {
@@ -23,6 +24,7 @@ Options:
   --copy-ssh-keys       copy SSH keys to clients during preparation
   --skip-prepare        run only launch_cluster.sh
   --skip-launch         run only prepare_system.sh
+  --skip-status         skip final launch status check
   --ask-become-pass, -K ask sudo password for Ansible steps
   --help, -h
 
@@ -59,6 +61,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --skip-launch)
       SKIP_LAUNCH=1
+      shift
+      ;;
+    --skip-status)
+      SKIP_STATUS=1
       shift
       ;;
     --ask-become-pass|-K)
@@ -99,6 +105,10 @@ fi
 
 if [[ "$RUN_EXPERIMENT" == "1" ]]; then
   launch_args+=(--run-experiment)
+fi
+
+if [[ "$SKIP_STATUS" == "1" ]]; then
+  launch_args+=(--skip-status)
 fi
 
 if [[ "$ASK_BECOME_PASS" == "1" ]]; then

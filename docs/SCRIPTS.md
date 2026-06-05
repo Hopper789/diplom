@@ -17,6 +17,12 @@
 ./scripts/quickstart.sh --with-monitoring --run-experiment
 ```
 
+Быстрый повторный запуск без большого финального отчёта:
+
+```bash
+./scripts/quickstart.sh --skip-prepare --with-monitoring --skip-status
+```
+
 Раздельный путь:
 
 ```bash
@@ -45,6 +51,11 @@
 Эти скрипты полезны для диагностики и повторных отдельных операций. Они не являются основным способом первого запуска.
 
 `monitoring_up.sh` запускает Prometheus/Grafana, Loki/Promtail и клиентские monitoring agents.
+По умолчанию он не пересоздаёт контейнеры принудительно; если нужно перечитать provisioning или полностью перезапустить monitoring stack, используй:
+
+```bash
+./scripts/monitoring_up.sh --force-recreate
+```
 
 `dump_grafana_results.sh` можно запустить вручную после завершения задач:
 

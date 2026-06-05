@@ -9,16 +9,36 @@ source "$ROOT_DIR/scripts/lib/ansible_args.sh"
 source "$ROOT_DIR/scripts/lib/inventory.sh"
 
 cd "$ROOT_DIR"
+SKIP_STATUS=0
+SKIP_RUNTIME_CHECK=0
 
 echo "== BOINC clients bootstrap =="
 echo
 
 build_ansible_args "$@"
-if [[ "${#ANSIBLE_REMAINING_ARGS[@]}" -gt 0 ]]; then
-  echo "Unknown argument: ${ANSIBLE_REMAINING_ARGS[0]}"
-  echo "Usage: ./scripts/bootstrap_clients.sh [--ask-vault-pass|--vault] [--vault-password-file FILE] [--ask-become-pass|-K]"
-  exit 2
-fi
+set -- "${ANSIBLE_REMAINING_ARGS[@]}"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --skip-status)
+      SKIP_STATUS=1
+      shift
+      ;;
+    --skip-runtime-check)
+      SKIP_RUNTIME_CHECK=1
+      shift
+      ;;
+    --help|-h)
+      echo "Usage: ./scripts/bootstrap_clients.sh [--skip-status] [--skip-runtime-check] [--ask-vault-pass|--vault] [--vault-password-file FILE] [--ask-become-pass|-K]"
+      exit 0
+      ;;
+    *)
+      echo "Unknown argument: $1"
+      echo "Usage: ./scripts/bootstrap_clients.sh [--skip-status] [--skip-runtime-check] [--ask-vault-pass|--vault] [--vault-password-file FILE] [--ask-become-pass|-K]"
+      exit 2
+      ;;
+  esac
+done
 
 if [[ ! -f "$ROOT_DIR/config/generated.env" ]]; then
   echo "ERROR: config/generated.env not found."
@@ -53,13 +73,17 @@ echo
 echo "Deploying BOINC Docker clients..."
 ./scripts/deploy_clients.sh "${ANSIBLE_ARGS[@]}"
 
-echo
-echo "Clients status:"
-./scripts/status.sh "${ANSIBLE_ARGS[@]}" || true
+if [[ "$SKIP_STATUS" != "1" ]]; then
+  echo
+  echo "Clients status:"
+  ./scripts/status.sh "${ANSIBLE_ARGS[@]}" || true
+fi
 
-echo
-echo "Client runtime check:"
-./scripts/check_client_runtime.sh "${ANSIBLE_ARGS[@]}" || true
+if [[ "$SKIP_RUNTIME_CHECK" != "1" ]]; then
+  echo
+  echo "Client runtime check:"
+  ./scripts/check_client_runtime.sh "${ANSIBLE_ARGS[@]}" || true
+fi
 
 echo
 echo "Clients bootstrap completed."

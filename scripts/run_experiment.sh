@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 AUTO_UPDATE_SECONDS="${BOINC_AUTO_UPDATE_SECONDS:-600}"
 AUTO_UPDATE_INTERVAL_SECONDS="${BOINC_AUTO_UPDATE_INTERVAL_SECONDS:-15}"
 AUTO_DUMP_RESULTS="${BOINC_AUTO_DUMP_RESULTS:-1}"
+STATUS_AFTER_SUBMIT="${BOINC_STATUS_AFTER_SUBMIT:-0}"
 
 # shellcheck source=scripts/lib/ansible_args.sh
 source "$ROOT_DIR/scripts/lib/ansible_args.sh"
@@ -69,8 +70,11 @@ export ANSIBLE_HOST_KEY_CHECKING=False
 apps/ml_grid_search/run_task.sh boinc
 
 echo
-echo "Status after submitting work:"
-./scripts/status.sh "${ANSIBLE_ARGS[@]}" || true
+if [[ "$STATUS_AFTER_SUBMIT" == "1" ]]; then
+  echo "Status after submitting work:"
+  ./scripts/status.sh "${ANSIBLE_ARGS[@]}" || true
+  echo
+fi
 
 echo
 echo "Auto-updating BOINC clients so they keep fetching work..."
