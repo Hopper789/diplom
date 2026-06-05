@@ -12,6 +12,7 @@ TO="${GRAFANA_DUMP_TO:-now}"
 WIDTH="${GRAFANA_DUMP_WIDTH:-1600}"
 HEIGHT="${GRAFANA_DUMP_HEIGHT:-900}"
 OUT_DIR=""
+QUIET=0
 
 usage() {
   cat <<'USAGE'
@@ -31,6 +32,7 @@ Options:
   --output-dir DIR          output directory
   --width PX                rendered panel width; default: 1600
   --height PX               rendered panel height; default: 900
+  --quiet                   suppress progress output; errors are still printed
   --help, -h
 USAGE
 }
@@ -68,6 +70,10 @@ while [[ $# -gt 0 ]]; do
     --height)
       HEIGHT="${2:-}"
       shift 2
+      ;;
+    --quiet)
+      QUIET=1
+      shift
       ;;
     --help|-h)
       usage
@@ -165,17 +171,23 @@ is_complete() {
   [[ "$WORKUNITS" -gt 0 && "$UNFINISHED" -eq 0 ]]
 }
 
+log() {
+  if [[ "$QUIET" != "1" ]]; then
+    echo "$@"
+  fi
+}
+
 if [[ "$WAIT" == "1" ]]; then
-  echo "Waiting for BOINC computations to finish before dumping Grafana..."
+  log "Waiting for BOINC computations to finish before dumping Grafana..."
   deadline=$((SECONDS + MAX_SECONDS))
 
   while true; do
     if is_complete; then
-      echo "BOINC computations completed: workunits=$WORKUNITS completed=$COMPLETED unfinished=$UNFINISHED client_errors=$CLIENT_ERRORS redundant=$REDUNDANT"
+      log "BOINC computations completed: workunits=$WORKUNITS completed=$COMPLETED unfinished=$UNFINISHED client_errors=$CLIENT_ERRORS redundant=$REDUNDANT"
       break
     fi
 
-    echo "BOINC still running: workunits=$WORKUNITS completed=$COMPLETED unfinished=$UNFINISHED client_errors=$CLIENT_ERRORS redundant=$REDUNDANT"
+    log "BOINC still running: workunits=$WORKUNITS completed=$COMPLETED unfinished=$UNFINISHED client_errors=$CLIENT_ERRORS redundant=$REDUNDANT"
 
     if [[ "$MAX_SECONDS" -eq 0 || "$SECONDS" -ge "$deadline" ]]; then
       echo "ERROR: computations are not complete; Grafana dump skipped." >&2
@@ -256,7 +268,7 @@ for path in sorted(dashboards_dir.glob("*.json")):
         print("\t".join([uid, dashboard_slug, str(panel_id), panel_title, str(out_path)]))
 PY
 
-echo "Rendering Grafana panels..."
+log "Rendering Grafana panels..."
 rendered=0
 failed=0
 
@@ -274,7 +286,7 @@ while IFS=$'\t' read -r uid slug panel_id panel_title panel_out; do
     --data-urlencode "tz=UTC" \
     -o "$panel_out"; then
     rendered=$((rendered + 1))
-    echo "  OK: $panel_title"
+    log "  OK: $panel_title"
   else
     failed=$((failed + 1))
     echo "  FAILED: $panel_title" >&2
@@ -282,7 +294,7 @@ while IFS=$'\t' read -r uid slug panel_id panel_title panel_out; do
   fi
 done < "$OUT_DIR/panels.tsv"
 
-echo "Dumping final metrics..."
+log "Dumping final metrics..."
 PROMETHEUS_URL="$PROMETHEUS_URL" python3 - "$ROOT_DIR" "$OUT_DIR" <<'PY'
 import json
 import os
@@ -419,11 +431,13 @@ Files:
 - dashboard JSON copies: dashboards/
 EOF
 
-echo
-echo "Grafana dump completed:"
-echo "  $OUT_DIR"
-echo "Rendered panels: $rendered"
-echo "Failed panels:   $failed"
+if [[ "$QUIET" != "1" ]]; then
+  echo
+  echo "Grafana dump completed:"
+  echo "  $OUT_DIR"
+  echo "Rendered panels: $rendered"
+  echo "Failed panels:   $failed"
+fi
 
 if [[ "$failed" -gt 0 ]]; then
   exit 1

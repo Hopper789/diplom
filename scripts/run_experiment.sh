@@ -102,10 +102,10 @@ if [[ "$STATUS_AFTER_SUBMIT" == "1" ]]; then
 fi
 
 echo
-echo "Auto-updating BOINC clients so they keep fetching work..."
 ./scripts/pump_clients.sh \
   --max-seconds "$AUTO_UPDATE_SECONDS" \
   --interval-seconds "$AUTO_UPDATE_INTERVAL_SECONDS" \
+  --quiet \
   "${ANSIBLE_ARGS[@]}"
 
 echo
@@ -118,11 +118,11 @@ if [[ "$AUTO_DUMP_RESULTS" == "1" ]]; then
       echo "Fix the computation error, rerun the experiment, then dump manually if needed:"
       echo "  ./scripts/dump_grafana_results.sh --wait --max-seconds 600"
     else
-      echo "Dumping Grafana panels and final metrics if computations are complete..."
       if ./scripts/dump_grafana_results.sh \
         --wait \
         --max-seconds "${BOINC_DUMP_WAIT_SECONDS:-$AUTO_UPDATE_SECONDS}" \
-        --interval-seconds "${BOINC_DUMP_INTERVAL_SECONDS:-15}"; then
+        --interval-seconds "${BOINC_DUMP_INTERVAL_SECONDS:-15}" \
+        --quiet; then
         echo "Grafana dump saved."
       else
         echo "WARNING: Grafana dump was skipped or failed. Check computations and monitoring, then run:"
