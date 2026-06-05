@@ -287,9 +287,51 @@ write_launcher() {
 #!/usr/bin/env bash
 set -uo pipefail
 SCRIPT_DIR="\$(cd "\$(dirname "\$0")" && pwd)"
-python3 "\$SCRIPT_DIR/runner.py" --task "\$SCRIPT_DIR/user_task.py" --input input.json --output output.json$fail_arg
+
+resolve_output_file() {
+  if [[ ! -f init_data.xml ]]; then
+    return 1
+  fi
+
+  awk '
+    /<file_ref>/ {
+      in_ref = 1
+      file_name = ""
+      open_name = ""
+    }
+    in_ref && /<file_name>/ {
+      line = \$0
+      sub(/.*<file_name>/, "", line)
+      sub(/<\\/file_name>.*/, "", line)
+      file_name = line
+    }
+    in_ref && /<open_name>/ {
+      line = \$0
+      sub(/.*<open_name>/, "", line)
+      sub(/<\\/open_name>.*/, "", line)
+      open_name = line
+    }
+    /<\\/file_ref>/ {
+      if (in_ref && open_name == "output.json" && file_name != "") {
+        print file_name
+        exit 0
+      }
+      in_ref = 0
+    }
+  ' init_data.xml
+}
+
+OUTPUT_FILE="\$(resolve_output_file || true)"
+if [[ -z "\$OUTPUT_FILE" ]]; then
+  OUTPUT_FILE="output.json"
+fi
+
+python3 "\$SCRIPT_DIR/runner.py" --task "\$SCRIPT_DIR/user_task.py" --input input.json --output "\$OUTPUT_FILE"$fail_arg
 status="\$?"
 if [[ "\$status" -eq 0 ]]; then
+  if [[ "\$OUTPUT_FILE" != "output.json" && -f "\$OUTPUT_FILE" && ! -e output.json ]]; then
+    ln -s "\$OUTPUT_FILE" output.json 2>/dev/null || cp "\$OUTPUT_FILE" output.json
+  fi
   printf '0\n' > boinc_finish_called
 fi
 exit "\$status"

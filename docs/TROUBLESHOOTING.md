@@ -204,6 +204,19 @@ Results с `outcome=5` (`didnt_need`) не считаются ошибкой к�
 
 В выводе `client_errors` показывает настоящие проблемные outcomes, а `redundant` показывает лишние results от replication/quorum.
 
+## `upload failure ... error_code -161 (not found)`
+
+BOINC-клиент завершил вычисление, но не нашёл output-файл для загрузки.
+Для Python runner это обычно означает, что приложение записало удобное имя `output.json`, а BOINC ожидал физическое имя result-файла вроде `py_..._r123_0`.
+
+После исправления runner читает `init_data.xml`, находит physical filename для `open_name=output.json` и пишет output сразу туда.
+Текущий эксперимент с такими ошибками нужно перезапустить:
+
+```bash
+./scripts/clean_runtime.sh
+./scripts/quickstart.sh --with-monitoring --run-experiment
+```
+
 ## Loki отвечает `503 ready: failed`
 
 Это проблема готовности хранилища логов и она не блокирует выполнение BOINC-задач.
