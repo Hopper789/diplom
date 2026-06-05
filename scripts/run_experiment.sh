@@ -49,6 +49,31 @@ if [[ "${#ANSIBLE_ARGS[@]}" -gt 0 ]]; then
   export ANSIBLE_EXTRA_ARGS="${ANSIBLE_ARGS[*]}"
 fi
 
+sql_tsv() {
+  docker exec boinc-mysql mariadb -u root -proot -N -B -D "$PROJECT_NAME" -e "$1"
+}
+
+read_progress() {
+  local row
+  row="$(sql_tsv "
+    SELECT
+      COUNT(DISTINCT w.id),
+      COUNT(DISTINCT CASE WHEN r.outcome = 1 THEN w.id END),
+      COALESCE(SUM(CASE WHEN r.outcome = 0 THEN 1 ELSE 0 END), 0),
+      COALESCE(SUM(CASE WHEN r.outcome IN (2, 3, 4, 6) THEN 1 ELSE 0 END), 0),
+      COALESCE(SUM(CASE WHEN r.outcome = 5 THEN 1 ELSE 0 END), 0)
+    FROM workunit w
+    LEFT JOIN result r ON r.workunitid = w.id;
+  " 2>/dev/null || true)"
+
+  IFS=$'\t' read -r WORKUNITS COMPLETED UNFINISHED CLIENT_ERRORS REDUNDANT <<< "$row"
+  WORKUNITS="${WORKUNITS:-0}"
+  COMPLETED="${COMPLETED:-0}"
+  UNFINISHED="${UNFINISHED:-0}"
+  CLIENT_ERRORS="${CLIENT_ERRORS:-0}"
+  REDUNDANT="${REDUNDANT:-0}"
+}
+
 echo "Experiment config:"
 if [[ -f "$ROOT_DIR/config/experiment.env" ]]; then
   grep -v '^#' "$ROOT_DIR/config/experiment.env" | grep -v '^$' || true
@@ -86,15 +111,23 @@ echo "Auto-updating BOINC clients so they keep fetching work..."
 echo
 if [[ "$AUTO_DUMP_RESULTS" == "1" ]]; then
   if docker ps --format '{{.Names}}' | grep -qx 'boinc-grafana'; then
-    echo "Dumping Grafana panels and final metrics if computations are complete..."
-    if ./scripts/dump_grafana_results.sh \
-      --wait \
-      --max-seconds "${BOINC_DUMP_WAIT_SECONDS:-$AUTO_UPDATE_SECONDS}" \
-      --interval-seconds "${BOINC_DUMP_INTERVAL_SECONDS:-15}"; then
-      echo "Grafana dump saved."
-    else
-      echo "WARNING: Grafana dump was skipped or failed. Check computations and monitoring, then run:"
+    read_progress
+    if [[ "$CLIENT_ERRORS" -gt 0 || "$WORKUNITS" -eq 0 || "$COMPLETED" -lt "$WORKUNITS" ]]; then
+      echo "Skipping Grafana dump because computations are not clean:"
+      echo "  workunits=$WORKUNITS completed=$COMPLETED unfinished=$UNFINISHED client_errors=$CLIENT_ERRORS redundant=$REDUNDANT"
+      echo "Fix the computation error, rerun the experiment, then dump manually if needed:"
       echo "  ./scripts/dump_grafana_results.sh --wait --max-seconds 600"
+    else
+      echo "Dumping Grafana panels and final metrics if computations are complete..."
+      if ./scripts/dump_grafana_results.sh \
+        --wait \
+        --max-seconds "${BOINC_DUMP_WAIT_SECONDS:-$AUTO_UPDATE_SECONDS}" \
+        --interval-seconds "${BOINC_DUMP_INTERVAL_SECONDS:-15}"; then
+        echo "Grafana dump saved."
+      else
+        echo "WARNING: Grafana dump was skipped or failed. Check computations and monitoring, then run:"
+        echo "  ./scripts/dump_grafana_results.sh --wait --max-seconds 600"
+      fi
     fi
   else
     echo "Skipping Grafana dump: boinc-grafana is not running."

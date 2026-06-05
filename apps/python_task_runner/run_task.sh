@@ -288,51 +288,68 @@ write_launcher() {
 set -uo pipefail
 SCRIPT_DIR="\$(cd "\$(dirname "\$0")" && pwd)"
 
-resolve_output_file() {
+resolve_output_files() {
   if [[ ! -f init_data.xml ]]; then
     return 1
   fi
 
-  awk '
-    /<file_ref>/ {
-      in_ref = 1
-      file_name = ""
-      open_name = ""
-    }
-    in_ref && /<file_name>/ {
-      line = \$0
-      sub(/.*<file_name>/, "", line)
-      sub(/<\\/file_name>.*/, "", line)
-      file_name = line
-    }
-    in_ref && /<open_name>/ {
-      line = \$0
-      sub(/.*<open_name>/, "", line)
-      sub(/<\\/open_name>.*/, "", line)
-      open_name = line
-    }
-    /<\\/file_ref>/ {
-      if (in_ref && open_name == "output.json" && file_name != "") {
-        print file_name
-        exit 0
-      }
-      in_ref = 0
-    }
-  ' init_data.xml
+  python3 - <<'PY'
+from pathlib import Path
+import re
+
+path = Path("init_data.xml")
+if not path.exists():
+    raise SystemExit(1)
+
+text = path.read_text(encoding="utf-8", errors="replace")
+seen = set()
+
+for block in re.findall(r"<file_ref>.*?</file_ref>", text, flags=re.S):
+    open_name = re.search(r"<open_name>(.*?)</open_name>", block, flags=re.S)
+    file_name = re.search(r"<file_name>(.*?)</file_name>", block, flags=re.S)
+
+    if not open_name or not file_name:
+        continue
+    if open_name.group(1).strip() != "output.json":
+        continue
+
+    name = file_name.group(1).strip()
+    if name and name != "output.json" and name not in seen:
+        seen.add(name)
+        print(name)
+PY
 }
 
-OUTPUT_FILE="\$(resolve_output_file || true)"
-if [[ -z "\$OUTPUT_FILE" ]]; then
-  OUTPUT_FILE="output.json"
-fi
+copy_output_to_boinc_files() {
+  if [[ ! -f output.json ]]; then
+    echo "ERROR: runner exited successfully but output.json is missing" >&2
+    return 1
+  fi
 
-python3 "\$SCRIPT_DIR/runner.py" --task "\$SCRIPT_DIR/user_task.py" --input input.json --output "\$OUTPUT_FILE"$fail_arg
+  local copied=0
+  local boinc_output
+  while IFS= read -r boinc_output; do
+    [[ -n "\$boinc_output" ]] || continue
+    if [[ "\$boinc_output" != "output.json" ]]; then
+      cp output.json "\$boinc_output"
+      copied=1
+    fi
+  done < <(resolve_output_files || true)
+
+  if [[ "\$copied" -eq 0 ]]; then
+    echo "ERROR: no BOINC physical output filename found in init_data.xml" >&2
+    return 1
+  fi
+}
+
+python3 "\$SCRIPT_DIR/runner.py" --task "\$SCRIPT_DIR/user_task.py" --input input.json --output output.json$fail_arg
 status="\$?"
 if [[ "\$status" -eq 0 ]]; then
-  if [[ "\$OUTPUT_FILE" != "output.json" && -f "\$OUTPUT_FILE" && ! -e output.json ]]; then
-    ln -s "\$OUTPUT_FILE" output.json 2>/dev/null || cp "\$OUTPUT_FILE" output.json
+  if copy_output_to_boinc_files; then
+    printf '0\n' > boinc_finish_called
+  else
+    status=1
   fi
-  printf '0\n' > boinc_finish_called
 fi
 exit "\$status"
 EOF
