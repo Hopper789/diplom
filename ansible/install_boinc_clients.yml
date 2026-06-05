@@ -104,6 +104,17 @@
         docker rm -f boinc-client 2>/dev/null || true
       changed_when: false
 
+    - name: Reset stale BOINC client project state
+      ansible.builtin.file:
+        path: "{{ boinc_client_data_dir }}/data"
+        state: absent
+
+    - name: Recreate BOINC client data directory
+      ansible.builtin.file:
+        path: "{{ boinc_client_data_dir }}/data"
+        state: directory
+        mode: "0755"
+
     - name: Check existing BOINC client image
       ansible.builtin.shell: |
         docker image inspect "{{ boinc_client_image }}" >/dev/null 2>&1

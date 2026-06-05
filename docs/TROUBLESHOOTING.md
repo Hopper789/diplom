@@ -104,6 +104,26 @@ ssh USER@CLIENT_IP
 ./scripts/launch_cluster.sh
 ```
 
+## `Invalid or missing account key` / `Can't find host record`
+
+Это значит, что BOINC server был пересоздан и выдал новый account key, а клиент сохранил старую привязку проекта в `/opt/boinc-client/data`.
+В таком состоянии workunits/results уже есть на сервере, но клиенты не получают задачи: scheduler не может сопоставить старый host/account с новой базой.
+
+Переразверни клиентскую часть, чтобы удалить старое BOINC-состояние и заново привязать клиентов:
+
+```bash
+./scripts/bootstrap_clients.sh
+```
+
+Если эксперимент уже успел набрать ошибки из-за старого ключа, лучше перезапустить runtime целиком:
+
+```bash
+./scripts/clean_runtime.sh
+./scripts/quickstart.sh --with-monitoring --run-experiment
+```
+
+После исправления `bootstrap_clients.sh` сохраняет Docker image cache, но сбрасывает `/opt/boinc-client/data`, чтобы stale account key не попадал в новый запуск.
+
 ## Проверить Python/Numba на клиентах
 
 Python-задачи выполняются внутри контейнера `boinc-client`, поэтому `numpy` и `numba` должны быть установлены именно там.
