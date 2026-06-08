@@ -34,13 +34,22 @@
       },
       "targets": [
         {
-          "expr": "boinc_hosts_summary",
+          "expr": "boinc_hosts_active_recent_total",
           "refId": "A",
+          "legendFormat": "активные",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
-          },
-          "legendFormat": "{{active}}/{{total}}"
+          }
+        },
+        {
+          "expr": "boinc_hosts_total",
+          "refId": "B",
+          "legendFormat": "все",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "fieldConfig": {
@@ -60,8 +69,8 @@
           "values": false
         },
         "orientation": "auto",
-        "textMode": "name",
-        "colorMode": "value",
+        "textMode": "value_and_name",
+        "colorMode": "none",
         "graphMode": "none",
         "justifyMode": "center"
       },
@@ -94,7 +103,16 @@
         "defaults": {
           "unit": "percent",
           "decimals": 1,
-          "noValue": "-"
+          "noValue": "-",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
         },
         "overrides": []
       },
@@ -108,7 +126,7 @@
         },
         "orientation": "auto",
         "textMode": "auto",
-        "colorMode": "value",
+        "colorMode": "none",
         "graphMode": "none",
         "justifyMode": "center"
       },
@@ -188,7 +206,20 @@
         "defaults": {
           "unit": "percent",
           "decimals": 1,
-          "noValue": "-"
+          "noValue": "-",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
         },
         "overrides": []
       },
@@ -263,7 +294,7 @@
     {
       "id": 7,
       "type": "stat",
-      "title": "Польза",
+      "title": "Полезная нагрузка",
       "gridPos": {
         "x": 6,
         "y": 5,

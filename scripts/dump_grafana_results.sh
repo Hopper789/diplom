@@ -338,7 +338,7 @@ if summary_row_y is None:
             "Осталось",
             "Ошибки",
             "Время",
-            "Польза",
+            "Полезная нагрузка",
             "Скорость",
             "Репликация",
         }
@@ -382,6 +382,15 @@ def extract_hosts_value(payload):
         return extract_value(payload)
     return f"{active}/{total}"
 
+def query_hosts_pair():
+    active_payload = query_prometheus("boinc_hosts_active_recent_total")
+    total_payload = query_prometheus("boinc_hosts_total")
+    active = extract_value(active_payload)
+    total = extract_value(total_payload)
+    if active is None or total is None:
+        return active_payload, None
+    return active_payload, f"{active}/{total}"
+
 records = []
 for panel in sorted(summary_panels, key=lambda p: ((p.get("gridPos") or {}).get("y", 0), (p.get("gridPos") or {}).get("x", 0))):
     targets = panel.get("targets") or []
@@ -389,11 +398,14 @@ for panel in sorted(summary_panels, key=lambda p: ((p.get("gridPos") or {}).get(
     if not expr:
         continue
     try:
-        payload = query_prometheus(expr)
-        if expr == "boinc_hosts_summary":
-            value = extract_hosts_value(payload)
+        if panel.get("title") == "Хосты":
+            payload, value = query_hosts_pair()
         else:
-            value = extract_value(payload)
+            payload = query_prometheus(expr)
+            if expr == "boinc_hosts_summary":
+                value = extract_hosts_value(payload)
+            else:
+                value = extract_value(payload)
         status = payload.get("status", "unknown")
         error = None
     except Exception as exc:
