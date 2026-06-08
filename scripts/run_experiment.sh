@@ -6,6 +6,7 @@ AUTO_UPDATE_SECONDS="${BOINC_AUTO_UPDATE_SECONDS:-600}"
 AUTO_UPDATE_INTERVAL_SECONDS="${BOINC_AUTO_UPDATE_INTERVAL_SECONDS:-15}"
 AUTO_DUMP_RESULTS="${BOINC_AUTO_DUMP_RESULTS:-1}"
 STATUS_AFTER_SUBMIT="${BOINC_STATUS_AFTER_SUBMIT:-0}"
+SUBMIT_ONLY="${BOINC_SUBMIT_ONLY:-0}"
 
 # shellcheck source=scripts/lib/ansible_args.sh
 source "$ROOT_DIR/scripts/lib/ansible_args.sh"
@@ -16,9 +17,28 @@ echo "== BOINC experiment runner =="
 echo
 
 build_ansible_args "$@"
+set -- "${ANSIBLE_REMAINING_ARGS[@]}"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --submit-only)
+      SUBMIT_ONLY=1
+      shift
+      ;;
+    --help|-h)
+      echo "Usage: ./scripts/run_experiment.sh [--submit-only] [--ask-vault-pass|--vault] [--vault-password-file FILE] [--ask-become-pass|-K]"
+      exit 0
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+ANSIBLE_REMAINING_ARGS=("$@")
 if [[ "${#ANSIBLE_REMAINING_ARGS[@]}" -gt 0 ]]; then
   echo "Unknown argument: ${ANSIBLE_REMAINING_ARGS[0]}"
-  echo "Usage: ./scripts/run_experiment.sh [--ask-vault-pass|--vault] [--vault-password-file FILE] [--ask-become-pass|-K]"
+  echo "Usage: ./scripts/run_experiment.sh [--submit-only] [--ask-vault-pass|--vault] [--vault-password-file FILE] [--ask-become-pass|-K]"
   exit 2
 fi
 
@@ -134,6 +154,12 @@ if [[ "$STATUS_AFTER_SUBMIT" == "1" ]]; then
   echo "Status after submitting work:"
   ./scripts/status.sh "${ANSIBLE_ARGS[@]}" || true
   echo
+fi
+
+if [[ "$SUBMIT_ONLY" == "1" ]]; then
+  echo "Experiment submitted."
+  echo "Auto-update, Grafana dump, and status check were skipped."
+  exit 0
 fi
 
 echo

@@ -8,6 +8,7 @@ source "$ROOT_DIR/scripts/lib/ansible_args.sh"
 
 WITH_MONITORING=0
 RUN_EXPERIMENT=0
+SUBMIT_ONLY=0
 SERVER_ONLY=0
 CLIENTS_ONLY=0
 SKIP_STATUS=0
@@ -20,6 +21,7 @@ Usage:
 Options:
   --with-monitoring         start monitoring stack
   --run-experiment          submit and pump the experiment
+  --submit-only             with --run-experiment, submit work without auto-update/status wait
   --server-only             launch only BOINC server
   --clients-only            launch only BOINC clients
   --skip-status             skip final status check
@@ -70,6 +72,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --run-experiment)
       RUN_EXPERIMENT=1
+      shift
+      ;;
+    --submit-only)
+      SUBMIT_ONLY=1
       shift
       ;;
     --server-only)
@@ -123,7 +129,11 @@ if [[ "$WITH_MONITORING" == "1" ]]; then
 fi
 
 if [[ "$RUN_EXPERIMENT" == "1" ]]; then
-  ./scripts/run_experiment.sh "${ANSIBLE_ARGS[@]}"
+  experiment_args=("${ANSIBLE_ARGS[@]}")
+  if [[ "$SUBMIT_ONLY" == "1" ]]; then
+    experiment_args+=(--submit-only)
+  fi
+  ./scripts/run_experiment.sh "${experiment_args[@]}"
 fi
 
 if [[ "$SKIP_STATUS" != "1" ]]; then

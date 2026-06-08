@@ -107,6 +107,8 @@ fi
 
 if [[ "$RUN_EXPERIMENT" == "1" ]]; then
   launch_args+=(--run-experiment)
+  launch_args+=(--submit-only)
+  launch_args+=(--skip-status)
 fi
 
 if [[ "$SKIP_STATUS" == "1" ]]; then

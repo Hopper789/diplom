@@ -631,5 +631,3 @@ show_summary
 
 echo
 echo "Python-задачи отправлены в BOINC."
-echo "Проверка:"
-echo "  ./scripts/status.sh"
