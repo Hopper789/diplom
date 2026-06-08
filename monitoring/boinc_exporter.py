@@ -54,6 +54,7 @@ boinc_results_error_total = Gauge("boinc_results_error_total", "BOINC results wi
 boinc_results_redundant_total = Gauge("boinc_results_redundant_total", "BOINC results with outcome=5 did not need")
 boinc_results_unfinished_total = Gauge("boinc_results_unfinished_total", "BOINC results with outcome=0")
 boinc_results_finished_total = Gauge("boinc_results_finished_total", "BOINC results with outcome!=0")
+boinc_results_executed_total = Gauge("boinc_results_executed_total", "BOINC results actually executed by clients: success plus error outcomes")
 boinc_results_unsent_total = Gauge("boinc_results_unsent_total", "BOINC results not assigned to any host yet")
 boinc_results_assigned_total = Gauge("boinc_results_assigned_total", "BOINC results assigned to a host")
 boinc_results_in_progress_total = Gauge("boinc_results_in_progress_total", "Assigned BOINC results not finished yet")
@@ -70,7 +71,7 @@ boinc_queue_remaining_total = Gauge("boinc_queue_remaining_total", "Unfinished B
 boinc_completed_workunits_total = Gauge("boinc_completed_workunits_total", "Distinct workunits with at least one successful result")
 boinc_effective_completion_ratio = Gauge("boinc_effective_completion_ratio", "completed_workunits / workunits_total")
 boinc_replication_overhead = Gauge("boinc_replication_overhead", "results_total / workunits_total")
-boinc_actual_results_per_workunit = Gauge("boinc_actual_results_per_workunit", "Average result records per workunit")
+boinc_actual_results_per_workunit = Gauge("boinc_actual_results_per_workunit", "Executed success/error results per workunit")
 boinc_target_nresults_avg = Gauge("boinc_target_nresults_avg", "Average workunit target_nresults")
 boinc_min_quorum_avg = Gauge("boinc_min_quorum_avg", "Average workunit min_quorum")
 boinc_max_success_results_avg = Gauge("boinc_max_success_results_avg", "Average workunit max_success_results")
@@ -101,7 +102,7 @@ boinc_experiment_throughput_workunits_per_second = Gauge(
 # Distributed-computing configuration loaded from config/distributed.env through monitoring/.env.
 boinc_config_replication_factor = Gauge(
     "boinc_config_replication_factor",
-    "Configured target results per workunit from distributed.env",
+    "Configured target_nresults per workunit from distributed.env",
 )
 boinc_config_min_quorum = Gauge(
     "boinc_config_min_quorum",
@@ -201,6 +202,7 @@ def update_db_metrics() -> None:
             unfinished = safe_fetch_one(cur, "SELECT COUNT(*) FROM result WHERE outcome = 0")
             finished = safe_fetch_one(cur, "SELECT COUNT(*) FROM result WHERE outcome != 0")
             errors = safe_fetch_one(cur, "SELECT COUNT(*) FROM result WHERE outcome IN (2, 3, 4, 6)")
+            executed = success + errors
             redundant = safe_fetch_one(cur, "SELECT COUNT(*) FROM result WHERE outcome = 5")
             unsent = safe_fetch_one(cur, "SELECT COUNT(*) FROM result WHERE hostid = 0")
             assigned = safe_fetch_one(cur, "SELECT COUNT(*) FROM result WHERE hostid != 0")
@@ -212,6 +214,7 @@ def update_db_metrics() -> None:
             boinc_results_redundant_total.set(redundant)
             boinc_results_unfinished_total.set(unfinished)
             boinc_results_finished_total.set(finished)
+            boinc_results_executed_total.set(executed)
             boinc_results_unsent_total.set(unsent)
             boinc_results_assigned_total.set(assigned)
             boinc_results_in_progress_total.set(in_progress)
@@ -223,7 +226,7 @@ def update_db_metrics() -> None:
             boinc_results_error_percent.set((float(errors) / float(finished) * 100.0) if finished else 0)
             set_ratio(boinc_effective_completion_ratio, completed_wu, workunits)
             set_ratio(boinc_replication_overhead, results, workunits)
-            set_ratio(boinc_actual_results_per_workunit, results, workunits)
+            set_ratio(boinc_actual_results_per_workunit, executed, workunits)
 
             latest_result_received_time = float(
                 safe_fetch_one(cur, "SELECT COALESCE(MAX(received_time), 0) FROM result")

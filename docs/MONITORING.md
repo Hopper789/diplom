@@ -68,7 +68,9 @@ BOINC Errors:  http://SERVER_IP:3000/d/boinc-errors/boinc-errors
 | `boinc_results_error_total` | реальные ошибочные results: client error, no reply, validate error |
 | `boinc_results_redundant_total` | лишние results от replication/quorum, которые BOINC пометил как `didnt_need` |
 | `boinc_results_unfinished_total` | незавершённые results |
+| `boinc_results_executed_total` | реально выполненные results: успешные плюс ошибочные |
 | `boinc_completed_workunits_total` | workunits с успешным результатом |
+| `boinc_actual_results_per_workunit` | реально выполненные attempts на один workunit |
 | `boinc_avg_success_turnaround_seconds` | среднее время возврата результата |
 | `boinc_p95_success_turnaround_seconds` | p95 времени возврата результата |
 | `boinc_avg_compute_time_per_workunit_seconds` | среднее вычислительное время |

@@ -23,11 +23,11 @@
 
 | Термин | Значение |
 |---|---|
-| `target_nresults` | Сколько result-записей BOINC должен создать для одного workunit. |
+| `target_nresults` | Сколько result-записей BOINC старается держать для одного workunit. Это целевая стартовая выдача, а не верхний лимит. |
 | `min_quorum` | Сколько успешных совпадающих результатов нужно для подтверждения workunit. |
 | `max_success_results` | Максимум успешных results для одного workunit. |
 | `max_error_results` | Сколько ошибочных попыток допускается до остановки выдачи. |
-| `max_total_results` | Общий лимит result-записей для одного workunit. |
+| `max_total_results` | Общий лимит result-записей для одного workunit. Для схемы "2 из 3" обычно `target_nresults=2`, `min_quorum=2`, `max_success_results=2`, `max_total_results=3`. |
 | `delay_bound` | Максимальное время, за которое клиент должен вернуть result. |
 | `server_state` | Состояние result на сервере: выдан, не выдан, завершён и так далее. |
 | `client_state` | Состояние result с точки зрения клиента. |

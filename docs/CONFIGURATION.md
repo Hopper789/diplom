@@ -132,4 +132,18 @@ DISTRIBUTED_MAX_ERROR_RESULTS=3
 DISTRIBUTED_MAX_TOTAL_RESULTS=3
 ```
 
+Схема "2 из 3" с запасной попыткой:
+
+```env
+DISTRIBUTED_TARGET_NRESULTS=2
+DISTRIBUTED_MIN_QUORUM=2
+DISTRIBUTED_MAX_SUCCESS_RESULTS=2
+DISTRIBUTED_MAX_ERROR_RESULTS=3
+DISTRIBUTED_MAX_TOTAL_RESULTS=3
+```
+
+Важно: `DISTRIBUTED_TARGET_NRESULTS=3` означает, что BOINC будет стремиться создать и
+выдать три result-записи сразу. При достаточном числе свободных клиентов это обычно
+даёт ровно 3 выполнения на workunit, даже если `DISTRIBUTED_MIN_QUORUM=2`.
+
 Для учебного первого запуска оставь значения по умолчанию.

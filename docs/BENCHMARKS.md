@@ -50,7 +50,7 @@ curl -s http://SERVER_IP:9101/metrics | grep boinc_
 | Средняя загрузка CPU, % | Насколько клиенты реально заняты вычислениями |
 | Среднее использование RAM, % | Использование памяти клиентских узлов |
 | Накладные расходы на задачу | Разница между turnaround и compute time |
-| Фактический коэффициент репликации | Сколько result-записей приходится на один workunit |
+| Фактический коэффициент репликации | Сколько реально выполненных attempts приходится на один workunit |
 | Network RX/TX | Средний сетевой трафик клиентов по Prometheus |
 | SSH network probe | Быстрая оценка ping и upload throughput до клиентов |
 
@@ -263,7 +263,21 @@ DISTRIBUTED_MIN_QUORUM=1
 ```env
 DISTRIBUTED_TARGET_NRESULTS=2
 DISTRIBUTED_MIN_QUORUM=2
+DISTRIBUTED_MAX_SUCCESS_RESULTS=2
 ```
+
+Вариант "2 из 3", когда третья попытка является запасной:
+
+```env
+DISTRIBUTED_TARGET_NRESULTS=2
+DISTRIBUTED_MIN_QUORUM=2
+DISTRIBUTED_MAX_SUCCESS_RESULTS=2
+DISTRIBUTED_MAX_TOTAL_RESULTS=3
+```
+
+Не ставь `DISTRIBUTED_TARGET_NRESULTS=3`, если ожидаешь остановку после двух успешных
+результатов: это заставляет BOINC создать три result-записи сразу, и при свободных
+клиентах все три могут реально выполниться до проверки quorum.
 
 При репликации число `results` обычно больше числа `workunits`. Results с `outcome=5` (`didnt_need`) считаются redundant, а не ошибкой клиента.
 

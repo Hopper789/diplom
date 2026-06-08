@@ -28,7 +28,7 @@ usage() {
 
 Опции:
   --yes                    Запустить реально. Без флага будет показан план.
-  --replicas N|auto        Число реплик для replicated-сценария. auto = число клиентов.
+  --replicas N|auto        Максимум attempts для replicated-сценария. auto = число клиентов.
   --timeout N              Таймаут одного сценария, секунд. По умолчанию: 180.
   --poll-interval N        Пауза между проверками, секунд. По умолчанию: 10.
   --network-probe-mib N    Размер SSH network probe на клиента, MiB. По умолчанию: 8.
@@ -141,7 +141,7 @@ validate_positive_int "--timeout" "$CASE_TIMEOUT"
 validate_positive_int "--poll-interval" "$POLL_INTERVAL"
 validate_nonnegative_int "--network-probe-mib" "$NETWORK_PROBE_MIB"
 
-QUORUM=$(((REPLICA_COUNT + 1) / 2))
+QUORUM=$((REPLICA_COUNT / 2 + 1))
 if [[ "$QUORUM" -lt 1 ]]; then
   QUORUM=1
 fi
@@ -184,7 +184,7 @@ EOF
 
   if [[ "$WITH_REPLICATION" == "1" ]]; then
     cat <<EOF
-  cpu_light_16_repl     16 CPU-задач по ~1.5 сек, replication=$REPLICA_COUNT, quorum=$QUORUM
+  cpu_light_16_repl     16 CPU-задач по ~1.5 сек, max attempts=$REPLICA_COUNT, quorum=$QUORUM
 EOF
   fi
 
@@ -200,8 +200,12 @@ write_distributed_config() {
   local target_nresults="$1"
   local min_quorum="$2"
   local max_success_results="$3"
+  local max_total_results="${4:-}"
   local max_error_results=3
-  local max_total_results=3
+
+  if [[ -z "$max_total_results" ]]; then
+    max_total_results=3
+  fi
 
   if [[ "$target_nresults" -gt "$max_total_results" ]]; then
     max_total_results=$((target_nresults + max_error_results))
@@ -391,6 +395,7 @@ SELECT
   COUNT(DISTINCT w.id),
   COUNT(r.id),
   COUNT(DISTINCT CASE WHEN r.outcome = 1 THEN w.id END),
+  SUM(CASE WHEN r.outcome = 1 THEN 1 ELSE 0 END),
   SUM(CASE WHEN r.outcome = 0 THEN 1 ELSE 0 END),
   SUM(CASE WHEN r.outcome IN (2, 3, 4, 6) THEN 1 ELSE 0 END),
   SUM(CASE WHEN r.outcome = 5 THEN 1 ELSE 0 END),
@@ -412,13 +417,15 @@ def as_float(index: int) -> float:
 workunits = as_float(0)
 results = as_float(1)
 completed = as_float(2)
-unfinished = as_float(3)
-errors = as_float(4)
-redundant = as_float(5)
-first_create_time = as_float(6)
-last_received_time = as_float(7)
-avg_turnaround = as_float(8)
-avg_compute = as_float(9)
+success_results = as_float(3)
+unfinished = as_float(4)
+errors = as_float(5)
+redundant = as_float(6)
+first_create_time = as_float(7)
+last_received_time = as_float(8)
+avg_turnaround = as_float(9)
+avg_compute = as_float(10)
+executed_results = success_results + errors
 
 if first_create_time > 0 and last_received_time > first_create_time:
     total_seconds = last_received_time - first_create_time
@@ -427,7 +434,7 @@ else:
 
 throughput = completed / total_seconds if total_seconds else 0.0
 error_percent = errors / results * 100.0 if results else 0.0
-replication_factor = results / workunits if workunits else 0.0
+replication_factor = executed_results / workunits if workunits else 0.0
 overhead = max(0.0, avg_turnaround - avg_compute)
 
 def prom_query_range(expr: str) -> list[float]:
@@ -480,6 +487,8 @@ data = {
     "boinc": {
         "workunits": workunits,
         "results": results,
+        "success_results": success_results,
+        "executed_results": executed_results,
         "completed_workunits": completed,
         "unfinished_results": unfinished,
         "error_results": errors,
@@ -689,6 +698,7 @@ run_case() {
   local target_nresults="$6"
   local min_quorum="$7"
   local max_success_results="$8"
+  local max_total_results="${9:-}"
 
   local scenario_dir="$REPORT_ROOT/$scenario"
   local params_file="$scenario_dir/params.jsonl"
@@ -704,7 +714,7 @@ run_case() {
 
   mkdir -p "$scenario_dir"
   generate_params "$benchmark_type" "$task_count" "$task_seconds" "$params_file"
-  write_distributed_config "$target_nresults" "$min_quorum" "$max_success_results"
+  write_distributed_config "$target_nresults" "$min_quorum" "$max_success_results" "$max_total_results"
   cp "$ROOT_DIR/config/distributed.env" "$scenario_dir/distributed.env"
 
   local started_at finished_at
@@ -747,7 +757,7 @@ run_case "cpu_heavy_8_base" "cpu" "$ROOT_DIR/apps/python_task_runner/examples/sy
 run_case "io_small_8_base" "io" "$ROOT_DIR/apps/python_task_runner/examples/io_test/user_task.py" 8 0 1 1 1
 
 if [[ "$WITH_REPLICATION" == "1" && "$REPLICA_COUNT" -gt 1 ]]; then
-  run_case "cpu_light_16_repl${REPLICA_COUNT}" "cpu" "$ROOT_DIR/apps/python_task_runner/examples/synthetic_cpu/user_task.py" 16 1.5 "$REPLICA_COUNT" "$QUORUM" "$REPLICA_COUNT"
+  run_case "cpu_light_16_repl${REPLICA_COUNT}" "cpu" "$ROOT_DIR/apps/python_task_runner/examples/synthetic_cpu/user_task.py" 16 1.5 "$QUORUM" "$QUORUM" "$QUORUM" "$REPLICA_COUNT"
 fi
 
 write_summary "$REPORT_ROOT"

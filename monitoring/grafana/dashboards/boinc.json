@@ -160,7 +160,7 @@
     },
     {
       "type": "stat",
-      "title": "Replication",
+      "title": "Target results",
       "gridPos": {
         "x": 8,
         "y": 4,
@@ -695,7 +695,7 @@
         {
           "expr": "boinc_config_replication_factor",
           "refId": "A",
-          "legendFormat": "configured replication",
+          "legendFormat": "configured target_nresults",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
@@ -704,7 +704,7 @@
         {
           "expr": "boinc_actual_results_per_workunit",
           "refId": "B",
-          "legendFormat": "actual results/workunit",
+          "legendFormat": "actual executed/workunit",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
@@ -1416,7 +1416,7 @@
         "defaults": {
           "unit": "short",
           "decimals": 2,
-          "description": "Отношение количества выполненных result-записей к числу workunit."
+          "description": "Отношение реально выполненных result-записей к числу workunit. Считает успешные и ошибочные attempts, но не считает unsent/didnt_need."
         },
         "overrides": []
       },
