@@ -49,6 +49,9 @@ job="docker" или "boinc-project-logs"
 
 Dashboard `BOINC Errors` группирует типовые ошибки:
 
+Dashboard показывает только Docker logs со `stream="stderr"`, чтобы stdout-сообщения
+не забивали окно ошибок.
+
 | Категория | Что ищет |
 |---|---|
 | `templates/workunits` | `bad WU template`, `no <file_info>`, `no <workunit>`, `create_work`, `xadd`, `update_versions` |

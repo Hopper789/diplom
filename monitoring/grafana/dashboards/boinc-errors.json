@@ -22,7 +22,7 @@
       },
       "targets": [
         {
-          "expr": "sum(count_over_time({cluster=\"boinc\"} |~ \"(?i)(error|failed|exception|traceback|fatal|panic|timeout|denied|refused|bad WU template|no <file_info>|no <workunit>)\"[5m]))",
+          "expr": "sum(count_over_time({cluster=\"boinc\", stream=\"stderr\"} |~ \"(?i)(error|failed|exception|traceback|fatal|panic|timeout|denied|refused|bad WU template|no <file_info>|no <workunit>)\"[5m]))",
           "refId": "A",
           "datasource": {
             "type": "loki",
@@ -59,7 +59,7 @@
       },
       "targets": [
         {
-          "expr": "sum(count_over_time({cluster=\"boinc\"} |~ \"(?i)(bad WU template|no <file_info>|no <workunit>|create_work|xadd|update_versions|template)\"[5m]))",
+          "expr": "sum(count_over_time({cluster=\"boinc\", stream=\"stderr\"} |~ \"(?i)(bad WU template|no <file_info>|no <workunit>|create_work|xadd|update_versions|template)\"[5m]))",
           "legendFormat": "templates/workunits",
           "refId": "A",
           "datasource": {
@@ -68,7 +68,7 @@
           }
         },
         {
-          "expr": "sum(count_over_time({cluster=\"boinc\"} |~ \"(?i)(boinccmd|project attach|project_attach|scheduler request failed|no tasks|client.*error|gui_rpc_auth)\"[5m]))",
+          "expr": "sum(count_over_time({cluster=\"boinc\", stream=\"stderr\"} |~ \"(?i)(boinccmd|project attach|project_attach|scheduler request failed|no tasks|client.*error|gui_rpc_auth)\"[5m]))",
           "legendFormat": "client/rpc",
           "refId": "B",
           "datasource": {
@@ -77,7 +77,7 @@
           }
         },
         {
-          "expr": "sum(count_over_time({cluster=\"boinc\"} |~ \"(?i)(mariadb|mysql|database|db.*error|connection refused|can't connect)\"[5m]))",
+          "expr": "sum(count_over_time({cluster=\"boinc\", stream=\"stderr\"} |~ \"(?i)(mariadb|mysql|database|db.*error|connection refused|can't connect)\"[5m]))",
           "legendFormat": "database",
           "refId": "C",
           "datasource": {
@@ -86,7 +86,7 @@
           }
         },
         {
-          "expr": "sum(count_over_time({cluster=\"boinc\"} |~ \"(?i)(docker.*error|no such container|cannot connect to docker|permission denied|denied|pull access denied)\"[5m]))",
+          "expr": "sum(count_over_time({cluster=\"boinc\", stream=\"stderr\"} |~ \"(?i)(docker.*error|no such container|cannot connect to docker|permission denied|denied|pull access denied)\"[5m]))",
           "legendFormat": "docker/permissions",
           "refId": "D",
           "datasource": {
@@ -95,7 +95,7 @@
           }
         },
         {
-          "expr": "sum(count_over_time({cluster=\"boinc\"} |~ \"(?i)(ansible|ssh|unreachable|host key verification|permission denied|failed to connect)\"[5m]))",
+          "expr": "sum(count_over_time({cluster=\"boinc\", stream=\"stderr\"} |~ \"(?i)(ansible|ssh|unreachable|host key verification|permission denied|failed to connect)\"[5m]))",
           "legendFormat": "ansible/ssh",
           "refId": "E",
           "datasource": {
@@ -133,7 +133,7 @@
       },
       "targets": [
         {
-          "expr": "{cluster=\"boinc\"} |~ \"(?i)(error|failed|exception|traceback|fatal|panic|timeout|denied|refused|bad WU template|no <file_info>|no <workunit>|scheduler|boinccmd)\"",
+          "expr": "{cluster=\"boinc\", stream=\"stderr\"} |~ \"(?i)(error|failed|exception|traceback|fatal|panic|timeout|denied|refused|bad WU template|no <file_info>|no <workunit>|scheduler|boinccmd)\"",
           "refId": "A",
           "datasource": {
             "type": "loki",
@@ -163,7 +163,7 @@
       },
       "targets": [
         {
-          "expr": "{cluster=\"boinc\", job=~\"docker|boinc-project-logs\", node_role=\"server\"}",
+          "expr": "{cluster=\"boinc\", job=\"docker\", node_role=\"server\", stream=\"stderr\"}",
           "refId": "A",
           "datasource": {
             "type": "loki",
@@ -193,7 +193,7 @@
       },
       "targets": [
         {
-          "expr": "{cluster=\"boinc\", node_role=\"client\"}",
+          "expr": "{cluster=\"boinc\", node_role=\"client\", stream=\"stderr\"}",
           "refId": "A",
           "datasource": {
             "type": "loki",
