@@ -36,6 +36,9 @@ project:
 server:
   ip: 192.168.1.10
 
+clients_defaults:
+  port: 2222
+
 clients:
   - name: node1
     ip: 192.168.1.11
@@ -51,7 +54,7 @@ boinc:
 
 `server.ip` должен быть доступен клиентам. `clients[].user` должен подключаться по SSH и иметь sudo-доступ.
 
-`clients[].port` задаёт SSH-порт клиента. Если порт не указан, используется стандартный SSH-порт `22`.
+`clients[].port` или `clients[].ssh_port` задаёт SSH-порт конкретного клиента. Если у всех клиентов один нестандартный порт, укажи `clients_defaults.port`, `clients_defaults.ssh_port` или `ssh.port`. Если порт не указан, используется стандартный SSH-порт `22`.
 
 Для клиентских узлов также поддерживаются поля `host`, `hostname`, `ansible_host`, `username`, `ansible_user` и `ansible_port`.
 

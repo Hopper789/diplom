@@ -70,7 +70,14 @@ default_user = (
     get_nested(cfg, "clients_defaults", "username")
     or get_nested(cfg, "clients_defaults", "user")
 )
-default_port = get_nested(cfg, "clients_defaults", "port")
+default_port = (
+    get_nested(cfg, "clients_defaults", "port")
+    or get_nested(cfg, "clients_defaults", "ssh_port")
+    or get_nested(cfg, "clients_defaults", "ansible_port")
+    or get_nested(cfg, "ssh", "port")
+    or cfg.get("ssh_port")
+    or cfg.get("default_ssh_port")
+)
 
 for client in clients:
     if isinstance(client, str):
@@ -82,7 +89,7 @@ for client in clients:
         name = client.get("name", "")
         ip = client.get("ip") or client.get("host") or client.get("hostname") or client.get("ansible_host")
         user = client.get("user") or client.get("username") or client.get("ansible_user") or default_user
-        port = client.get("port") or client.get("ansible_port") or default_port
+        port = client.get("port") or client.get("ssh_port") or client.get("ansible_port") or default_port
     else:
         continue
 

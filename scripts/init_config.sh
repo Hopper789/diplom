@@ -108,7 +108,14 @@ default_client_user = (
     get_nested(cfg, "clients_defaults", "username")
     or get_nested(cfg, "clients_defaults", "user")
 )
-default_client_port = get_nested(cfg, "clients_defaults", "port")
+default_client_port = (
+    get_nested(cfg, "clients_defaults", "port")
+    or get_nested(cfg, "clients_defaults", "ssh_port")
+    or get_nested(cfg, "clients_defaults", "ansible_port")
+    or get_nested(cfg, "ssh", "port")
+    or cfg.get("ssh_port")
+    or cfg.get("default_ssh_port")
+)
 
 env_path.parent.mkdir(parents=True, exist_ok=True)
 inventory_path.parent.mkdir(parents=True, exist_ok=True)
@@ -144,7 +151,7 @@ for item in clients:
     elif isinstance(item, dict):
         host = item.get("ip") or item.get("host") or item.get("hostname") or item.get("ansible_host")
         user = item.get("username") or item.get("user") or item.get("ansible_user") or default_client_user
-        port = item.get("port") or item.get("ansible_port") or default_client_port
+        port = item.get("port") or item.get("ssh_port") or item.get("ansible_port") or default_client_port
     else:
         continue
 
