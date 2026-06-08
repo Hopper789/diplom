@@ -32,6 +32,8 @@ Examples:
   ./scripts/quickstart.sh
   ./scripts/quickstart.sh --with-monitoring
   ./scripts/quickstart.sh --with-monitoring --run-experiment
+
+Experiment task is selected in config/experiment.env via EXPERIMENT_APP.
 USAGE
 }
 

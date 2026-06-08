@@ -53,6 +53,41 @@ sql_tsv() {
   docker exec boinc-mysql mariadb -u root -proot -N -B -D "$PROJECT_NAME" -e "$1"
 }
 
+run_selected_experiment() {
+  local app="${EXPERIMENT_APP:-ml_grid_search}"
+
+  if [[ -n "${EXPERIMENT_TASK_CMD:-}" ]]; then
+    echo "Experiment task: custom command"
+    echo "Command: $EXPERIMENT_TASK_CMD"
+    bash -lc "$EXPERIMENT_TASK_CMD"
+    return
+  fi
+
+  echo "Experiment task: $app"
+  case "$app" in
+    ml_grid_search)
+      apps/ml_grid_search/run_task.sh boinc
+      ;;
+    big_determinant)
+      apps/big_determinant/run_task.sh boinc
+      ;;
+    python_task_runner)
+      : "${PYTHON_TASK_FILE:?PYTHON_TASK_FILE is required for EXPERIMENT_APP=python_task_runner}"
+      : "${PYTHON_TASK_PARAMS:?PYTHON_TASK_PARAMS is required for EXPERIMENT_APP=python_task_runner}"
+      apps/python_task_runner/run_task.sh \
+        --task "$PYTHON_TASK_FILE" \
+        --params "$PYTHON_TASK_PARAMS" \
+        --device "${PYTHON_TASK_DEVICE:-cpu}"
+      ;;
+    *)
+      echo "Unknown EXPERIMENT_APP: $app" >&2
+      echo "Supported: ml_grid_search, big_determinant, python_task_runner" >&2
+      echo "Or set EXPERIMENT_TASK_CMD for a custom command." >&2
+      exit 2
+      ;;
+  esac
+}
+
 read_progress() {
   local row
   row="$(sql_tsv "
@@ -92,7 +127,7 @@ fi
 echo
 echo "Submitting BOINC work..."
 export ANSIBLE_HOST_KEY_CHECKING=False
-apps/ml_grid_search/run_task.sh boinc
+run_selected_experiment
 
 echo
 if [[ "$STATUS_AFTER_SUBMIT" == "1" ]]; then

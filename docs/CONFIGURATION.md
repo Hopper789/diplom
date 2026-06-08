@@ -96,19 +96,41 @@ nano config/experiment.env
 Основные параметры:
 
 ```env
-EXPERIMENT_WALL_SECONDS=180
-EXPERIMENT_CORES=12
-TASK_SECONDS=8
+EXPERIMENT_APP=ml_grid_search
+EXPERIMENT_WALL_SECONDS=1200
+EXPERIMENT_CORES=1
+TASK_SECONDS=1200
 TASK_COUNT=
 TASK_DATASET_SIZE=500
 TASK_SEED_BASE=1000
 TASK_LAMBDA_GRID=0,0.001,0.003,0.01,0.03,0.1,0.3,1,3,10
 ```
 
+`EXPERIMENT_APP` выбирает задачу для `quickstart --run-experiment`:
+
+- `ml_grid_search` — основной пример, CPU-задача с целевым временем;
+- `big_determinant` — тяжёлая CPU-задача на определителях матриц;
+- `python_task_runner` — произвольный `user_task.py` и `params.jsonl`.
+
 Если `TASK_COUNT` пустой, число задач считается примерно как:
 
 ```text
 EXPERIMENT_WALL_SECONDS * EXPERIMENT_CORES / TASK_SECONDS
+```
+
+Для `python_task_runner` нужно указать:
+
+```env
+EXPERIMENT_APP=python_task_runner
+PYTHON_TASK_FILE=apps/python_task_runner/examples/synthetic_cpu/user_task.py
+PYTHON_TASK_PARAMS=apps/python_task_runner/examples/synthetic_cpu/params.jsonl
+PYTHON_TASK_DEVICE=cpu
+```
+
+Для произвольного запуска можно задать:
+
+```env
+EXPERIMENT_TASK_CMD='apps/big_determinant/run_task.sh boinc'
 ```
 
 `TASK_LAMBDA_GRID` задаёт сетку параметров для примера `ml_grid_search`.
