@@ -147,7 +147,7 @@
       },
       "targets": [
         {
-          "expr": "(boinc_remaining_workunits_total / boinc_experiment_throughput_workunits_per_second) and (boinc_experiment_throughput_workunits_per_second > 0)",
+          "expr": "((boinc_remaining_workunits_total / boinc_experiment_throughput_workunits_per_second) and (boinc_experiment_throughput_workunits_per_second > 0)) or ((boinc_remaining_workunits_total * clamp_min(boinc_config_task_seconds, 1) / boinc_hosts_active_recent_total) and (boinc_experiment_throughput_workunits_per_second <= 0) and (boinc_hosts_active_recent_total > 0) and (boinc_remaining_workunits_total > 0)) or ((boinc_remaining_workunits_total * 0) and (boinc_remaining_workunits_total == 0))",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
@@ -159,7 +159,8 @@
         "defaults": {
           "unit": "s",
           "decimals": 0,
-          "noValue": "-"
+          "noValue": "-",
+          "description": "Оценка по текущей пропускной способности; до первых завершений — по длительности задачи и активным хостам."
         },
         "overrides": []
       },
@@ -180,7 +181,8 @@
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
-      }
+      },
+      "description": "Оценка по текущей пропускной способности; до первых завершений — по длительности задачи и активным хостам."
     },
     {
       "id": 5,
@@ -303,7 +305,7 @@
       },
       "targets": [
         {
-          "expr": "100 * boinc_completed_workunits_total / clamp_min(boinc_results_executed_total, 1)",
+          "expr": "(100 * boinc_completed_workunits_total / boinc_results_executed_total) and (boinc_results_executed_total > 0)",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
@@ -316,7 +318,7 @@
           "unit": "percent",
           "decimals": 1,
           "noValue": "-",
-          "description": "Уникально завершённые задачи / реально выполненные attempts."
+          "description": "Уникально завершённые задачи / реально выполненные attempts. До первых выполненных attempts показывается пусто."
         },
         "overrides": []
       },
@@ -338,7 +340,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Уникально завершённые задачи / реально выполненные attempts."
+      "description": "Уникально завершённые задачи / реально выполненные attempts. До первых выполненных attempts показывается пусто."
     },
     {
       "id": 8,
