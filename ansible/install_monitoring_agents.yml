@@ -85,6 +85,7 @@
               volumes:
                 - "./promtail.yml:/etc/promtail/promtail.yml:ro"
                 - "/var/run/docker.sock:/var/run/docker.sock:ro"
+                - "/var/lib/docker/containers:/var/lib/docker/containers:ro"
 
     - name: Write Promtail config for client logs
       ansible.builtin.copy:
@@ -95,6 +96,9 @@
             http_listen_port: 9080
             grpc_listen_port: 0
 
+          positions:
+            filename: /tmp/promtail-positions.yaml
+
           clients:
             - url: http://{{ server_ip }}:3100/loki/api/v1/push
 
@@ -104,17 +108,24 @@
                 - host: unix:///var/run/docker.sock
                   refresh_interval: 5s
               relabel_configs:
+                - source_labels: ["__meta_docker_container_id"]
+                  target_label: container_id
                 - source_labels: ["__meta_docker_container_name"]
                   regex: "/(.*)"
                   target_label: container
                 - source_labels: ["__meta_docker_container_label_com_docker_compose_service"]
                   target_label: compose_service
+                - source_labels: ["__meta_docker_container_id"]
+                  target_label: __path__
+                  replacement: /var/lib/docker/containers/$1/$1-json.log
                 - target_label: node
                   replacement: "{{ inventory_hostname }}"
                 - target_label: node_role
                   replacement: client
                 - target_label: cluster
                   replacement: boinc
+              pipeline_stages:
+                - docker: {}
 
     - name: Start monitoring agent containers
       ansible.builtin.shell: |

@@ -83,10 +83,13 @@ curl -s http://SERVER_IP:3100/ready
 
 ## Логи и ошибки
 
-Loki хранит логи контейнеров. Promtail собирает Docker logs:
+Loki хранит логи контейнеров и BOINC project logs. Promtail собирает:
 
 - на управляющей машине — server, MariaDB, exporter, Prometheus, Grafana, Loki;
+- BOINC project logs из `server/project/*/log_boinc-server/*.log`;
 - на клиентских узлах — `boinc-client` и monitoring agents.
+
+Открыть логи вручную: Grafana → Explore → datasource `Loki`.
 
 Открыть dashboard ошибок:
 
@@ -98,6 +101,18 @@ http://SERVER_IP:3000/d/boinc-errors/boinc-errors
 
 ```logql
 {cluster="boinc"} |~ "(?i)(error|failed|exception|traceback|fatal|panic|timeout|denied|refused)"
+```
+
+BOINC daemon logs:
+
+```logql
+{job="boinc-project-logs"}
+```
+
+Docker logs:
+
+```logql
+{job="docker"}
 ```
 
 Подробнее: [Error handling](ERROR_HANDLING.md).

@@ -163,7 +163,7 @@
       },
       "targets": [
         {
-          "expr": "{cluster=\"boinc\", container=~\"boinc-server|boinc-exporter|boinc-mysql\"}",
+          "expr": "{cluster=\"boinc\", job=~\"docker|boinc-project-logs\", node_role=\"server\"}",
           "refId": "A",
           "datasource": {
             "type": "loki",

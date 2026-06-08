@@ -40,6 +40,21 @@ set +a
 
 MONITORING_HOST="${SERVER_IP:-localhost}"
 
+json_has_loki_result() {
+  python3 -c '
+import json
+import sys
+
+try:
+    payload = json.load(sys.stdin)
+except Exception:
+    raise SystemExit(1)
+
+result = payload.get("data", {}).get("result") or []
+raise SystemExit(0 if result else 1)
+'
+}
+
 echo "== Docker containers on server =="
 docker ps --filter name=boinc || true
 docker ps --filter name=monitoring || true
@@ -237,8 +252,48 @@ for target in payload.get("data", {}).get("activeTargets", []):
   if docker ps --format '{{.Names}}' | grep -qx 'boinc-loki'; then
     if curl -fsS "http://$MONITORING_HOST:3100/ready" | grep -qi 'ready'; then
       echo "Loki ready: OK"
+    elif curl -fsS "http://$MONITORING_HOST:3100/loki/api/v1/status/buildinfo" >/dev/null \
+      && curl -fsS "http://$MONITORING_HOST:3100/loki/api/v1/labels" | grep -q '"status":"success"'; then
+      echo "Loki ready: warming up, API is reachable"
     else
       echo "Loki ready: failed"
+    fi
+
+    if curl -fsS "http://$MONITORING_HOST:3100/loki/api/v1/status/buildinfo" | grep -q '"version"'; then
+      echo "Loki buildinfo: OK"
+    else
+      echo "Loki buildinfo: failed"
+    fi
+
+    if curl -fsS "http://$MONITORING_HOST:3100/loki/api/v1/labels" | grep -q '"status":"success"'; then
+      echo "Loki labels: OK"
+    else
+      echo "Loki labels: failed"
+    fi
+
+    if curl -fsS -G "http://$MONITORING_HOST:3100/loki/api/v1/query" \
+      --data-urlencode 'query={job="docker"}' | json_has_loki_result; then
+      echo "Loki docker logs: OK"
+    else
+      echo "Loki docker logs: no data"
+    fi
+
+    if curl -fsS -G "http://$MONITORING_HOST:3100/loki/api/v1/query" \
+      --data-urlencode 'query={job="boinc-project-logs"}' | json_has_loki_result; then
+      echo "Loki BOINC project logs: OK"
+    else
+      echo "Loki BOINC project logs: no data"
+    fi
+  fi
+
+  if docker ps --format '{{.Names}}' | grep -qx 'boinc-promtail'; then
+    echo "Promtail server: running"
+    if docker logs --tail 200 boinc-promtail 2>&1 \
+      | grep -Ei 'error|warn|permission denied|cannot connect|failed to send|connection refused|no such file|file does not exist' \
+      | tail -20; then
+      :
+    else
+      echo "Promtail recent warnings: none"
     fi
   fi
 
@@ -303,6 +358,14 @@ for target in payload.get("data", {}).get("activeTargets", []):
       echo "Grafana container -> Loki: OK"
     else
       echo "Grafana container -> Loki: failed"
+    fi
+
+    if docker exec boinc-grafana sh -lc \
+      'wget -qO- "http://loki:3100/loki/api/v1/labels" | grep -q "\"status\":\"success\""' \
+      >/dev/null 2>&1; then
+      echo "Grafana container -> Loki labels: OK"
+    else
+      echo "Grafana container -> Loki labels: failed"
     fi
 
   fi
