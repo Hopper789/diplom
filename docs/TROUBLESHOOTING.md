@@ -220,6 +220,8 @@ BOINC-клиент завершил вычисление, но не нашёл o
 ## Loki отвечает `503 ready: failed`
 
 Это проблема готовности хранилища логов и она не блокирует выполнение BOINC-задач.
+Если `status/buildinfo` и `/loki/api/v1/labels` отвечают, Loki API уже доступен,
+а `/ready` может ещё кратко возвращать 503.
 
 Перезапусти monitoring stack:
 
@@ -372,6 +374,20 @@ ls -l server/project/*/log_boinc-server/*.log
 ```
 
 Если нужны логи клиентов, перезапусти monitoring agents:
+
+```bash
+./scripts/monitoring_down.sh --with-client-agents
+./scripts/monitoring_up.sh --force-recreate
+```
+
+Если в логах Promtail есть ошибка вида:
+
+```text
+client version 1.42 is too old. Minimum supported API version is 1.44
+```
+
+значит старая конфигурация Promtail пыталась читать Docker через socket API.
+Пересоздай monitoring stack и agents, чтобы применить файловый сбор Docker logs:
 
 ```bash
 ./scripts/monitoring_down.sh --with-client-agents

@@ -288,6 +288,11 @@ for target in payload.get("data", {}).get("activeTargets", []):
 
   if docker ps --format '{{.Names}}' | grep -qx 'boinc-promtail'; then
     echo "Promtail server: running"
+    if docker exec boinc-promtail sh -lc 'ls /server/project/*/log_boinc-server/*.log >/dev/null 2>&1'; then
+      echo "Promtail BOINC project log files: OK"
+    else
+      echo "Promtail BOINC project log files: not found yet"
+    fi
     if docker logs --tail 200 boinc-promtail 2>&1 \
       | grep -Ei 'error|warn|permission denied|cannot connect|failed to send|connection refused|no such file|file does not exist' \
       | tail -20; then
@@ -355,9 +360,13 @@ for target in payload.get("data", {}).get("activeTargets", []):
     if docker exec boinc-grafana sh -lc \
       'wget -qO- "http://loki:3100/ready" | grep -qi "ready"' \
       >/dev/null 2>&1; then
-      echo "Grafana container -> Loki: OK"
+      echo "Grafana container -> Loki ready: OK"
+    elif docker exec boinc-grafana sh -lc \
+      'wget -qO- "http://loki:3100/loki/api/v1/labels" | grep -q "\"status\":\"success\""' \
+      >/dev/null 2>&1; then
+      echo "Grafana container -> Loki ready: warming up, API is reachable"
     else
-      echo "Grafana container -> Loki: failed"
+      echo "Grafana container -> Loki ready: failed"
     fi
 
     if docker exec boinc-grafana sh -lc \

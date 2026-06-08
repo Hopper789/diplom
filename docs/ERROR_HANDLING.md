@@ -42,7 +42,7 @@ Promtail собирает Docker logs:
 cluster="boinc"
 node="control" или имя клиента из inventory
 node_role="server" или "client"
-container="container-name"
+job="docker" или "boinc-project-logs"
 ```
 
 ## Категории ошибок
@@ -65,10 +65,16 @@ Dashboard `BOINC Errors` группирует типовые ошибки:
 {cluster="boinc"} |~ "(?i)(error|failed|exception|traceback|fatal|panic|timeout|denied|refused)"
 ```
 
-Логи BOINC server:
+BOINC daemon logs:
 
 ```logql
-{cluster="boinc", container="boinc-server"}
+{job="boinc-project-logs"}
+```
+
+Логи серверных Docker-контейнеров:
+
+```logql
+{cluster="boinc", job="docker", node_role="server"}
 ```
 
 Логи клиентов:
@@ -110,4 +116,14 @@ docker ps --filter name=boinc-promtail
 ```bash
 ./scripts/monitoring_down.sh --with-client-agents
 ./scripts/monitoring_up.sh
+```
+
+Если в `docker logs boinc-promtail` или `docker logs boinc-client-promtail`
+видно `client version 1.42 is too old`, пересоздай monitoring stack и agents.
+Актуальная конфигурация Promtail читает Docker JSON logs напрямую и не использует
+Docker socket API:
+
+```bash
+./scripts/monitoring_down.sh --with-client-agents
+./scripts/monitoring_up.sh --force-recreate
 ```

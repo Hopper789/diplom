@@ -83,7 +83,8 @@ curl -s http://SERVER_IP:3100/ready
 
 ## Логи и ошибки
 
-Loki хранит логи контейнеров и BOINC project logs. Promtail собирает:
+Loki хранит логи контейнеров и BOINC project logs. Promtail собирает логи через файлы
+`/var/lib/docker/containers/*/*-json.log`, поэтому сбор не зависит от версии Docker API:
 
 - на управляющей машине — server, MariaDB, exporter, Prometheus, Grafana, Loki;
 - BOINC project logs из `server/project/*/log_boinc-server/*.log`;
