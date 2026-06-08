@@ -1,1128 +1,88 @@
 {
   "uid": "boinc-cluster",
-  "title": "BOINC Cluster",
+  "title": "BOINC",
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 5,
+  "version": 2,
   "refresh": "10s",
+  "tags": [
+    "boinc"
+  ],
   "panels": [
-    {
-      "type": "stat",
-      "title": "DB up",
-      "gridPos": {
-        "x": 0,
-        "y": 0,
-        "w": 4,
-        "h": 4
-      },
-      "targets": [
-        {
-          "expr": "boinc_db_up",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
-        }
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "id": 9
-    },
-    {
-      "type": "stat",
-      "title": "Project HTTP up",
-      "gridPos": {
-        "x": 4,
-        "y": 0,
-        "w": 4,
-        "h": 4
-      },
-      "targets": [
-        {
-          "expr": "boinc_project_http_up",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
-        }
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "id": 10
-    },
-    {
-      "type": "stat",
-      "title": "Hosts",
-      "gridPos": {
-        "x": 8,
-        "y": 0,
-        "w": 4,
-        "h": 4
-      },
-      "targets": [
-        {
-          "expr": "boinc_hosts_total",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
-        }
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "id": 11
-    },
-    {
-      "type": "stat",
-      "title": "Active hosts",
-      "gridPos": {
-        "x": 12,
-        "y": 0,
-        "w": 4,
-        "h": 4
-      },
-      "targets": [
-        {
-          "expr": "boinc_hosts_active_recent_total",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
-        }
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "id": 12
-    },
-    {
-      "type": "stat",
-      "title": "Target results",
-      "gridPos": {
-        "x": 8,
-        "y": 4,
-        "w": 4,
-        "h": 4
-      },
-      "targets": [
-        {
-          "expr": "boinc_config_replication_factor",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
-        }
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "id": 13
-    },
-    {
-      "type": "stat",
-      "title": "Min quorum",
-      "gridPos": {
-        "x": 12,
-        "y": 4,
-        "w": 4,
-        "h": 4
-      },
-      "targets": [
-        {
-          "expr": "boinc_config_min_quorum",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
-        }
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "id": 14
-    },
-    {
-      "type": "stat",
-      "title": "Workunits",
-      "gridPos": {
-        "x": 16,
-        "y": 0,
-        "w": 4,
-        "h": 4
-      },
-      "targets": [
-        {
-          "expr": "boinc_workunits_total",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
-        }
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "id": 15
-    },
-    {
-      "type": "stat",
-      "title": "Results",
-      "gridPos": {
-        "x": 20,
-        "y": 0,
-        "w": 4,
-        "h": 4
-      },
-      "targets": [
-        {
-          "expr": "boinc_results_total",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
-        }
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "id": 16
-    },
-    {
-      "type": "stat",
-      "title": "Finished results",
-      "gridPos": {
-        "x": 0,
-        "y": 4,
-        "w": 4,
-        "h": 4
-      },
-      "targets": [
-        {
-          "expr": "boinc_results_finished_total",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
-        }
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "id": 17
-    },
-    {
-      "type": "stat",
-      "title": "Error results",
-      "gridPos": {
-        "x": 4,
-        "y": 4,
-        "w": 4,
-        "h": 4
-      },
-      "targets": [
-        {
-          "expr": "boinc_results_error_total",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
-        }
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "id": 18
-    },
-    {
-      "type": "stat",
-      "title": "Avg compute/WU",
-      "gridPos": {
-        "x": 16,
-        "y": 4,
-        "w": 4,
-        "h": 4
-      },
-      "targets": [
-        {
-          "expr": "boinc_avg_compute_time_per_workunit_seconds",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s"
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
-        }
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "id": 19
-    },
-    {
-      "type": "stat",
-      "title": "Avg overhead/WU",
-      "gridPos": {
-        "x": 20,
-        "y": 4,
-        "w": 4,
-        "h": 4
-      },
-      "targets": [
-        {
-          "expr": "boinc_avg_overhead_time_per_workunit_seconds",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s"
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
-        }
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "id": 20
-    },
-    {
-      "type": "timeseries",
-      "title": "BOINC queue and completion",
-      "gridPos": {
-        "x": 0,
-        "y": 8,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "expr": "boinc_queue_remaining_total",
-          "refId": "A",
-          "legendFormat": "queue remaining",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        },
-        {
-          "expr": "boinc_results_finished_total",
-          "refId": "B",
-          "legendFormat": "finished results",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        },
-        {
-          "expr": "boinc_completed_workunits_total",
-          "refId": "C",
-          "legendFormat": "completed workunits",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        },
-        {
-          "expr": "boinc_results_success_total",
-          "refId": "D",
-          "legendFormat": "successful results",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        },
-        {
-          "expr": "boinc_results_error_total",
-          "refId": "E",
-          "legendFormat": "error results",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "fillOpacity": 10,
-            "showPoints": "never",
-            "spanNulls": true
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "id": 21
-    },
-    {
-      "type": "timeseries",
-      "title": "BOINC results by outcome",
-      "gridPos": {
-        "x": 12,
-        "y": 8,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "expr": "boinc_results_by_outcome_total",
-          "refId": "A",
-          "legendFormat": "outcome {{outcome}}",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "id": 22
-    },
-    {
-      "type": "timeseries",
-      "title": "Throughput",
-      "gridPos": {
-        "x": 0,
-        "y": 16,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "expr": "clamp_min(delta(boinc_results_success_total[1m]), 0)",
-          "refId": "A",
-          "legendFormat": "successful results/min",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        },
-        {
-          "expr": "clamp_min(delta(boinc_completed_workunits_total[1m]), 0)",
-          "refId": "B",
-          "legendFormat": "completed workunits/min",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "ops"
-        },
-        "overrides": []
-      },
-      "description": "Tasks completed per minute. Uses delta() because BOINC exporter exposes these values as gauges.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "id": 23
-    },
-    {
-      "type": "timeseries",
-      "title": "Turnaround time",
-      "gridPos": {
-        "x": 12,
-        "y": 16,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "expr": "boinc_avg_success_turnaround_seconds",
-          "refId": "A",
-          "legendFormat": "avg turnaround",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        },
-        {
-          "expr": "boinc_p95_success_turnaround_seconds",
-          "refId": "B",
-          "legendFormat": "p95 turnaround",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        },
-        {
-          "expr": "boinc_avg_compute_time_per_workunit_seconds",
-          "refId": "C",
-          "legendFormat": "avg compute/WU",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        },
-        {
-          "expr": "boinc_avg_overhead_time_per_workunit_seconds",
-          "refId": "D",
-          "legendFormat": "avg overhead/WU",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s"
-        },
-        "overrides": []
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "id": 24
-    },
-    {
-      "type": "timeseries",
-      "title": "Replication configuration",
-      "gridPos": {
-        "x": 0,
-        "y": 24,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "expr": "boinc_config_replication_factor",
-          "refId": "A",
-          "legendFormat": "configured target_nresults",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        },
-        {
-          "expr": "boinc_actual_results_per_workunit",
-          "refId": "B",
-          "legendFormat": "actual executed/workunit",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        },
-        {
-          "expr": "boinc_target_nresults_avg",
-          "refId": "C",
-          "legendFormat": "DB target_nresults avg",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        },
-        {
-          "expr": "boinc_max_success_results_avg",
-          "refId": "D",
-          "legendFormat": "max success avg",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        },
-        {
-          "expr": "boinc_max_total_results_avg",
-          "refId": "E",
-          "legendFormat": "max total avg",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "fillOpacity": 10,
-            "showPoints": "never",
-            "spanNulls": true
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "id": 25
-    },
-    {
-      "type": "timeseries",
-      "title": "Error results over time",
-      "gridPos": {
-        "x": 12,
-        "y": 24,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "expr": "boinc_results_error_total",
-          "refId": "A",
-          "legendFormat": "error results",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        }
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "id": 26
-    },
-    {
-      "type": "timeseries",
-      "title": "Client CPU usage",
-      "gridPos": {
-        "x": 0,
-        "y": 32,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "expr": "100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{job=\"node_exporter_clients\",mode=\"idle\"}[1m])))",
-          "refId": "A",
-          "legendFormat": "{{instance}}",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent"
-        },
-        "overrides": []
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "id": 27
-    },
-    {
-      "type": "timeseries",
-      "title": "Client memory usage",
-      "gridPos": {
-        "x": 12,
-        "y": 32,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "expr": "100 * (1 - node_memory_MemAvailable_bytes{job=\"node_exporter_clients\"} / node_memory_MemTotal_bytes{job=\"node_exporter_clients\"})",
-          "refId": "A",
-          "legendFormat": "{{instance}}",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent"
-        },
-        "overrides": []
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "id": 28
-    },
-    {
-      "type": "timeseries",
-      "title": "Client load average",
-      "gridPos": {
-        "x": 0,
-        "y": 40,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "expr": "node_load1{job=\"node_exporter_clients\"}",
-          "refId": "A",
-          "legendFormat": "{{instance}} load1",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        },
-        {
-          "expr": "node_load5{job=\"node_exporter_clients\"}",
-          "refId": "B",
-          "legendFormat": "{{instance}} load5",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        },
-        {
-          "expr": "node_load15{job=\"node_exporter_clients\"}",
-          "refId": "C",
-          "legendFormat": "{{instance}} load15",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "id": 29
-    },
-    {
-      "type": "timeseries",
-      "title": "Client network traffic",
-      "gridPos": {
-        "x": 12,
-        "y": 40,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "expr": "sum by(instance, device) (rate(node_network_receive_bytes_total{job=\"node_exporter_clients\",device!~\"lo|docker.*|veth.*|br.*\"}[1m]))",
-          "refId": "A",
-          "legendFormat": "{{instance}} {{device}} rx",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        },
-        {
-          "expr": "sum by(instance, device) (rate(node_network_transmit_bytes_total{job=\"node_exporter_clients\",device!~\"lo|docker.*|veth.*|br.*\"}[1m]))",
-          "refId": "B",
-          "legendFormat": "{{instance}} {{device}} tx",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "Bps"
-        },
-        "overrides": []
-      },
-      "description": "Network traffic on real host interfaces. Docker, bridge, veth and loopback interfaces are excluded.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "id": 30
-    },
-    {
-      "type": "timeseries",
-      "title": "Client cAdvisor CPU",
-      "gridPos": {
-        "x": 0,
-        "y": 48,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "expr": "sum by(instance) (rate(container_cpu_usage_seconds_total{job=\"cadvisor_clients\",id!=\"/\"}[1m]))",
-          "refId": "A",
-          "legendFormat": "{{instance}} cAdvisor CPU",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "cores"
-        },
-        "overrides": []
-      },
-      "description": "Aggregated client cAdvisor CPU for tracked cgroups/containers. Some cAdvisor versions do not expose Docker container names, so this is broader than only boinc-client.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "id": 31
-    },
-    {
-      "type": "timeseries",
-      "title": "Client cAdvisor memory",
-      "gridPos": {
-        "x": 12,
-        "y": 48,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "expr": "sum by(instance) (container_memory_usage_bytes{job=\"cadvisor_clients\",id!=\"/\"})",
-          "refId": "A",
-          "legendFormat": "{{instance}} cAdvisor memory",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "bytes"
-        },
-        "overrides": []
-      },
-      "description": "Aggregated client cAdvisor memory for tracked cgroups/containers. Some cAdvisor versions do not expose Docker container names, so this is broader than only boinc-client.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "id": 32
-    },
-    {
-      "type": "timeseries",
-      "title": "Server cAdvisor CPU",
-      "gridPos": {
-        "x": 0,
-        "y": 56,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "expr": "sum by(instance) (rate(container_cpu_usage_seconds_total{job=\"cadvisor_server\",id!=\"/\"}[1m]))",
-          "refId": "A",
-          "legendFormat": "{{instance}} cAdvisor CPU",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "cores"
-        },
-        "overrides": []
-      },
-      "description": "Aggregated server cAdvisor CPU for tracked cgroups/containers. This avoids depending on unstable Docker name labels.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "id": 33
-    },
-    {
-      "type": "timeseries",
-      "title": "Server cAdvisor memory",
-      "gridPos": {
-        "x": 12,
-        "y": 56,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "expr": "sum by(instance) (container_memory_usage_bytes{job=\"cadvisor_server\",id!=\"/\"})",
-          "refId": "A",
-          "legendFormat": "{{instance}} cAdvisor memory",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "bytes"
-        },
-        "overrides": []
-      },
-      "description": "Aggregated server cAdvisor memory for tracked cgroups/containers. This avoids depending on unstable Docker name labels.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "id": 34
-    },
     {
       "id": 1,
       "type": "row",
       "title": "Итоговые метрики эксперимента",
+      "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 64,
+        "y": 0,
         "w": 24,
         "h": 1
       },
-      "collapsed": false,
-      "panels": [],
+      "panels": []
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Хосты",
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "boinc_hosts_summary",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "legendFormat": "{{active}}/{{total}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "-"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       }
     },
     {
-      "id": 2,
+      "id": 3,
       "type": "stat",
-      "title": "Общее время эксперимента",
+      "title": "Готово",
       "gridPos": {
-        "x": 0,
-        "y": 65,
+        "x": 6,
+        "y": 1,
         "w": 6,
         "h": 4
       },
       "targets": [
         {
-          "expr": "boinc_experiment_total_seconds",
+          "expr": "100 * boinc_completed_workunits_total / clamp_min(boinc_workunits_total, 1)",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
@@ -1132,9 +92,9 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "s",
+          "unit": "percent",
           "decimals": 1,
-          "description": "Сколько времени требуется системе для обработки набора задач."
+          "noValue": "-"
         },
         "overrides": []
       },
@@ -1149,8 +109,8 @@
         "orientation": "auto",
         "textMode": "auto",
         "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto"
+        "graphMode": "none",
+        "justifyMode": "center"
       },
       "datasource": {
         "type": "prometheus",
@@ -1158,12 +118,204 @@
       }
     },
     {
-      "id": 3,
+      "id": 4,
       "type": "stat",
-      "title": "Пропускная способность, задач/с",
+      "title": "Осталось",
+      "gridPos": {
+        "x": 12,
+        "y": 1,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "(boinc_remaining_workunits_total / boinc_experiment_throughput_workunits_per_second) and (boinc_experiment_throughput_workunits_per_second > 0)",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "noValue": "-"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Ошибки",
+      "gridPos": {
+        "x": 18,
+        "y": 1,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "boinc_workunits_error_percent",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "noValue": "-"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Время",
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "boinc_avg_compute_time_per_workunit_seconds",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 2,
+          "noValue": "-",
+          "description": "Среднее время вычисления одной задачи."
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Среднее время вычисления одной задачи."
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Польза",
       "gridPos": {
         "x": 6,
-        "y": 65,
+        "y": 5,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "100 * boinc_completed_workunits_total / clamp_min(boinc_results_executed_total, 1)",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "noValue": "-",
+          "description": "Уникально завершённые задачи / реально выполненные attempts."
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Уникально завершённые задачи / реально выполненные attempts."
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "Скорость",
+      "gridPos": {
+        "x": 12,
+        "y": 5,
         "w": 6,
         "h": 4
       },
@@ -1180,8 +332,9 @@
       "fieldConfig": {
         "defaults": {
           "unit": "ops",
-          "decimals": 3,
-          "description": "Сколько workunit завершается за секунду."
+          "decimals": 4,
+          "noValue": "-",
+          "description": "Задач в секунду."
         },
         "overrides": []
       },
@@ -1196,209 +349,22 @@
         "orientation": "auto",
         "textMode": "auto",
         "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto"
+        "graphMode": "none",
+        "justifyMode": "center"
       },
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
-      }
+      },
+      "description": "Задач в секунду."
     },
     {
-      "id": 4,
+      "id": 9,
       "type": "stat",
-      "title": "Ошибки, %",
-      "gridPos": {
-        "x": 12,
-        "y": 65,
-        "w": 6,
-        "h": 4
-      },
-      "targets": [
-        {
-          "expr": "boinc_results_error_percent",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent",
-          "decimals": 2,
-          "description": "Доля результатов, завершённых ошибкой или некорректным результатом."
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "orientation": "auto",
-        "textMode": "auto",
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto"
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      }
-    },
-    {
-      "id": 5,
-      "type": "stat",
-      "title": "Средняя загрузка CPU, %",
+      "title": "Репликация",
       "gridPos": {
         "x": 18,
-        "y": 65,
-        "w": 6,
-        "h": 4
-      },
-      "targets": [
-        {
-          "expr": "avg(100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{job=\"node_exporter_clients\",mode=\"idle\"}[1m]))))",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent",
-          "decimals": 1,
-          "description": "Средняя загрузка CPU по клиентским узлам."
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "orientation": "auto",
-        "textMode": "auto",
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto"
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      }
-    },
-    {
-      "id": 6,
-      "type": "stat",
-      "title": "Среднее использование RAM, %",
-      "gridPos": {
-        "x": 0,
-        "y": 69,
-        "w": 6,
-        "h": 4
-      },
-      "targets": [
-        {
-          "expr": "avg(100 * (1 - node_memory_MemAvailable_bytes{job=\"node_exporter_clients\"} / node_memory_MemTotal_bytes{job=\"node_exporter_clients\"}))",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent",
-          "decimals": 1,
-          "description": "Среднее использование оперативной памяти по клиентским узлам."
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "orientation": "auto",
-        "textMode": "auto",
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto"
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      }
-    },
-    {
-      "id": 7,
-      "type": "stat",
-      "title": "Накладные расходы на задачу",
-      "gridPos": {
-        "x": 6,
-        "y": 69,
-        "w": 6,
-        "h": 4
-      },
-      "targets": [
-        {
-          "expr": "boinc_avg_overhead_time_per_workunit_seconds",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s",
-          "decimals": 2,
-          "description": "Время на операции, не связанные напрямую с вычислением."
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "orientation": "auto",
-        "textMode": "auto",
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto"
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      }
-    },
-    {
-      "id": 8,
-      "type": "stat",
-      "title": "Фактический коэффициент репликации",
-      "gridPos": {
-        "x": 12,
-        "y": 69,
+        "y": 5,
         "w": 6,
         "h": 4
       },
@@ -1416,7 +382,8 @@
         "defaults": {
           "unit": "short",
           "decimals": 2,
-          "description": "Отношение реально выполненных result-записей к числу workunit. Считает успешные и ошибочные attempts, но не считает unsent/didnt_need."
+          "noValue": "-",
+          "description": "Реально выполненные attempts на workunit."
         },
         "overrides": []
       },
@@ -1431,13 +398,374 @@
         "orientation": "auto",
         "textMode": "auto",
         "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto"
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Реально выполненные attempts на workunit."
+    },
+    {
+      "id": 10,
+      "type": "row",
+      "title": "Графики",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 9,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "CPU",
+      "gridPos": {
+        "x": 0,
+        "y": 10,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "avg(100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{job=\"node_exporter_clients\",mode=\"idle\"}[1m]))))",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "legendFormat": "сред"
+        },
+        {
+          "expr": "min(100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{job=\"node_exporter_clients\",mode=\"idle\"}[1m]))))",
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "legendFormat": "мин"
+        },
+        {
+          "expr": "max(100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{job=\"node_exporter_clients\",mode=\"idle\"}[1m]))))",
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "legendFormat": "макс"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "axisColorMode": "text",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "RAM",
+      "gridPos": {
+        "x": 12,
+        "y": 10,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "avg(100 * (1 - node_memory_MemAvailable_bytes{job=\"node_exporter_clients\"} / node_memory_MemTotal_bytes{job=\"node_exporter_clients\"}))",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "legendFormat": "сред"
+        },
+        {
+          "expr": "min(100 * (1 - node_memory_MemAvailable_bytes{job=\"node_exporter_clients\"} / node_memory_MemTotal_bytes{job=\"node_exporter_clients\"}))",
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "legendFormat": "мин"
+        },
+        {
+          "expr": "max(100 * (1 - node_memory_MemAvailable_bytes{job=\"node_exporter_clients\"} / node_memory_MemTotal_bytes{job=\"node_exporter_clients\"}))",
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "legendFormat": "макс"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "axisColorMode": "text",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Сеть",
+      "gridPos": {
+        "x": 0,
+        "y": 18,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "avg((sum by(instance) (rate(node_network_receive_bytes_total{job=\"node_exporter_clients\",device!~\"lo|docker.*|veth.*|br.*\"}[1m])) + sum by(instance) (rate(node_network_transmit_bytes_total{job=\"node_exporter_clients\",device!~\"lo|docker.*|veth.*|br.*\"}[1m]))))",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "legendFormat": "сред"
+        },
+        {
+          "expr": "min((sum by(instance) (rate(node_network_receive_bytes_total{job=\"node_exporter_clients\",device!~\"lo|docker.*|veth.*|br.*\"}[1m])) + sum by(instance) (rate(node_network_transmit_bytes_total{job=\"node_exporter_clients\",device!~\"lo|docker.*|veth.*|br.*\"}[1m]))))",
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "legendFormat": "мин"
+        },
+        {
+          "expr": "max((sum by(instance) (rate(node_network_receive_bytes_total{job=\"node_exporter_clients\",device!~\"lo|docker.*|veth.*|br.*\"}[1m])) + sum by(instance) (rate(node_network_transmit_bytes_total{job=\"node_exporter_clients\",device!~\"lo|docker.*|veth.*|br.*\"}[1m]))))",
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "legendFormat": "макс"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "decimals": 1,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "axisColorMode": "text",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "Задачи",
+      "gridPos": {
+        "x": 12,
+        "y": 18,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "boinc_remaining_workunits_total",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "legendFormat": "осталось"
+        },
+        {
+          "expr": "boinc_completed_workunits_total",
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "legendFormat": "готово"
+        },
+        {
+          "expr": "boinc_error_workunits_total",
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "legendFormat": "ошибки"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "axisColorMode": "text",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       },
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       }
     }
-  ]
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  }
 }

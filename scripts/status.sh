@@ -183,7 +183,7 @@ fi
 
 if docker ps --format '{{.Names}}' | grep -qx 'boinc-grafana'; then
   echo "Grafana:    http://$MONITORING_HOST:3000"
-  echo "Dashboard:  http://$MONITORING_HOST:3000/d/boinc-cluster/boinc-cluster"
+  echo "Dashboard:  http://$MONITORING_HOST:3000/d/boinc-cluster/boinc"
   echo "View:       без логина"
   echo "Admin:      admin / admin"
 else

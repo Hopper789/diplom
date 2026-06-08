@@ -51,7 +51,7 @@ admin / admin
 Основные dashboard:
 
 ```text
-BOINC Cluster: http://SERVER_IP:3000/d/boinc-cluster/boinc-cluster
+BOINC:        http://SERVER_IP:3000/d/boinc-cluster/boinc
 BOINC Errors:  http://SERVER_IP:3000/d/boinc-errors/boinc-errors
 ```
 
@@ -125,7 +125,7 @@ Docker logs:
 После завершения всех вычислений `run_experiment.sh` пытается автоматически сохранить:
 
 - PNG всех панелей Grafana dashboards;
-- `final_metrics.md` с итоговыми метриками из нижнего блока `BOINC Cluster`;
+- `final_metrics.md` с итоговыми числовыми метриками dashboard `BOINC`;
 - `final_metrics.json` с сырыми ответами Prometheus;
 - копии dashboard JSON.
 

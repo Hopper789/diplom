@@ -35,6 +35,11 @@ boinc_hosts_active_recent_total = Gauge(
     "boinc_hosts_active_recent_total",
     "Hosts with rpc_time in the last ACTIVE_HOST_WINDOW_SECONDS",
 )
+boinc_hosts_summary = Gauge(
+    "boinc_hosts_summary",
+    "Active and total hosts encoded as labels for compact Grafana display",
+    ["active", "total"],
+)
 boinc_workunits_total = Gauge("boinc_workunits_total", "Total BOINC workunits")
 boinc_results_total = Gauge("boinc_results_total", "Total BOINC result records")
 
@@ -69,6 +74,9 @@ boinc_results_error_percent = Gauge(
 )
 boinc_queue_remaining_total = Gauge("boinc_queue_remaining_total", "Unfinished BOINC results")
 boinc_completed_workunits_total = Gauge("boinc_completed_workunits_total", "Distinct workunits with at least one successful result")
+boinc_remaining_workunits_total = Gauge("boinc_remaining_workunits_total", "Workunits without a successful result yet")
+boinc_error_workunits_total = Gauge("boinc_error_workunits_total", "Distinct workunits with at least one error result")
+boinc_workunits_error_percent = Gauge("boinc_workunits_error_percent", "Percent of workunits with at least one error result")
 boinc_effective_completion_ratio = Gauge("boinc_effective_completion_ratio", "completed_workunits / workunits_total")
 boinc_replication_overhead = Gauge("boinc_replication_overhead", "results_total / workunits_total")
 boinc_actual_results_per_workunit = Gauge("boinc_actual_results_per_workunit", "Executed success/error results per workunit")
@@ -189,6 +197,8 @@ def update_db_metrics() -> None:
             boinc_users_total.set(users)
             boinc_hosts_total.set(hosts)
             boinc_hosts_active_recent_total.set(active_hosts)
+            boinc_hosts_summary.clear()
+            boinc_hosts_summary.labels(active=str(int(active_hosts)), total=str(int(hosts))).set(1)
             boinc_workunits_total.set(workunits)
             boinc_results_total.set(results)
             boinc_config_replication_factor.set(CONFIG_REPLICATION_FACTOR)
@@ -208,6 +218,8 @@ def update_db_metrics() -> None:
             assigned = safe_fetch_one(cur, "SELECT COUNT(*) FROM result WHERE hostid != 0")
             in_progress = safe_fetch_one(cur, "SELECT COUNT(*) FROM result WHERE hostid != 0 AND outcome = 0")
             completed_wu = safe_fetch_one(cur, "SELECT COUNT(DISTINCT workunitid) FROM result WHERE outcome = 1")
+            remaining_wu = max(0, workunits - completed_wu)
+            error_wu = safe_fetch_one(cur, "SELECT COUNT(DISTINCT workunitid) FROM result WHERE outcome IN (2, 3, 4, 6)")
 
             boinc_results_success_total.set(success)
             boinc_results_error_total.set(errors)
@@ -220,6 +232,9 @@ def update_db_metrics() -> None:
             boinc_results_in_progress_total.set(in_progress)
             boinc_queue_remaining_total.set(unfinished)
             boinc_completed_workunits_total.set(completed_wu)
+            boinc_remaining_workunits_total.set(remaining_wu)
+            boinc_error_workunits_total.set(error_wu)
+            boinc_workunits_error_percent.set((float(error_wu) / float(workunits) * 100.0) if workunits else 0)
 
             set_ratio(boinc_success_rate, success, finished)
             set_ratio(boinc_error_rate, errors, finished)

@@ -313,29 +313,44 @@ dashboard = json.loads(dashboard_path.read_text(encoding="utf-8"))
 panels = dashboard.get("panels") or []
 
 summary_row_y = None
+next_row_y = None
 for panel in panels:
     if panel.get("type") == "row" and panel.get("title") == "Итоговые метрики эксперимента":
         gp = panel.get("gridPos") or {}
         summary_row_y = gp.get("y", 0) + gp.get("h", 0)
         break
 
+if summary_row_y is not None:
+    row_ys = [
+        (panel.get("gridPos") or {}).get("y", 0)
+        for panel in panels
+        if panel.get("type") == "row" and (panel.get("gridPos") or {}).get("y", 0) >= summary_row_y
+    ]
+    if row_ys:
+        next_row_y = min(row_ys)
+
 if summary_row_y is None:
     summary_panels = [
         p for p in panels
         if p.get("title") in {
-            "Общее время эксперимента",
-            "Пропускная способность, задач/с",
-            "Ошибки, %",
-            "Средняя загрузка CPU, %",
-            "Среднее использование RAM, %",
-            "Накладные расходы на задачу",
-            "Фактический коэффициент репликации",
+            "Хосты",
+            "Готово",
+            "Осталось",
+            "Ошибки",
+            "Время",
+            "Польза",
+            "Скорость",
+            "Репликация",
         }
     ]
 else:
     summary_panels = [
         p for p in panels
-        if p.get("type") != "row" and (p.get("gridPos") or {}).get("y", -1) >= summary_row_y
+        if (
+            p.get("type") == "stat"
+            and (p.get("gridPos") or {}).get("y", -1) >= summary_row_y
+            and (next_row_y is None or (p.get("gridPos") or {}).get("y", -1) < next_row_y)
+        )
     ]
 
 def query_prometheus(expr):
@@ -355,6 +370,18 @@ def extract_value(payload):
         return value[1]
     return None
 
+def extract_hosts_value(payload):
+    data = payload.get("data") or {}
+    result = data.get("result") or []
+    if not result:
+        return None
+    metric = result[0].get("metric") or {}
+    active = metric.get("active")
+    total = metric.get("total")
+    if active is None or total is None:
+        return extract_value(payload)
+    return f"{active}/{total}"
+
 records = []
 for panel in sorted(summary_panels, key=lambda p: ((p.get("gridPos") or {}).get("y", 0), (p.get("gridPos") or {}).get("x", 0))):
     targets = panel.get("targets") or []
@@ -363,7 +390,10 @@ for panel in sorted(summary_panels, key=lambda p: ((p.get("gridPos") or {}).get(
         continue
     try:
         payload = query_prometheus(expr)
-        value = extract_value(payload)
+        if expr == "boinc_hosts_summary":
+            value = extract_hosts_value(payload)
+        else:
+            value = extract_value(payload)
         status = payload.get("status", "unknown")
         error = None
     except Exception as exc:
