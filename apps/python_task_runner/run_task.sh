@@ -537,7 +537,9 @@ create_workunits() {
 
   run_id="${PYTHON_TASK_RUN_ID:-$(date +%s)_$$}"
 
-  echo "Создание BOINC workunits..."
+  if debug_enabled; then
+    echo "Создание BOINC workunits..."
+  fi
   for input_file in "$INPUT_DIR"/input_*.json; do
     [[ -e "$input_file" ]] || {
       echo "Не найдены input_*.json в $INPUT_DIR" >&2
@@ -549,8 +551,8 @@ create_workunits() {
     task_number="${task_number%.json}"
     wu_name="py_${run_id}_${task_number}"
 
-    docker cp "$input_file" "boinc-server:/project/$PROJECT_NAME/work_inputs/$input_name"
-    docker exec boinc-server bash -lc "
+    quiet_run docker cp "$input_file" "boinc-server:/project/$PROJECT_NAME/work_inputs/$input_name"
+    quiet_run docker exec boinc-server bash -lc "
       cd '/project/$PROJECT_NAME'
       ./bin/stage_file_native --copy 'work_inputs/$input_name'
       ./bin/create_work --appname '$APP_NAME' --wu_name '$wu_name' '$input_name'
