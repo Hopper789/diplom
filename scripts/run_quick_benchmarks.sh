@@ -277,9 +277,9 @@ request_client_update() {
   <suspend_cpu_usage>0.000000</suspend_cpu_usage>
   <cpu_usage_limit>100.000000</cpu_usage_limit>
   <max_ncpus_pct>100.000000</max_ncpus_pct>
-  <work_buf_min_days>0.010000</work_buf_min_days>
-  <work_buf_additional_days>0.010000</work_buf_additional_days>
-  <disk_max_used_gb>20.000000</disk_max_used_gb>
+  <work_buf_min_days>0.200000</work_buf_min_days>
+  <work_buf_additional_days>0.200000</work_buf_additional_days>
+  <disk_max_used_gb>50.000000</disk_max_used_gb>
   <disk_interval>60.000000</disk_interval>
 </global_preferences>
 EOF\"
