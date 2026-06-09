@@ -373,7 +373,6 @@ copy_output_to_boinc_files() {
     fi
 
     if cp output.json "\$target" 2>/dev/null; then
-      echo "BOINC output copied: \$target" >&2
       return 0
     fi
 
