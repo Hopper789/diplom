@@ -11,18 +11,30 @@ import traceback
 from queue import Empty
 from typing import Any
 
+# One BOINC workunit should occupy the whole client CPU.  Keep BLAS single
+# threaded and parallelize explicitly with one worker process per CPU.
+for _thread_env in (
+    "OPENBLAS_NUM_THREADS",
+    "OMP_NUM_THREADS",
+    "MKL_NUM_THREADS",
+    "NUMEXPR_NUM_THREADS",
+):
+    os.environ[_thread_env] = "1"
+
 try:
     import numpy as np
     import numba
     from numba import njit
 except ModuleNotFoundError as exc:  # pragma: no cover - validated on client image
     raise RuntimeError(
-        "big_determinant requires numpy and numba. "
+        "big_det requires numpy and numba. "
         "Run ./scripts/prepare_system.sh --install-local and redeploy BOINC clients."
     ) from exc
 
 
-MIN_WORKUNIT_SECONDS = 600.0
+BENCHMARK_SECONDS = 600.0
+BENCHMARK_MATRIX_SIZE = 1200
+BENCHMARK_DIAGONAL_BOOST = max(1.0, BENCHMARK_MATRIX_SIZE * 0.01)
 WORKER_SEED_STRIDE = 1_000_003
 
 
@@ -46,10 +58,6 @@ def _fill_matrix(size: int, seed: int, diagonal_boost: float) -> np.ndarray:
 
 def _as_int(params: dict[str, Any], key: str, default: int) -> int:
     return int(params.get(key, default))
-
-
-def _as_float(params: dict[str, Any], key: str, default: float) -> float:
-    return float(params.get(key, default))
 
 
 def _available_cpu_count() -> int:
@@ -78,7 +86,6 @@ def _run_determinant_loop(
     seed: int,
     diagonal_boost: float,
     deadline: float,
-    max_repeats: int,
     worker_index: int,
 ) -> dict[str, Any]:
     repeats = 0
@@ -102,8 +109,6 @@ def _run_determinant_loop(
         if repeats == 1:
             first_det_seconds = repeat_seconds
 
-        if max_repeats > 0 and repeats >= max_repeats:
-            break
         if time.perf_counter() >= deadline:
             break
 
@@ -131,8 +136,6 @@ def _run_all_cpu_determinants(
     size: int,
     seed: int,
     diagonal_boost: float,
-    target_seconds: float,
-    max_repeats: int,
     workers: int,
 ) -> list[dict[str, Any]]:
     _warm_up_numba()
@@ -143,15 +146,14 @@ def _run_all_cpu_determinants(
                 size=size,
                 seed=seed,
                 diagonal_boost=diagonal_boost,
-                deadline=time.perf_counter() + target_seconds,
-                max_repeats=max_repeats,
+                deadline=time.perf_counter() + BENCHMARK_SECONDS,
                 worker_index=0,
             )
         ]
 
     ctx = mp.get_context("fork")
     queue = ctx.Queue()
-    deadline = time.perf_counter() + target_seconds
+    deadline = time.perf_counter() + BENCHMARK_SECONDS
     processes = []
 
     for worker_index in range(workers):
@@ -160,7 +162,6 @@ def _run_all_cpu_determinants(
             "seed": seed,
             "diagonal_boost": diagonal_boost,
             "deadline": deadline,
-            "max_repeats": max_repeats,
             "worker_index": worker_index,
         }
         process = ctx.Process(target=_worker_main, args=(queue, kwargs))
@@ -190,24 +191,24 @@ def _run_all_cpu_determinants(
 
 
 def run(params: dict[str, Any]) -> dict[str, Any]:
-    """Compute determinant-like metrics for one generated dense matrix."""
+    """Run one fixed big_det benchmark workunit.
+
+    This benchmark deliberately ignores user computation configuration.  The
+    only per-workunit input is the task id/seed used to generate a deterministic
+    matrix stream.
+    """
 
     task_id = _as_int(params, "task_id", 1)
-    size = max(2, _as_int(params, "matrix_size", 1200))
+    size = BENCHMARK_MATRIX_SIZE
     seed = _as_int(params, "seed", 10_000 + task_id)
-    requested_target_seconds = max(0.0, _as_float(params, "target_seconds", MIN_WORKUNIT_SECONDS))
-    target_seconds = max(MIN_WORKUNIT_SECONDS, requested_target_seconds)
-    max_repeats = max(0, _as_int(params, "max_repeats", 0))
-    diagonal_boost = _as_float(params, "diagonal_boost", max(1.0, size * 0.01))
-    workers = max(1, _as_int(params, "workers", _available_cpu_count()))
+    diagonal_boost = BENCHMARK_DIAGONAL_BOOST
+    workers = _available_cpu_count()
 
     started = time.perf_counter()
     worker_results = _run_all_cpu_determinants(
         size=size,
         seed=seed,
         diagonal_boost=diagonal_boost,
-        target_seconds=target_seconds,
-        max_repeats=max_repeats,
         workers=workers,
     )
 
@@ -224,11 +225,10 @@ def run(params: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "task_id": task_id,
+        "benchmark": "big_det",
         "matrix_size": size,
         "seed": seed,
-        "target_seconds": target_seconds,
-        "requested_target_seconds": requested_target_seconds,
-        "min_workunit_seconds": MIN_WORKUNIT_SECONDS,
+        "target_seconds": BENCHMARK_SECONDS,
         "elapsed_seconds": round(elapsed, 6),
         "repeats": repeats,
         "workers": workers,

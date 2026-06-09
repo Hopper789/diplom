@@ -1,7 +1,6 @@
 # Local configuration generated from examples
 config/cluster.yml
 config/generated.env
-config/experiment.env
 config/distributed.env
 
 # Generated Ansible runtime files

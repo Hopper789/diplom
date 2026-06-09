@@ -35,6 +35,12 @@ nano config/cluster.yml
 
 `quickstart --run-experiment` теперь только отправляет задачи и завершает работу. Он не ждёт 10 минут и не запускает `status.sh` автоматически.
 
+Чтобы вместо шаблона пользовательской задачи отправить CPU-бенчмарк:
+
+```bash
+./scripts/quickstart.sh --with-monitoring --run-experiment --task big-det --workunits 2
+```
+
 ## 4. Смотреть прогресс
 
 ```bash

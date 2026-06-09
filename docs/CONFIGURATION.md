@@ -43,63 +43,6 @@ boinc:
 
 Обычно их не редактируют руками.
 
-## `config/experiment.env`
-
-Выбор задачи:
-
-```bash
-EXPERIMENT_APP=ml_grid_search
-```
-
-Поддерживаются:
-
-- `ml_grid_search`;
-- `big_determinant`;
-- `python_task_runner`;
-- `EXPERIMENT_TASK_CMD='...'` для полностью своей команды.
-
-Размер эксперимента:
-
-```bash
-EXPERIMENT_WALL_SECONDS=1200
-EXPERIMENT_CORES=2
-TASK_SECONDS=1200
-TASK_COUNT=
-```
-
-Если `TASK_COUNT` пустой, число workunit'ов считается примерно так:
-
-```text
-EXPERIMENT_WALL_SECONDS * EXPERIMENT_CORES / TASK_SECONDS
-```
-
-## Сложность задач
-
-Для `ml_grid_search`:
-
-```bash
-TASK_SECONDS=1200
-TASK_DATASET_SIZE=500
-TASK_LAMBDA_GRID=0,0.001,0.01,0.1,1,10
-```
-
-Для `big_determinant`:
-
-```bash
-DETERMINANT_TASK_SECONDS=1200
-DETERMINANT_MATRIX_SIZE=1200
-DETERMINANT_MAX_REPEATS=0
-```
-
-Для `python_task_runner`:
-
-```bash
-EXPERIMENT_APP=python_task_runner
-PYTHON_TASK_FILE=apps/python_task_runner/examples/synthetic_cpu/user_task.py
-PYTHON_TASK_PARAMS=apps/python_task_runner/examples/synthetic_cpu/params.jsonl
-PYTHON_TASK_DEVICE=cpu
-```
-
 ## `config/distributed.env`
 
 Репликация и quorum:

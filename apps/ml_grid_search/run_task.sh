@@ -9,7 +9,6 @@ source "$ROOT_DIR/scripts/lib/debug.sh"
 strip_debug_args "$@"
 set -- "${DEBUG_ARGS[@]}"
 
-EXPERIMENT_ENV_FILE="$ROOT_DIR/config/experiment.env"
 DISTRIBUTED_ENV_FILE="$ROOT_DIR/config/distributed.env"
 BUILD_DIR="$ROOT_DIR/apps/ml_grid_search/build"
 PARAMS_FILE="$BUILD_DIR/params.jsonl"
@@ -18,13 +17,6 @@ MAIN_FILE="$ROOT_DIR/apps/ml_grid_search/main.py"
 PYTHON_RUNNER="$ROOT_DIR/apps/python_task_runner/run_task.sh"
 
 MODE="${1:-boinc}"
-
-if [[ -f "$EXPERIMENT_ENV_FILE" ]]; then
-  set -a
-  # shellcheck disable=SC1090
-  source "$EXPERIMENT_ENV_FILE"
-  set +a
-fi
 
 if [[ -f "$DISTRIBUTED_ENV_FILE" ]]; then
   set -a

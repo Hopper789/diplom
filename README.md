@@ -38,6 +38,7 @@ Grafana открывается без логина. Админский вход:
 ./scripts/prepare_system.sh --copy-ssh-keys
 ./scripts/launch_cluster.sh --with-monitoring
 ./scripts/run_experiment.sh
+./scripts/run_experiment.sh --task big-det --workunits 2
 ./scripts/status.sh
 ./scripts/clean_runtime.sh
 ```
@@ -47,7 +48,6 @@ Grafana открывается без логина. Админский вход:
 ## Что где лежит
 
 - `config/cluster.yml` — IP сервера, клиенты, SSH-порты, параметры BOINC.
-- `config/experiment.env` — выбор задачи и её сложность.
 - `config/distributed.env` — репликация, quorum и ограничения BOINC result.
 - `apps/` — вычислительные задачи.
 - `scripts/` — запуск, диагностика, очистка.
@@ -71,7 +71,6 @@ Grafana открывается без логина. Админский вход:
 
 - `config/cluster.yml`
 - `config/generated.env`
-- `config/experiment.env`
 - `config/distributed.env`
 - `ansible/inventory.ini`
 - `ansible/group_vars/all/main.yml`

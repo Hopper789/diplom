@@ -14,6 +14,7 @@ SKIP_PREPARE=0
 SKIP_LAUNCH=0
 SKIP_STATUS=0
 ASK_BECOME_PASS=0
+EXPERIMENT_ARGS=()
 
 usage() {
   cat <<'USAGE'
@@ -23,6 +24,10 @@ Usage:
 Options:
   --with-monitoring     start monitoring during launch
   --run-experiment      submit the experiment during launch
+  --task user|big-det   task for --run-experiment; default: user
+  --user-task PATH      Python file for --task user
+  --user-params PATH    params.jsonl for --task user
+  --workunits N         number of big-det workunits
   --install-local       install local control-machine dependencies during preparation
   --copy-ssh-keys       copy SSH keys to clients during preparation
   --skip-prepare        run only launch_cluster.sh
@@ -35,10 +40,9 @@ Options:
 Examples:
   ./scripts/quickstart.sh
   ./scripts/quickstart.sh --with-monitoring
-  ./scripts/quickstart.sh --with-monitoring --run-experiment
+  ./scripts/quickstart.sh --with-monitoring --run-experiment --task big-det
 
-Experiment task is selected in config/experiment.env via EXPERIMENT_APP.
-Use ./scripts/run_experiment.sh when you want to submit, auto-update clients, and wait.
+Default experiment task is the user task template in apps/user_task_template.
 USAGE
 }
 
@@ -56,6 +60,46 @@ while [[ $# -gt 0 ]]; do
     --run-experiment)
       RUN_EXPERIMENT=1
       shift
+      ;;
+    --task)
+      if [[ $# -lt 2 ]]; then
+        echo "--task requires a value." >&2
+        exit 2
+      fi
+      EXPERIMENT_ARGS+=(--task "$2")
+      shift 2
+      ;;
+    --task=*)
+      EXPERIMENT_ARGS+=("$1")
+      shift
+      ;;
+    --big-det|--big_det)
+      EXPERIMENT_ARGS+=(--big-det)
+      shift
+      ;;
+    --user-task)
+      if [[ $# -lt 2 ]]; then
+        echo "--user-task requires a path." >&2
+        exit 2
+      fi
+      EXPERIMENT_ARGS+=(--user-task "$2")
+      shift 2
+      ;;
+    --user-params)
+      if [[ $# -lt 2 ]]; then
+        echo "--user-params requires a path." >&2
+        exit 2
+      fi
+      EXPERIMENT_ARGS+=(--user-params "$2")
+      shift 2
+      ;;
+    --workunits|--task-count)
+      if [[ $# -lt 2 ]]; then
+        echo "--workunits requires a value." >&2
+        exit 2
+      fi
+      EXPERIMENT_ARGS+=(--workunits "$2")
+      shift 2
       ;;
     --install-local)
       INSTALL_LOCAL=1
@@ -115,6 +159,7 @@ fi
 
 if [[ "$RUN_EXPERIMENT" == "1" ]]; then
   launch_args+=(--run-experiment)
+  launch_args+=("${EXPERIMENT_ARGS[@]}")
   launch_args+=(--submit-only)
   launch_args+=(--skip-status)
 fi

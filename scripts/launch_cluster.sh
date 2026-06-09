@@ -12,6 +12,7 @@ SUBMIT_ONLY=0
 SERVER_ONLY=0
 CLIENTS_ONLY=0
 SKIP_STATUS=0
+EXPERIMENT_ARGS=()
 
 usage() {
   cat <<'USAGE'
@@ -21,6 +22,10 @@ Usage:
 Options:
   --with-monitoring         start monitoring stack
   --run-experiment          submit and pump the experiment
+  --task user|big-det       task for --run-experiment; default: user
+  --user-task PATH          Python file for --task user
+  --user-params PATH        params.jsonl for --task user
+  --workunits N             number of big-det workunits
   --submit-only             with --run-experiment, submit work without auto-update/status wait
   --server-only             launch only BOINC server
   --clients-only            launch only BOINC clients
@@ -74,6 +79,46 @@ while [[ $# -gt 0 ]]; do
     --run-experiment)
       RUN_EXPERIMENT=1
       shift
+      ;;
+    --task)
+      if [[ $# -lt 2 ]]; then
+        echo "--task requires a value." >&2
+        exit 2
+      fi
+      EXPERIMENT_ARGS+=(--task "$2")
+      shift 2
+      ;;
+    --task=*)
+      EXPERIMENT_ARGS+=("$1")
+      shift
+      ;;
+    --big-det|--big_det)
+      EXPERIMENT_ARGS+=(--big-det)
+      shift
+      ;;
+    --user-task)
+      if [[ $# -lt 2 ]]; then
+        echo "--user-task requires a path." >&2
+        exit 2
+      fi
+      EXPERIMENT_ARGS+=(--user-task "$2")
+      shift 2
+      ;;
+    --user-params)
+      if [[ $# -lt 2 ]]; then
+        echo "--user-params requires a path." >&2
+        exit 2
+      fi
+      EXPERIMENT_ARGS+=(--user-params "$2")
+      shift 2
+      ;;
+    --workunits|--task-count)
+      if [[ $# -lt 2 ]]; then
+        echo "--workunits requires a value." >&2
+        exit 2
+      fi
+      EXPERIMENT_ARGS+=(--workunits "$2")
+      shift 2
       ;;
     --submit-only)
       SUBMIT_ONLY=1
@@ -131,6 +176,7 @@ fi
 
 if [[ "$RUN_EXPERIMENT" == "1" ]]; then
   experiment_args=("${ANSIBLE_ARGS[@]}")
+  experiment_args+=("${EXPERIMENT_ARGS[@]}")
   if [[ "$SUBMIT_ONLY" == "1" ]]; then
     experiment_args+=(--submit-only)
   fi

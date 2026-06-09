@@ -39,7 +39,7 @@ BOINC entities:
 Минимальный файл:
 
 ```python
-def run(params, context):
+def run(params):
     value = params["value"]
     return {"square": value * value}
 ```
@@ -63,10 +63,11 @@ python3 apps/python_task_runner/runner.py \
 Запуск через BOINC:
 
 ```bash
-EXPERIMENT_APP=python_task_runner
-PYTHON_TASK_FILE=my_task.py
-PYTHON_TASK_PARAMS=params.jsonl
-./scripts/run_experiment.sh --submit-only
+./scripts/run_experiment.sh \
+  --task user \
+  --user-task my_task.py \
+  --user-params params.jsonl \
+  --submit-only
 ```
 
 ## Runtime-файлы

@@ -22,53 +22,28 @@
 
 ## Выбор задачи
 
-В `config/experiment.env`:
+По умолчанию запускается пользовательская Python-задача из шаблона:
 
 ```bash
-EXPERIMENT_APP=ml_grid_search
+./scripts/run_experiment.sh --task user --submit-only
 ```
 
-Встроенные задачи:
-
-- `ml_grid_search` — CPU-задача на Python/Numba;
-- `big_determinant` — тяжёлая линейная алгебра;
-- `python_task_runner` — запуск пользовательского Python-файла.
-
-Можно задать свою команду:
+Тяжёлый determinant benchmark:
 
 ```bash
-EXPERIMENT_TASK_CMD='apps/big_determinant/run_task.sh boinc'
+./scripts/run_experiment.sh --task big-det --workunits 2 --submit-only
 ```
 
-## Как менять длительность
-
-Главный параметр — желаемое время одного workunit:
-
-```bash
-TASK_SECONDS=1200
-```
-
-Для `ml_grid_search` время растёт от:
-
-- `TASK_SECONDS`;
-- `TASK_DATASET_SIZE`;
-- числа значений в `TASK_LAMBDA_GRID`;
-- числа повторов, которое подбирает задача для удержания нужной длительности.
-
-Для `big_determinant` время растёт от:
-
-- `DETERMINANT_TASK_SECONDS`;
-- `DETERMINANT_MATRIX_SIZE`;
-- `DETERMINANT_MAX_REPEATS`, если задано больше нуля.
-
-Для своих Python-задач время зависит от параметров в `params.jsonl` и кода `user_task.py`.
+`big-det` фиксирован в коде: одна workunit примерно 10 минут, матрица
+`1200 x 1200`, worker-процесс по каждому CPU. Сложность через конфиг не
+настраивается.
 
 ## Пользовательская Python-задача
 
 Файл задачи должен иметь функцию:
 
 ```python
-def run(params, context):
+def run(params):
     return {"result": 42}
 ```
 
@@ -82,10 +57,11 @@ def run(params, context):
 Запуск:
 
 ```bash
-EXPERIMENT_APP=python_task_runner
-PYTHON_TASK_FILE=apps/python_task_runner/examples/sum_params/user_task.py
-PYTHON_TASK_PARAMS=apps/python_task_runner/examples/sum_params/params.jsonl
-./scripts/run_experiment.sh --submit-only
+./scripts/run_experiment.sh \
+  --task user \
+  --user-task apps/python_task_runner/examples/sum_params/user_task.py \
+  --user-params apps/python_task_runner/examples/sum_params/params.jsonl \
+  --submit-only
 ```
 
 ## Бенчмарки

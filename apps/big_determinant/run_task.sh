@@ -9,7 +9,6 @@ source "$ROOT_DIR/scripts/lib/debug.sh"
 strip_debug_args "$@"
 set -- "${DEBUG_ARGS[@]}"
 
-EXPERIMENT_ENV_FILE="$ROOT_DIR/config/experiment.env"
 DISTRIBUTED_ENV_FILE="$ROOT_DIR/config/distributed.env"
 BUILD_DIR="$ROOT_DIR/apps/big_determinant/build"
 PARAMS_FILE="$BUILD_DIR/params.jsonl"
@@ -17,14 +16,9 @@ PREPARE_FILE="$ROOT_DIR/apps/big_determinant/prepare.py"
 MAIN_FILE="$ROOT_DIR/apps/big_determinant/main.py"
 PYTHON_RUNNER="$ROOT_DIR/apps/python_task_runner/run_task.sh"
 
-MODE="${1:-boinc}"
-
-if [[ -f "$EXPERIMENT_ENV_FILE" ]]; then
-  set -a
-  # shellcheck disable=SC1090
-  source "$EXPERIMENT_ENV_FILE"
-  set +a
-fi
+MODE="boinc"
+TASK_COUNT=""
+SEED_BASE=10000
 
 if [[ -f "$DISTRIBUTED_ENV_FILE" ]]; then
   set -a
@@ -35,54 +29,92 @@ fi
 
 APP_NAME="${DETERMINANT_APP_NAME:-big_determinant}"
 PLATFORM="${PLATFORM:-x86_64-pc-linux-gnu}"
-EXPERIMENT_WALL_SECONDS="${DETERMINANT_WALL_SECONDS:-${EXPERIMENT_WALL_SECONDS:-1800}}"
-EXPERIMENT_CORES="${EXPERIMENT_CORES:-1}"
-TASK_SECONDS="${DETERMINANT_TASK_SECONDS:-600}"
-TASK_COUNT="${DETERMINANT_TASK_COUNT:-${TASK_COUNT:-}}"
-TASK_MATRIX_SIZE="${DETERMINANT_MATRIX_SIZE:-1200}"
-TASK_SEED_BASE="${DETERMINANT_SEED_BASE:-10000}"
-TASK_DIAGONAL_BOOST="${DETERMINANT_DIAGONAL_BOOST:-}"
-TASK_MAX_REPEATS="${DETERMINANT_MAX_REPEATS:-0}"
 
 usage() {
   cat <<'USAGE'
 Usage:
-  apps/big_determinant/run_task.sh [--debug] [boinc|local]
+  apps/big_determinant/run_task.sh [--debug] [boinc|local] [--workunits N]
 
-Environment:
-  EXPERIMENT_WALL_SECONDS  target wall-clock duration for automatic task count
-  EXPERIMENT_CORES         expected CPU slots for automatic task count
-  DETERMINANT_TASK_SECONDS target seconds per BOINC workunit, default 600
-  DETERMINANT_TASK_COUNT   exact number of workunits, optional
-  DETERMINANT_MATRIX_SIZE  generated square matrix size, default 1200
-  DETERMINANT_SEED_BASE    base seed for generated matrices
-  DETERMINANT_DIAGONAL_BOOST value added to the matrix diagonal, optional
-  DETERMINANT_MAX_REPEATS  exact determinant repeats per workunit; 0 means run until DETERMINANT_TASK_SECONDS
+Options:
+  --workunits N            number of fixed 10-minute BOINC workunits
+
+The benchmark ignores computation config: matrix size, repeat count, and
+runtime are fixed in apps/big_determinant/main.py.
 USAGE
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    boinc|local)
+      MODE="$1"
+      shift
+      ;;
+    --workunits|--task-count)
+      if [[ $# -lt 2 ]]; then
+        echo "--workunits requires a value." >&2
+        exit 2
+      fi
+      TASK_COUNT="$2"
+      shift 2
+      ;;
+    --help|-h|help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      usage
+      exit 2
+      ;;
+  esac
+done
+
+if [[ -n "$TASK_COUNT" ]]; then
+  if ! [[ "$TASK_COUNT" =~ ^[0-9]+$ ]] || (( TASK_COUNT < 1 )); then
+    echo "--workunits must be a positive integer." >&2
+    exit 2
+  fi
+fi
+
+default_workunits() {
+  python3 - "$ROOT_DIR/ansible/inventory.ini" <<'PY'
+import sys
+from pathlib import Path
+
+inventory = Path(sys.argv[1])
+count = 0
+inside = False
+
+if inventory.exists():
+    for raw in inventory.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            inside = line == "[boinc_clients]"
+            continue
+        if inside:
+            count += 1
+
+print(max(1, count))
+PY
 }
 
 prepare_task() {
   mkdir -p "$BUILD_DIR"
 
+  local count="$TASK_COUNT"
+  if [[ -z "$count" ]]; then
+    count="$(default_workunits)"
+  fi
+
   local args=(
     "$PREPARE_FILE"
     --main "$MAIN_FILE"
     --out "$PARAMS_FILE"
-    --wall-seconds "$EXPERIMENT_WALL_SECONDS"
-    --cores "$EXPERIMENT_CORES"
-    --task-seconds "$TASK_SECONDS"
-    --matrix-size "$TASK_MATRIX_SIZE"
-    --seed-base "$TASK_SEED_BASE"
-    --max-repeats "$TASK_MAX_REPEATS"
+    --task-count "$count"
+    --seed-base "$SEED_BASE"
   )
-
-  if [[ -n "$TASK_COUNT" ]]; then
-    args+=(--task-count "$TASK_COUNT")
-  fi
-
-  if [[ -n "$TASK_DIAGONAL_BOOST" ]]; then
-    args+=(--diagonal-boost "$TASK_DIAGONAL_BOOST")
-  fi
 
   python3 "${args[@]}"
 }

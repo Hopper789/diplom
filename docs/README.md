@@ -5,8 +5,8 @@
 ## Читать по порядку
 
 1. [Быстрый старт](QUICK_START.md) — как запустить кластер первый раз.
-2. [Конфигурация](CONFIGURATION.md) — что менять в `cluster.yml`, `experiment.env`, `distributed.env`.
-3. [Эксперименты](EXPERIMENTS.md) — как выбрать задачу, менять сложность и запускать бенчмарки.
+2. [Конфигурация](CONFIGURATION.md) — что менять в `cluster.yml` и `distributed.env`.
+3. [Эксперименты](EXPERIMENTS.md) — как выбрать задачу и запускать бенчмарки.
 4. [Мониторинг](MONITORING.md) — Grafana, Prometheus, Loki, финальные метрики.
 5. [Диагностика](TROUBLESHOOTING.md) — что смотреть, когда что-то не работает.
 6. [Разработка и структура](DEVELOPMENT.md) — архитектура, свои Python-задачи, cleanup.

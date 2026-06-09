@@ -142,7 +142,7 @@ boinc_config_max_total_results = Gauge(
 )
 boinc_config_task_seconds = Gauge(
     "boinc_config_task_seconds",
-    "Configured target compute seconds per workunit from experiment.env",
+    "Fallback target compute seconds per workunit",
 )
 
 # Time decomposition.

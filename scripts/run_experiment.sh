@@ -7,6 +7,10 @@ AUTO_UPDATE_INTERVAL_SECONDS="${BOINC_AUTO_UPDATE_INTERVAL_SECONDS:-15}"
 AUTO_DUMP_RESULTS="${BOINC_AUTO_DUMP_RESULTS:-1}"
 STATUS_AFTER_SUBMIT="${BOINC_STATUS_AFTER_SUBMIT:-0}"
 SUBMIT_ONLY="${BOINC_SUBMIT_ONLY:-0}"
+EXPERIMENT_TASK="user"
+USER_TASK_FILE="$ROOT_DIR/apps/user_task_template/user_task.py"
+USER_TASK_PARAMS="$ROOT_DIR/apps/user_task_template/params.jsonl"
+WORKUNITS=""
 
 # shellcheck source=scripts/lib/ansible_args.sh
 source "$ROOT_DIR/scripts/lib/ansible_args.sh"
@@ -25,8 +29,63 @@ while [[ $# -gt 0 ]]; do
       SUBMIT_ONLY=1
       shift
       ;;
+    --task)
+      if [[ $# -lt 2 ]]; then
+        echo "--task requires a value." >&2
+        exit 2
+      fi
+      EXPERIMENT_TASK="$2"
+      shift 2
+      ;;
+    --task=*)
+      EXPERIMENT_TASK="${1#*=}"
+      shift
+      ;;
+    --big-det|--big_det)
+      EXPERIMENT_TASK="big-det"
+      shift
+      ;;
+    --user-task)
+      if [[ $# -lt 2 ]]; then
+        echo "--user-task requires a path." >&2
+        exit 2
+      fi
+      USER_TASK_FILE="$2"
+      shift 2
+      ;;
+    --user-params)
+      if [[ $# -lt 2 ]]; then
+        echo "--user-params requires a path." >&2
+        exit 2
+      fi
+      USER_TASK_PARAMS="$2"
+      shift 2
+      ;;
+    --workunits|--task-count)
+      if [[ $# -lt 2 ]]; then
+        echo "--workunits requires a value." >&2
+        exit 2
+      fi
+      WORKUNITS="$2"
+      shift 2
+      ;;
     --help|-h)
-      echo "Usage: ./scripts/run_experiment.sh [--submit-only] [--debug] [--ask-vault-pass|--vault] [--vault-password-file FILE] [--ask-become-pass|-K]"
+      cat <<'USAGE'
+Usage:
+  ./scripts/run_experiment.sh [options]
+
+Options:
+  --task user|big-det       task to submit; default: user
+  --user-task PATH          Python file for --task user
+  --user-params PATH        params.jsonl for --task user
+  --workunits N             number of big-det workunits
+  --submit-only             submit work without client pumping/Grafana dump
+  --debug                   show full command output
+  --ask-vault-pass, --vault ask Vault password manually
+  --vault-password-file F   use custom Vault password file
+  --ask-become-pass, -K     ask sudo password
+  --help, -h
+USAGE
       exit 0
       ;;
     *)
@@ -38,8 +97,20 @@ done
 ANSIBLE_REMAINING_ARGS=("$@")
 if [[ "${#ANSIBLE_REMAINING_ARGS[@]}" -gt 0 ]]; then
   echo "Unknown argument: ${ANSIBLE_REMAINING_ARGS[0]}"
-  echo "Usage: ./scripts/run_experiment.sh [--submit-only] [--debug] [--ask-vault-pass|--vault] [--vault-password-file FILE] [--ask-become-pass|-K]"
+  echo "Usage: ./scripts/run_experiment.sh [--task user|big-det] [--submit-only] [--debug]"
   exit 2
+fi
+
+if [[ -z "$EXPERIMENT_TASK" ]]; then
+  echo "--task cannot be empty." >&2
+  exit 2
+fi
+
+if [[ -n "$WORKUNITS" ]]; then
+  if ! [[ "$WORKUNITS" =~ ^[0-9]+$ ]] || (( WORKUNITS < 1 )); then
+    echo "--workunits must be a positive integer." >&2
+    exit 2
+  fi
 fi
 
 if [[ ! -f "$ROOT_DIR/config/generated.env" ]]; then
@@ -55,11 +126,6 @@ source "$ROOT_DIR/config/generated.env"
 set +a
 MONITORING_HOST="${SERVER_IP:-localhost}"
 
-if [[ ! -f "$ROOT_DIR/config/experiment.env" && -f "$ROOT_DIR/config/experiment.example.env" ]]; then
-  echo "Creating config/experiment.env from example..."
-  cp "$ROOT_DIR/config/experiment.example.env" "$ROOT_DIR/config/experiment.env"
-fi
-
 if [[ ! -f "$ROOT_DIR/config/distributed.env" && -f "$ROOT_DIR/config/distributed.example.env" ]]; then
   echo "Creating config/distributed.env from example..."
   cp "$ROOT_DIR/config/distributed.example.env" "$ROOT_DIR/config/distributed.env"
@@ -74,35 +140,30 @@ sql_tsv() {
 }
 
 run_selected_experiment() {
-  local app="${EXPERIMENT_APP:-ml_grid_search}"
-
-  if [[ -n "${EXPERIMENT_TASK_CMD:-}" ]]; then
-    echo "Experiment task: custom command"
-    echo "Command: $EXPERIMENT_TASK_CMD"
-    bash -lc "$EXPERIMENT_TASK_CMD"
-    return
-  fi
-
-  echo "Experiment task: $app"
-  case "$app" in
-    ml_grid_search)
-      apps/ml_grid_search/run_task.sh boinc
-      ;;
-    big_determinant)
-      apps/big_determinant/run_task.sh boinc
-      ;;
-    python_task_runner)
-      : "${PYTHON_TASK_FILE:?PYTHON_TASK_FILE is required for EXPERIMENT_APP=python_task_runner}"
-      : "${PYTHON_TASK_PARAMS:?PYTHON_TASK_PARAMS is required for EXPERIMENT_APP=python_task_runner}"
+  local task="$EXPERIMENT_TASK"
+  case "$task" in
+    user|python|python_task|python-task)
+      echo "Experiment task: user"
+      echo "Task file: $USER_TASK_FILE"
+      echo "Params:    $USER_TASK_PARAMS"
+      export PYTHON_TASK_APP_NAME="${PYTHON_TASK_APP_NAME:-user_python_task}"
+      export PYTHON_TASK_APP_FRIENDLY_NAME="${PYTHON_TASK_APP_FRIENDLY_NAME:-User Python task}"
       apps/python_task_runner/run_task.sh \
-        --task "$PYTHON_TASK_FILE" \
-        --params "$PYTHON_TASK_PARAMS" \
-        --device "${PYTHON_TASK_DEVICE:-cpu}"
+        --task "$USER_TASK_FILE" \
+        --params "$USER_TASK_PARAMS" \
+        --device cpu
+      ;;
+    big-det|big_det|big-determinant|big_determinant)
+      echo "Experiment task: big-det"
+      local args=(apps/big_determinant/run_task.sh boinc)
+      if [[ -n "$WORKUNITS" ]]; then
+        args+=(--workunits "$WORKUNITS")
+      fi
+      "${args[@]}"
       ;;
     *)
-      echo "Unknown EXPERIMENT_APP: $app" >&2
-      echo "Supported: ml_grid_search, big_determinant, python_task_runner" >&2
-      echo "Or set EXPERIMENT_TASK_CMD for a custom command." >&2
+      echo "Unknown task: $task" >&2
+      echo "Supported: user, big-det" >&2
       exit 2
       ;;
   esac
@@ -129,13 +190,11 @@ read_progress() {
   REDUNDANT="${REDUNDANT:-0}"
 }
 
-echo "Experiment config:"
-if [[ -f "$ROOT_DIR/config/experiment.env" ]]; then
-  grep -v '^#' "$ROOT_DIR/config/experiment.env" | grep -v '^$' || true
-else
-  echo "No config/experiment.env found; using defaults from run_task.sh."
+echo "Experiment task:"
+echo "  $EXPERIMENT_TASK"
+if [[ -n "$WORKUNITS" ]]; then
+  echo "  workunits=$WORKUNITS"
 fi
-
 echo
 echo "Distributed computing config:"
 if [[ -f "$ROOT_DIR/config/distributed.env" ]]; then
