@@ -106,6 +106,18 @@ boinc_experiment_throughput_workunits_per_second = Gauge(
     "boinc_experiment_throughput_workunits_per_second",
     "Completed workunits divided by experiment total seconds",
 )
+boinc_completion_percent = Gauge(
+    "boinc_completion_percent",
+    "Percent of unique workunits with at least one successful result",
+)
+boinc_estimated_remaining_seconds = Gauge(
+    "boinc_estimated_remaining_seconds",
+    "Estimated seconds remaining for unfinished unique workunits",
+)
+boinc_useful_compute_percent = Gauge(
+    "boinc_useful_compute_percent",
+    "Unique completed workunits divided by executed result attempts, percent",
+)
 
 # Distributed-computing configuration loaded from config/distributed.env through monitoring/.env.
 boinc_config_replication_factor = Gauge(
@@ -259,9 +271,19 @@ def update_db_metrics() -> None:
 
             boinc_latest_result_received_time.set(latest_result_received_time)
             boinc_experiment_total_seconds.set(experiment_total_seconds)
-            boinc_experiment_throughput_workunits_per_second.set(
-                (float(completed_wu) / experiment_total_seconds) if experiment_total_seconds else 0
-            )
+            throughput = (float(completed_wu) / experiment_total_seconds) if experiment_total_seconds else 0
+            active_capacity = max(float(active_hosts or 0), float(in_progress or 0), float(hosts or 0))
+            estimated_remaining_seconds = 0.0
+            if remaining_wu > 0:
+                if throughput > 0:
+                    estimated_remaining_seconds = float(remaining_wu) / throughput
+                elif active_capacity > 0:
+                    estimated_remaining_seconds = float(remaining_wu) * max(CONFIG_TASK_SECONDS, 1.0) / active_capacity
+
+            boinc_experiment_throughput_workunits_per_second.set(throughput)
+            boinc_completion_percent.set((float(completed_wu) / float(workunits) * 100.0) if workunits else 0)
+            boinc_estimated_remaining_seconds.set(estimated_remaining_seconds)
+            boinc_useful_compute_percent.set((float(completed_wu) / float(executed) * 100.0) if executed else 0)
             avg_turnaround = float(
                 safe_fetch_one(
                     cur,

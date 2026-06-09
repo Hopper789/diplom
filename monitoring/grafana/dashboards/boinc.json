@@ -91,7 +91,7 @@
       },
       "targets": [
         {
-          "expr": "100 * boinc_completed_workunits_total / clamp_min(boinc_workunits_total, 1)",
+          "expr": "boinc_completion_percent",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
@@ -147,7 +147,7 @@
       },
       "targets": [
         {
-          "expr": "((boinc_remaining_workunits_total / boinc_experiment_throughput_workunits_per_second) and (boinc_experiment_throughput_workunits_per_second > 0)) or ((boinc_remaining_workunits_total * clamp_min(boinc_config_task_seconds, 1) / boinc_hosts_active_recent_total) and (boinc_experiment_throughput_workunits_per_second <= 0) and (boinc_hosts_active_recent_total > 0) and (boinc_remaining_workunits_total > 0)) or ((boinc_remaining_workunits_total * 0) and (boinc_remaining_workunits_total == 0))",
+          "expr": "boinc_estimated_remaining_seconds",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
@@ -305,7 +305,7 @@
       },
       "targets": [
         {
-          "expr": "(100 * boinc_completed_workunits_total / boinc_results_executed_total) and (boinc_results_executed_total > 0)",
+          "expr": "boinc_useful_compute_percent",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
@@ -635,7 +635,7 @@
       },
       "targets": [
         {
-          "expr": "avg((sum by(instance) (rate(node_network_receive_bytes_total{job=~\"node_exporter_(clients|server)\",device!~\"lo|docker.*|veth.*|br.*\"}[1m])) + sum by(instance) (rate(node_network_transmit_bytes_total{job=~\"node_exporter_(clients|server)\",device!~\"lo|docker.*|veth.*|br.*\"}[1m]))))",
+          "expr": "avg((sum by(instance) (rate(node_network_receive_bytes_total{job=~\"node_exporter_(clients|server)\",device!=\"lo\"}[1m])) + sum by(instance) (rate(node_network_transmit_bytes_total{job=~\"node_exporter_(clients|server)\",device!=\"lo\"}[1m]))))",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
@@ -644,7 +644,7 @@
           "legendFormat": "сред"
         },
         {
-          "expr": "min((sum by(instance) (rate(node_network_receive_bytes_total{job=~\"node_exporter_(clients|server)\",device!~\"lo|docker.*|veth.*|br.*\"}[1m])) + sum by(instance) (rate(node_network_transmit_bytes_total{job=~\"node_exporter_(clients|server)\",device!~\"lo|docker.*|veth.*|br.*\"}[1m]))))",
+          "expr": "min((sum by(instance) (rate(node_network_receive_bytes_total{job=~\"node_exporter_(clients|server)\",device!=\"lo\"}[1m])) + sum by(instance) (rate(node_network_transmit_bytes_total{job=~\"node_exporter_(clients|server)\",device!=\"lo\"}[1m]))))",
           "refId": "B",
           "datasource": {
             "type": "prometheus",
@@ -653,7 +653,7 @@
           "legendFormat": "мин"
         },
         {
-          "expr": "max((sum by(instance) (rate(node_network_receive_bytes_total{job=~\"node_exporter_(clients|server)\",device!~\"lo|docker.*|veth.*|br.*\"}[1m])) + sum by(instance) (rate(node_network_transmit_bytes_total{job=~\"node_exporter_(clients|server)\",device!~\"lo|docker.*|veth.*|br.*\"}[1m]))))",
+          "expr": "max((sum by(instance) (rate(node_network_receive_bytes_total{job=~\"node_exporter_(clients|server)\",device!=\"lo\"}[1m])) + sum by(instance) (rate(node_network_transmit_bytes_total{job=~\"node_exporter_(clients|server)\",device!=\"lo\"}[1m]))))",
           "refId": "C",
           "datasource": {
             "type": "prometheus",

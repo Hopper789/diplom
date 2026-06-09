@@ -6,8 +6,23 @@ ENV_FILE="$ROOT_DIR/config/generated.env"
 EXPERIMENT_ENV_FILE="$ROOT_DIR/config/experiment.env"
 DISTRIBUTED_ENV_FILE="$ROOT_DIR/config/distributed.env"
 MONITORING_DIR="$ROOT_DIR/monitoring"
-BOINC_EXPORTER_IMAGE="${BOINC_EXPORTER_IMAGE:-monitoring-boinc-exporter:latest}"
 BOINC_EXPORTER_BASE_IMAGE="${BOINC_EXPORTER_BASE_IMAGE:-python:3.12-slim}"
+
+if [[ -z "${BOINC_EXPORTER_IMAGE:-}" ]]; then
+  if command -v sha256sum >/dev/null 2>&1; then
+    exporter_hash="$(
+      (
+        cd "$MONITORING_DIR"
+        sha256sum Dockerfile requirements.txt boinc_exporter.py
+      ) \
+        | sha256sum \
+        | awk '{print substr($1, 1, 12)}'
+    )"
+    BOINC_EXPORTER_IMAGE="monitoring-boinc-exporter:$exporter_hash"
+  else
+    BOINC_EXPORTER_IMAGE="monitoring-boinc-exporter:latest"
+  fi
+fi
 
 # shellcheck source=scripts/lib/ansible_args.sh
 source "$ROOT_DIR/scripts/lib/ansible_args.sh"
