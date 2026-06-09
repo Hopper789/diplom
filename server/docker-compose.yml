@@ -1,11 +1,11 @@
 services:
-  mysql:
+  mariadb:
     image: mariadb:10.11
-    container_name: boinc-mysql
+    container_name: boinc-mariadb
     environment:
       MARIADB_ROOT_PASSWORD: root
     volumes:
-      - ./mysql-data:/var/lib/mysql
+      - ./mariadb-data:/var/lib/mysql
 
   boinc-server:
     build: .
@@ -13,7 +13,7 @@ services:
     container_name: boinc-server
     hostname: boinc-server
     depends_on:
-      - mysql
+      - mariadb
     volumes:
       - ./project:/project
     ports:

@@ -11,7 +11,7 @@ RUN apt update && apt install -y \
     autoconf \
     automake \
     libtool \
-    libmysqlclient-dev \
+    libmariadb-dev \
     libssl-dev \
     libcurl4-openssl-dev \
     zlib1g-dev \
@@ -25,7 +25,7 @@ RUN apt update && apt install -y \
     python3-pip \
     python-is-python3 \
     python3-mysqldb \
-    mysql-client \
+    mariadb-client \
     ca-certificates \
     nano \
     curl \

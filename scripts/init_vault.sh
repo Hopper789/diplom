@@ -7,7 +7,13 @@ VAULT_FILE="$VAULT_DIR/vault.yml"
 VAULT_EXAMPLE="$VAULT_DIR/vault.example.yml"
 VAULT_PASS_FILE="$ROOT_DIR/ansible/.vault_pass"
 
+# shellcheck source=scripts/lib/debug.sh
+source "$ROOT_DIR/scripts/lib/debug.sh"
+
 cd "$ROOT_DIR"
+
+strip_debug_args "$@"
+set -- "${DEBUG_ARGS[@]}"
 
 if ! command -v ansible-vault >/dev/null 2>&1; then
   echo "ОШИБКА: нужен ansible-vault."

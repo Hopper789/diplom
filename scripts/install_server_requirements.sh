@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# shellcheck source=scripts/lib/debug.sh
+source "$ROOT_DIR/scripts/lib/debug.sh"
+
+strip_debug_args "$@"
+set -- "${DEBUG_ARGS[@]}"
+
 echo "Installing server-side requirements..."
 
 if ! command -v apt-get >/dev/null 2>&1; then
@@ -27,7 +35,7 @@ sudo apt install -y \
   autoconf \
   automake \
   libtool \
-  mysql-client \
+  mariadb-client \
   docker.io \
   docker-compose-v2
 

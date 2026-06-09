@@ -2,6 +2,13 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+# shellcheck source=scripts/lib/debug.sh
+source "$ROOT_DIR/scripts/lib/debug.sh"
+
+strip_debug_args "$@"
+set -- "${DEBUG_ARGS[@]}"
+
 EXPERIMENT_ENV_FILE="$ROOT_DIR/config/experiment.env"
 DISTRIBUTED_ENV_FILE="$ROOT_DIR/config/distributed.env"
 BUILD_DIR="$ROOT_DIR/apps/big_determinant/build"
@@ -40,7 +47,7 @@ TASK_MAX_REPEATS="${DETERMINANT_MAX_REPEATS:-0}"
 usage() {
   cat <<'USAGE'
 Usage:
-  apps/big_determinant/run_task.sh [boinc|local]
+  apps/big_determinant/run_task.sh [--debug] [boinc|local]
 
 Environment:
   EXPERIMENT_WALL_SECONDS  target wall-clock duration for automatic task count

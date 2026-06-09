@@ -9,7 +9,7 @@ source "$ROOT_DIR/scripts/lib/ansible_args.sh"
 
 MAX_SECONDS=600
 INTERVAL_SECONDS=15
-QUIET=0
+QUIET="${BOINC_PUMP_QUIET:-1}"
 SERVER_ONLY=0
 VERBOSE=0
 
@@ -31,6 +31,7 @@ usage() {
   --ask-vault-pass|--vault Передать Ansible --ask-vault-pass.
   --vault-password-file F  Передать Ansible --vault-password-file.
   --ask-become-pass|-K     Передать Ansible --ask-become-pass.
+  --debug                  Показать полный вывод команд.
 USAGE
 }
 
@@ -38,6 +39,10 @@ cd "$ROOT_DIR"
 
 build_ansible_args "$@"
 set -- "${ANSIBLE_REMAINING_ARGS[@]}"
+if debug_enabled; then
+  QUIET=0
+  VERBOSE=1
+fi
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -55,6 +60,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     --verbose)
       VERBOSE=1
+      QUIET=0
       shift
       ;;
     --server-only)
@@ -94,13 +100,13 @@ set -a
 source "$ENV_FILE"
 set +a
 
-if ! docker ps --format '{{.Names}}' | grep -qx 'boinc-mysql'; then
-  echo "boinc-mysql is not running." >&2
+if ! docker ps --format '{{.Names}}' | grep -qx 'boinc-mariadb'; then
+  echo "boinc-mariadb is not running." >&2
   exit 1
 fi
 
 sql_tsv() {
-  docker exec boinc-mysql mariadb -u root -proot -N -B -D "$PROJECT_NAME" -e "$1"
+  docker exec boinc-mariadb mariadb -u root -proot -N -B -D "$PROJECT_NAME" -e "$1"
 }
 
 read_progress() {
@@ -200,9 +206,9 @@ print_diagnostics() {
   echo "Клиенты не получили ни одной задачи: active_hosts=0."
   echo
 
-  if docker ps --format '{{.Names}}' | grep -qx 'boinc-mysql'; then
+  if docker ps --format '{{.Names}}' | grep -qx 'boinc-mariadb'; then
     echo "== BOINC DB app/version/result states =="
-    docker exec boinc-mysql mariadb -u root -proot -D "$PROJECT_NAME" -e "
+    docker exec boinc-mariadb mariadb -u root -proot -D "$PROJECT_NAME" -e "
       SELECT id, name, user_friendly_name FROM app;
       SELECT av.id, a.name AS app, av.version_num, p.name AS platform
         FROM app_version av

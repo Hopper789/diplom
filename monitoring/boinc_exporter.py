@@ -8,11 +8,11 @@ from prometheus_client import Counter, Gauge, start_http_server
 
 PROJECT_NAME = os.getenv("PROJECT_NAME", "my_project")
 PROJECT_URL = os.getenv("PROJECT_URL", "")
-MYSQL_HOST = os.getenv("MYSQL_HOST", "boinc-mysql")
-MYSQL_PORT = int(os.getenv("MYSQL_PORT", "3306"))
-MYSQL_USER = os.getenv("MYSQL_USER", "root")
-MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "root")
-MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", PROJECT_NAME)
+MARIADB_HOST = os.getenv("MARIADB_HOST", "boinc-mariadb")
+MARIADB_PORT = int(os.getenv("MARIADB_PORT", "3306"))
+MARIADB_USER = os.getenv("MARIADB_USER", "root")
+MARIADB_PASSWORD = os.getenv("MARIADB_PASSWORD", "root")
+MARIADB_DATABASE = os.getenv("MARIADB_DATABASE", PROJECT_NAME)
 SCRAPE_INTERVAL = int(os.getenv("SCRAPE_INTERVAL", "10"))
 ACTIVE_HOST_WINDOW_SECONDS = int(os.getenv("ACTIVE_HOST_WINDOW_SECONDS", "900"))
 CONFIG_TASK_SECONDS = float(os.getenv("TASK_SECONDS", "1200"))
@@ -148,11 +148,11 @@ boinc_avg_overhead_time_per_workunit_seconds = Gauge(
 
 def connect():
     return pymysql.connect(
-        host=MYSQL_HOST,
-        port=MYSQL_PORT,
-        user=MYSQL_USER,
-        password=MYSQL_PASSWORD,
-        database=MYSQL_DATABASE,
+        host=MARIADB_HOST,
+        port=MARIADB_PORT,
+        user=MARIADB_USER,
+        password=MARIADB_PASSWORD,
+        database=MARIADB_DATABASE,
         cursorclass=pymysql.cursors.DictCursor,
         connect_timeout=5,
         read_timeout=5,

@@ -3,6 +3,9 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# shellcheck source=scripts/lib/debug.sh
+source "$ROOT_DIR/scripts/lib/debug.sh"
+
 WITH_MONITORING=0
 RUN_EXPERIMENT=0
 INSTALL_LOCAL=0
@@ -19,13 +22,14 @@ Usage:
 
 Options:
   --with-monitoring     start monitoring during launch
-  --run-experiment      submit and pump the experiment during launch
+  --run-experiment      submit the experiment during launch
   --install-local       install local control-machine dependencies during preparation
   --copy-ssh-keys       copy SSH keys to clients during preparation
   --skip-prepare        run only launch_cluster.sh
   --skip-launch         run only prepare_system.sh
   --skip-status         skip final launch status check
   --ask-become-pass, -K ask sudo password for Ansible steps
+  --debug              show full command output
   --help, -h
 
 Examples:
@@ -34,10 +38,14 @@ Examples:
   ./scripts/quickstart.sh --with-monitoring --run-experiment
 
 Experiment task is selected in config/experiment.env via EXPERIMENT_APP.
+Use ./scripts/run_experiment.sh when you want to submit, auto-update clients, and wait.
 USAGE
 }
 
 cd "$ROOT_DIR"
+
+strip_debug_args "$@"
+set -- "${DEBUG_ARGS[@]}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in

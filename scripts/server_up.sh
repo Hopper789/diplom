@@ -4,6 +4,12 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="$ROOT_DIR/config/generated.env"
 
+# shellcheck source=scripts/lib/debug.sh
+source "$ROOT_DIR/scripts/lib/debug.sh"
+
+strip_debug_args "$@"
+set -- "${DEBUG_ARGS[@]}"
+
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "ERROR: config/generated.env not found. Run: ./scripts/init_config.sh" >&2
   exit 1
@@ -14,23 +20,23 @@ set -a
 source "$ENV_FILE"
 set +a
 
-mkdir -p "$ROOT_DIR/server/project" "$ROOT_DIR/server/mysql-data"
+mkdir -p "$ROOT_DIR/server/project" "$ROOT_DIR/server/mariadb-data"
 
 (
   cd "$ROOT_DIR/server"
   if [[ "${BOINC_SERVER_FORCE_BUILD:-0}" == "1" ]]; then
-    COMPOSE_BAKE=false docker compose up -d --build
+    compose_run up -d --build
   elif docker image inspect boinc-server-build >/dev/null 2>&1; then
-    COMPOSE_BAKE=false docker compose up -d
+    compose_run up -d
   else
-    COMPOSE_BAKE=false docker compose up -d --build
+    compose_run up -d --build
   fi
 )
 
 echo "Waiting for MariaDB to be ready..."
 attempts=30
 for ((i=1; i<=attempts; i++)); do
-  if docker exec boinc-mysql mariadb -u root -proot -e "SELECT 1" >/dev/null 2>&1; then
+  if docker exec boinc-mariadb mariadb -u root -proot -e "SELECT 1" >/dev/null 2>&1; then
     echo "MariaDB is ready."
     break
   fi
@@ -44,7 +50,7 @@ done
 "$ROOT_DIR/server/scripts/create_project.sh"
 "$ROOT_DIR/server/scripts/fix_project_url.sh"
 
-docker restart boinc-server >/dev/null
+quiet_run docker restart boinc-server
 
 echo "BOINC server is ready:"
 echo "$BOINC_PROJECT_URL"

@@ -1,152 +1,110 @@
 # Конфигурация
 
-В репозитории есть примеры конфигов. Рабочие файлы создаются локально и не коммитятся.
-
-## Главные файлы
-
-```text
-config/cluster.yml       # машины кластера и BOINC project
-config/generated.env     # сгенерированные параметры запуска
-config/experiment.env    # параметры конкретного эксперимента
-config/distributed.env   # правила выдачи и репликации workunits
-```
-
 ## `config/cluster.yml`
-
-Основной файл конфигурации:
-
-```text
-config/cluster.yml
-```
 
 Создаётся из примера:
 
 ```bash
 cp config/cluster.example.yml config/cluster.yml
-nano config/cluster.yml
 ```
 
-Минимально пользователь должен проверить адрес сервера, адреса клиентов и SSH-пользователей:
+Главные поля:
 
 ```yaml
-project:
-  name: my_project
-  port: 8080
-
 server:
-  ip: 192.168.1.10
-
-clients_defaults:
-  port: 2222
+  ip: 172.17.12.151
+  port: 8080
 
 clients:
   - name: node1
-    ip: 192.168.1.11
-    user: user
-  - name: node2
-    ip: 192.168.1.12
-    user: user
-    port: 2222
+    ip: 172.17.12.152
+    user: auser
+    ssh_port: 22
 
 boinc:
+  project_name: my_project
+  account_email: nodes@local.test
+  account_name: nodes
   client_rpc_password: auto
 ```
 
-`server.ip` должен быть доступен клиентам. `clients[].user` должен подключаться по SSH и иметь sudo-доступ.
-
-`clients[].port` или `clients[].ssh_port` задаёт SSH-порт конкретного клиента. Если у всех клиентов один нестандартный порт, укажи `clients_defaults.port`, `clients_defaults.ssh_port` или `ssh.port`. Если порт не указан, используется стандартный SSH-порт `22`.
-
-Для клиентских узлов также поддерживаются поля `host`, `hostname`, `ansible_host`, `username`, `ansible_user` и `ansible_port`.
-
-## BOINC RPC password
-
-Правильный вариант для новых конфигураций:
-
-```yaml
-boinc:
-  client_rpc_password: auto
-```
-
-Если указано `auto`, пароль для RPC-доступа BOINC client будет сгенерирован автоматически во время `prepare_system.sh` / `init_config.sh`.
-
-Для совместимости также поддерживается старый ключ `boinc.rpc_password`, но в новых конфигурациях следует использовать `boinc.client_rpc_password`.
+Для клиентов поддерживаются поля `ip`, `host`, `hostname`, `ansible_host`, `user`, `username`, `ansible_user`, `ssh_port`, `ansible_port`.
 
 ## Сгенерированные файлы
 
-`prepare_system.sh` вызывает `init_config.sh` и создаёт:
+`prepare_system.sh` создаёт:
 
-```text
-config/generated.env
-ansible/inventory.ini
-ansible/group_vars/all/main.yml
-monitoring/.env
-```
+- `config/generated.env`;
+- `ansible/inventory.ini`;
+- `ansible/group_vars/all/main.yml`;
+- `monitoring/.env`;
+- `ansible/group_vars/all/vault.yml`;
+- `ansible/.vault_pass`.
 
-Эти файлы можно пересоздавать. Они описывают текущее runtime-состояние и не должны попадать в Git.
+Обычно их не редактируют руками.
 
 ## `config/experiment.env`
 
-Если файла нет, скрипты используют значения из `config/experiment.example.env` или создают локальную копию.
+Выбор задачи:
 
 ```bash
-cp config/experiment.example.env config/experiment.env
-nano config/experiment.env
+EXPERIMENT_APP=ml_grid_search
 ```
 
-Основные параметры:
+Поддерживаются:
 
-```env
-EXPERIMENT_APP=ml_grid_search
+- `ml_grid_search`;
+- `big_determinant`;
+- `python_task_runner`;
+- `EXPERIMENT_TASK_CMD='...'` для полностью своей команды.
+
+Размер эксперимента:
+
+```bash
 EXPERIMENT_WALL_SECONDS=1200
-EXPERIMENT_CORES=1
+EXPERIMENT_CORES=2
 TASK_SECONDS=1200
 TASK_COUNT=
-TASK_DATASET_SIZE=500
-TASK_SEED_BASE=1000
-TASK_LAMBDA_GRID=0,0.001,0.003,0.01,0.03,0.1,0.3,1,3,10
 ```
 
-`EXPERIMENT_APP` выбирает задачу для `quickstart --run-experiment`:
-
-- `ml_grid_search` — основной пример, CPU-задача с целевым временем;
-- `big_determinant` — тяжёлая CPU-задача на определителях матриц;
-- `python_task_runner` — произвольный `user_task.py` и `params.jsonl`.
-
-Если `TASK_COUNT` пустой, число задач считается примерно как:
+Если `TASK_COUNT` пустой, число workunit'ов считается примерно так:
 
 ```text
 EXPERIMENT_WALL_SECONDS * EXPERIMENT_CORES / TASK_SECONDS
 ```
 
-Для `python_task_runner` нужно указать:
+## Сложность задач
 
-```env
+Для `ml_grid_search`:
+
+```bash
+TASK_SECONDS=1200
+TASK_DATASET_SIZE=500
+TASK_LAMBDA_GRID=0,0.001,0.01,0.1,1,10
+```
+
+Для `big_determinant`:
+
+```bash
+DETERMINANT_TASK_SECONDS=1200
+DETERMINANT_MATRIX_SIZE=1200
+DETERMINANT_MAX_REPEATS=0
+```
+
+Для `python_task_runner`:
+
+```bash
 EXPERIMENT_APP=python_task_runner
 PYTHON_TASK_FILE=apps/python_task_runner/examples/synthetic_cpu/user_task.py
 PYTHON_TASK_PARAMS=apps/python_task_runner/examples/synthetic_cpu/params.jsonl
 PYTHON_TASK_DEVICE=cpu
 ```
 
-Для произвольного запуска можно задать:
-
-```env
-EXPERIMENT_TASK_CMD='apps/big_determinant/run_task.sh boinc'
-```
-
-`TASK_LAMBDA_GRID` задаёт сетку параметров для примера `ml_grid_search`.
-
 ## `config/distributed.env`
 
-Этот файл отвечает не за содержимое задачи, а за правила BOINC:
+Репликация и quorum:
 
 ```bash
-cp config/distributed.example.env config/distributed.env
-nano config/distributed.env
-```
-
-Базовый режим без репликации:
-
-```env
 DISTRIBUTED_TARGET_NRESULTS=1
 DISTRIBUTED_MIN_QUORUM=1
 DISTRIBUTED_MAX_SUCCESS_RESULTS=1
@@ -154,18 +112,17 @@ DISTRIBUTED_MAX_ERROR_RESULTS=3
 DISTRIBUTED_MAX_TOTAL_RESULTS=3
 ```
 
-Схема "2 из 3" с запасной попыткой:
+Если нужно 3 реплики и quorum 2:
 
-```env
-DISTRIBUTED_TARGET_NRESULTS=2
+```bash
+DISTRIBUTED_TARGET_NRESULTS=3
 DISTRIBUTED_MIN_QUORUM=2
 DISTRIBUTED_MAX_SUCCESS_RESULTS=2
-DISTRIBUTED_MAX_ERROR_RESULTS=3
 DISTRIBUTED_MAX_TOTAL_RESULTS=3
 ```
 
-Важно: `DISTRIBUTED_TARGET_NRESULTS=3` означает, что BOINC будет стремиться создать и
-выдать три result-записи сразу. При достаточном числе свободных клиентов это обычно
-даёт ровно 3 выполнения на workunit, даже если `DISTRIBUTED_MIN_QUORUM=2`.
+BOINC может создать больше result-записей, чем уникальных workunit'ов. Это нормально: result — попытка выполнения, workunit — уникальная задача.
 
-Для учебного первого запуска оставь значения по умолчанию.
+## MariaDB
+
+Runtime-контейнер базы называется `boinc-mariadb`, service в compose — `mariadb`, данные лежат в `server/mariadb-data/`.

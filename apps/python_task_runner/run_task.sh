@@ -7,6 +7,12 @@ DISTRIBUTED_ENV_FILE="$ROOT_DIR/config/distributed.env"
 DISTRIBUTED_EXAMPLE_FILE="$ROOT_DIR/config/distributed.example.env"
 VAULT_PASS_FILE="$ROOT_DIR/ansible/.vault_pass"
 
+# shellcheck source=scripts/lib/debug.sh
+source "$ROOT_DIR/scripts/lib/debug.sh"
+
+strip_debug_args "$@"
+set -- "${DEBUG_ARGS[@]}"
+
 APP_NAME="${PYTHON_TASK_APP_NAME:-python_task_runner}"
 APP_VERSION="${PYTHON_TASK_APP_VERSION:-}"
 APP_FRIENDLY_NAME="${PYTHON_TASK_APP_FRIENDLY_NAME:-Python task runner}"
@@ -42,7 +48,7 @@ ANSIBLE_EXTRA_ARGS="${ANSIBLE_EXTRA_ARGS:-}"
 usage() {
   cat <<'USAGE'
 Использование:
-  apps/python_task_runner/run_task.sh --task PATH --params PATH [--device cpu|gpu] [--fail-on-error]
+  apps/python_task_runner/run_task.sh --task PATH --params PATH [--device cpu|gpu] [--fail-on-error] [--debug]
 
 Пример:
   apps/python_task_runner/run_task.sh \
@@ -207,8 +213,8 @@ ensure_server_running() {
     exit 1
   fi
 
-  if ! docker ps --format '{{.Names}}' | grep -qx 'boinc-mysql'; then
-    echo "Контейнер boinc-mysql не запущен."
+  if ! docker ps --format '{{.Names}}' | grep -qx 'boinc-mariadb'; then
+    echo "Контейнер boinc-mariadb не запущен."
     echo "Сначала запусти:"
     echo "  ./scripts/bootstrap_server.sh"
     exit 1
@@ -246,7 +252,7 @@ resolve_app_version() {
   else
     local next_version_num
     next_version_num="$(
-      docker exec boinc-mysql mariadb -u root -proot -N -B -D "$PROJECT_NAME" -e "
+      docker exec boinc-mariadb mariadb -u root -proot -N -B -D "$PROJECT_NAME" -e "
         SELECT COALESCE(MAX(av.version_num), 99) + 1
           FROM app_version av
           JOIN app a ON a.id = av.appid
@@ -504,7 +510,7 @@ assert_app_version_registered() {
   local registered
 
   registered="$(
-    docker exec boinc-mysql mariadb -u root -proot -N -B -D "$PROJECT_NAME" -e "
+    docker exec boinc-mariadb mariadb -u root -proot -N -B -D "$PROJECT_NAME" -e "
       SELECT COUNT(*)
         FROM app_version av
         JOIN app a ON a.id = av.appid
@@ -610,7 +616,7 @@ EOF\"
 show_summary() {
   echo
   echo "Краткий статус BOINC server:"
-  docker exec boinc-mysql mariadb -u root -proot -D "$PROJECT_NAME" -e "
+  docker exec boinc-mariadb mariadb -u root -proot -D "$PROJECT_NAME" -e "
     SELECT COUNT(*) AS workunits FROM workunit;
     SELECT COUNT(*) AS results FROM result;
     SELECT id, name, appid, create_time FROM workunit ORDER BY id DESC LIMIT 10;
@@ -627,7 +633,9 @@ restart_project_daemons
 update_clients
 sleep 10
 update_clients
-show_summary
+if debug_enabled; then
+  show_summary
+fi
 
 echo
 echo "Python-задачи отправлены в BOINC."

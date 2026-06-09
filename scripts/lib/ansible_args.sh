@@ -4,6 +4,9 @@ if [[ -z "${ROOT_DIR:-}" ]]; then
   ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 fi
 
+# shellcheck source=scripts/lib/debug.sh
+source "$ROOT_DIR/scripts/lib/debug.sh"
+
 build_ansible_args() {
   ANSIBLE_ARGS=()
   ANSIBLE_REMAINING_ARGS=()
@@ -13,6 +16,11 @@ build_ansible_args() {
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
+      --debug)
+        DEBUG=1
+        export DEBUG
+        shift
+        ;;
       --ask-vault-pass|--vault)
         ANSIBLE_ARGS+=(--ask-vault-pass)
         vault_mode_selected=1
@@ -43,4 +51,6 @@ build_ansible_args() {
   if [[ "$vault_mode_selected" == "0" && -f "$ROOT_DIR/ansible/.vault_pass" ]]; then
     ANSIBLE_ARGS+=(--vault-password-file "$ROOT_DIR/ansible/.vault_pass")
   fi
+
+  configure_quiet_ansible
 }

@@ -25,6 +25,7 @@ Options:
   --ask-vault-pass, --vault ask Vault password manually
   --vault-password-file F   use custom Vault password file
   --ask-become-pass, -K     ask sudo password
+  --debug                   show full command output
   --help, -h
 USAGE
 }

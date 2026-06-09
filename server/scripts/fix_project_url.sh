@@ -4,6 +4,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
+# shellcheck source=scripts/lib/debug.sh
+source "$ROOT_DIR/scripts/lib/debug.sh"
+
+strip_debug_args "$@"
+set -- "${DEBUG_ARGS[@]}"
+
 ENV_FILE="$ROOT_DIR/config/generated.env"
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "ERROR: config/generated.env not found. Run: ./scripts/init_config.sh" >&2
@@ -20,7 +26,7 @@ if ! docker ps --format '{{.Names}}' | grep -qx 'boinc-server'; then
   exit 1
 fi
 
-docker exec \
+quiet_run docker exec \
   -e PROJECT_NAME="$PROJECT_NAME" \
   -e PROJECT_URL_BASE="$PROJECT_URL_BASE" \
   boinc-server bash -lc '

@@ -27,6 +27,7 @@ Options:
   --ask-vault-pass, --vault ask Vault password manually
   --vault-password-file F   use custom Vault password file
   --ask-become-pass, -K     ask sudo password
+  --debug                   show full command output
   --help, -h
 USAGE
 }
@@ -64,6 +65,12 @@ parse_args() {
         ;;
       --ask-become-pass|-K)
         USER_ANSIBLE_ARGS+=("$1")
+        shift
+        ;;
+      --debug)
+        USER_ANSIBLE_ARGS+=("$1")
+        DEBUG=1
+        export DEBUG
         shift
         ;;
       --help|-h)
@@ -144,8 +151,8 @@ PY
     fi
   fi
 
-  if ! command -v mysql >/dev/null 2>&1 && ! command -v mariadb >/dev/null 2>&1; then
-    MISSING_DEPS+=("mysql client or mariadb client")
+  if ! command -v mariadb >/dev/null 2>&1; then
+    MISSING_DEPS+=("MariaDB client")
   fi
 }
 

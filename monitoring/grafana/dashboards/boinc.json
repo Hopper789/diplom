@@ -465,7 +465,7 @@
       },
       "targets": [
         {
-          "expr": "avg(100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{job=\"node_exporter_clients\",mode=\"idle\"}[1m]))))",
+          "expr": "avg(100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{job=~\"node_exporter_(clients|server)\",mode=\"idle\"}[1m]))))",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
@@ -474,7 +474,7 @@
           "legendFormat": "сред"
         },
         {
-          "expr": "min(100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{job=\"node_exporter_clients\",mode=\"idle\"}[1m]))))",
+          "expr": "min(100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{job=~\"node_exporter_(clients|server)\",mode=\"idle\"}[1m]))))",
           "refId": "B",
           "datasource": {
             "type": "prometheus",
@@ -483,7 +483,7 @@
           "legendFormat": "мин"
         },
         {
-          "expr": "max(100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{job=\"node_exporter_clients\",mode=\"idle\"}[1m]))))",
+          "expr": "max(100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{job=~\"node_exporter_(clients|server)\",mode=\"idle\"}[1m]))))",
           "refId": "C",
           "datasource": {
             "type": "prometheus",
@@ -550,7 +550,7 @@
       },
       "targets": [
         {
-          "expr": "avg(100 * (1 - node_memory_MemAvailable_bytes{job=\"node_exporter_clients\"} / node_memory_MemTotal_bytes{job=\"node_exporter_clients\"}))",
+          "expr": "avg(100 * (1 - node_memory_MemAvailable_bytes{job=~\"node_exporter_(clients|server)\"} / node_memory_MemTotal_bytes{job=~\"node_exporter_(clients|server)\"}))",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
@@ -559,7 +559,7 @@
           "legendFormat": "сред"
         },
         {
-          "expr": "min(100 * (1 - node_memory_MemAvailable_bytes{job=\"node_exporter_clients\"} / node_memory_MemTotal_bytes{job=\"node_exporter_clients\"}))",
+          "expr": "min(100 * (1 - node_memory_MemAvailable_bytes{job=~\"node_exporter_(clients|server)\"} / node_memory_MemTotal_bytes{job=~\"node_exporter_(clients|server)\"}))",
           "refId": "B",
           "datasource": {
             "type": "prometheus",
@@ -568,7 +568,7 @@
           "legendFormat": "мин"
         },
         {
-          "expr": "max(100 * (1 - node_memory_MemAvailable_bytes{job=\"node_exporter_clients\"} / node_memory_MemTotal_bytes{job=\"node_exporter_clients\"}))",
+          "expr": "max(100 * (1 - node_memory_MemAvailable_bytes{job=~\"node_exporter_(clients|server)\"} / node_memory_MemTotal_bytes{job=~\"node_exporter_(clients|server)\"}))",
           "refId": "C",
           "datasource": {
             "type": "prometheus",
@@ -635,7 +635,7 @@
       },
       "targets": [
         {
-          "expr": "avg((sum by(instance) (rate(node_network_receive_bytes_total{job=\"node_exporter_clients\",device!~\"lo|docker.*|veth.*|br.*\"}[1m])) + sum by(instance) (rate(node_network_transmit_bytes_total{job=\"node_exporter_clients\",device!~\"lo|docker.*|veth.*|br.*\"}[1m]))))",
+          "expr": "avg((sum by(instance) (rate(node_network_receive_bytes_total{job=~\"node_exporter_(clients|server)\",device!~\"lo|docker.*|veth.*|br.*\"}[1m])) + sum by(instance) (rate(node_network_transmit_bytes_total{job=~\"node_exporter_(clients|server)\",device!~\"lo|docker.*|veth.*|br.*\"}[1m]))))",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
@@ -644,7 +644,7 @@
           "legendFormat": "сред"
         },
         {
-          "expr": "min((sum by(instance) (rate(node_network_receive_bytes_total{job=\"node_exporter_clients\",device!~\"lo|docker.*|veth.*|br.*\"}[1m])) + sum by(instance) (rate(node_network_transmit_bytes_total{job=\"node_exporter_clients\",device!~\"lo|docker.*|veth.*|br.*\"}[1m]))))",
+          "expr": "min((sum by(instance) (rate(node_network_receive_bytes_total{job=~\"node_exporter_(clients|server)\",device!~\"lo|docker.*|veth.*|br.*\"}[1m])) + sum by(instance) (rate(node_network_transmit_bytes_total{job=~\"node_exporter_(clients|server)\",device!~\"lo|docker.*|veth.*|br.*\"}[1m]))))",
           "refId": "B",
           "datasource": {
             "type": "prometheus",
@@ -653,7 +653,7 @@
           "legendFormat": "мин"
         },
         {
-          "expr": "max((sum by(instance) (rate(node_network_receive_bytes_total{job=\"node_exporter_clients\",device!~\"lo|docker.*|veth.*|br.*\"}[1m])) + sum by(instance) (rate(node_network_transmit_bytes_total{job=\"node_exporter_clients\",device!~\"lo|docker.*|veth.*|br.*\"}[1m]))))",
+          "expr": "max((sum by(instance) (rate(node_network_receive_bytes_total{job=~\"node_exporter_(clients|server)\",device!~\"lo|docker.*|veth.*|br.*\"}[1m])) + sum by(instance) (rate(node_network_transmit_bytes_total{job=~\"node_exporter_(clients|server)\",device!~\"lo|docker.*|veth.*|br.*\"}[1m]))))",
           "refId": "C",
           "datasource": {
             "type": "prometheus",

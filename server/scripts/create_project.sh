@@ -4,6 +4,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
+# shellcheck source=scripts/lib/debug.sh
+source "$ROOT_DIR/scripts/lib/debug.sh"
+
+strip_debug_args "$@"
+set -- "${DEBUG_ARGS[@]}"
+
 ENV_FILE="$ROOT_DIR/config/generated.env"
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "ERROR: config/generated.env not found. Run: ./scripts/init_config.sh" >&2
@@ -27,11 +33,11 @@ fi
 
 echo "Creating BOINC project: $PROJECT_NAME"
 
-docker exec -i boinc-server bash -lc "yes y | USER=root /opt/boinc/tools/make_project \
+quiet_run docker exec -i boinc-server bash -lc "yes y | USER=root /opt/boinc/tools/make_project \
   --srcdir /opt/boinc \
   --project_root \"/project/$PROJECT_NAME\" \
   --url_base \"$PROJECT_URL_BASE\" \
-  --db_host mysql \
+  --db_host mariadb \
   --db_user root \
   --db_passwd root \
   \"$PROJECT_NAME\""

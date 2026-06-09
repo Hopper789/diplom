@@ -18,9 +18,13 @@ while [[ $# -gt 0 ]]; do
       SERVER_ONLY=1
       shift
       ;;
+    --help|-h)
+      echo "Usage: ./scripts/status.sh [--server-only] [--debug] [--ask-vault-pass|--vault] [--vault-password-file FILE] [--ask-become-pass|-K]"
+      exit 0
+      ;;
     *)
       echo "Unknown argument: $1"
-      echo "Usage: ./scripts/status.sh [--server-only] [--ask-vault-pass|--vault] [--vault-password-file FILE] [--ask-become-pass|-K]"
+      echo "Usage: ./scripts/status.sh [--server-only] [--debug] [--ask-vault-pass|--vault] [--vault-password-file FILE] [--ask-become-pass|-K]"
       exit 2
       ;;
   esac
@@ -69,19 +73,19 @@ else
   echo
 fi
 
-if docker ps --format '{{.Names}}' | grep -qx 'boinc-mysql'; then
+if docker ps --format '{{.Names}}' | grep -qx 'boinc-mariadb'; then
   echo "== MariaDB users =="
-  docker exec boinc-mysql mariadb -u root -proot -D "$PROJECT_NAME" \
+  docker exec boinc-mariadb mariadb -u root -proot -D "$PROJECT_NAME" \
     -e "SELECT id, email_addr, name, authenticator FROM user;" || true
   echo
 
   echo "== MariaDB hosts =="
-  docker exec boinc-mysql mariadb -u root -proot -D "$PROJECT_NAME" \
+  docker exec boinc-mariadb mariadb -u root -proot -D "$PROJECT_NAME" \
     -e "SELECT id, userid, domain_name, os_name, create_time FROM host;" || true
   echo
 
   echo "== MariaDB workunits/results summary =="
-  docker exec boinc-mysql mariadb -u root -proot -D "$PROJECT_NAME" \
+  docker exec boinc-mariadb mariadb -u root -proot -D "$PROJECT_NAME" \
     -e "
       SELECT COUNT(*) AS workunits FROM workunit;
       SELECT COUNT(*) AS results FROM result;
@@ -117,7 +121,7 @@ if docker ps --format '{{.Names}}' | grep -qx 'boinc-mysql'; then
     " || true
   echo
 else
-  echo "boinc-mysql is not running."
+  echo "boinc-mariadb is not running."
   echo
 fi
 
@@ -162,7 +166,7 @@ if [[ -f "$ROOT_DIR/ansible/inventory.ini" ]]; then
     echo "== Remote monitoring agents =="
     ANSIBLE_HOST_KEY_CHECKING=False \
     ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b "${ANSIBLE_ARGS[@]}" -m shell -a "
-      docker ps --filter name=boinc-node-exporter --filter name=boinc-client-cadvisor --filter name=boinc-client-promtail
+      docker ps --filter name=boinc-node-exporter --filter name=boinc-client-promtail
     " || true
     echo
   else

@@ -77,7 +77,7 @@
           }
         },
         {
-          "expr": "sum(count_over_time({cluster=\"boinc\", stream=\"stderr\"} |~ \"(?i)(mariadb|mysql|database|db.*error|connection refused|can't connect)\"[5m]))",
+          "expr": "sum(count_over_time({cluster=\"boinc\", stream=\"stderr\"} |~ \"(?i)(mariadb|database|db.*error|connection refused|can't connect)\"[5m]))",
           "legendFormat": "database",
           "refId": "C",
           "datasource": {

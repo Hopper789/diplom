@@ -11,7 +11,7 @@ cd "$ROOT_DIR"
 build_ansible_args "$@"
 if [[ "${#ANSIBLE_REMAINING_ARGS[@]}" -gt 0 ]]; then
   echo "Unknown argument: ${ANSIBLE_REMAINING_ARGS[0]}"
-  echo "Usage: ./scripts/deploy_monitoring_agents.sh [--ask-vault-pass|--vault] [--vault-password-file FILE] [--ask-become-pass|-K]"
+  echo "Usage: ./scripts/deploy_monitoring_agents.sh [--debug] [--ask-vault-pass|--vault] [--vault-password-file FILE] [--ask-become-pass|-K]"
   exit 2
 fi
 

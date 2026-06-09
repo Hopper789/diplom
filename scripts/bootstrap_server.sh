@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# shellcheck source=scripts/lib/debug.sh
+source "$ROOT_DIR/scripts/lib/debug.sh"
+
 cd "$ROOT_DIR"
 SKIP_STATUS=0
 
@@ -16,8 +20,12 @@ usage() {
   status.sh --server-only
 
 Vault здесь не нужен, потому что удалённые клиенты не управляются.
+Добавь --debug, чтобы видеть полный вывод команд.
 USAGE
 }
+
+strip_debug_args "$@"
+set -- "${DEBUG_ARGS[@]}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in

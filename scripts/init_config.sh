@@ -3,6 +3,12 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# shellcheck source=scripts/lib/debug.sh
+source "$ROOT_DIR/scripts/lib/debug.sh"
+
+strip_debug_args "$@"
+set -- "${DEBUG_ARGS[@]}"
+
 CLUSTER_CONFIG="$ROOT_DIR/config/cluster.yml"
 ENV_FILE="$ROOT_DIR/config/generated.env"
 ANSIBLE_INVENTORY="$ROOT_DIR/ansible/inventory.ini"

@@ -29,12 +29,12 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --help|-h)
-      echo "Usage: ./scripts/bootstrap_clients.sh [--skip-status] [--skip-runtime-check] [--ask-vault-pass|--vault] [--vault-password-file FILE] [--ask-become-pass|-K]"
+      echo "Usage: ./scripts/bootstrap_clients.sh [--skip-status] [--skip-runtime-check] [--debug] [--ask-vault-pass|--vault] [--vault-password-file FILE] [--ask-become-pass|-K]"
       exit 0
       ;;
     *)
       echo "Unknown argument: $1"
-      echo "Usage: ./scripts/bootstrap_clients.sh [--skip-status] [--skip-runtime-check] [--ask-vault-pass|--vault] [--vault-password-file FILE] [--ask-become-pass|-K]"
+      echo "Usage: ./scripts/bootstrap_clients.sh [--skip-status] [--skip-runtime-check] [--debug] [--ask-vault-pass|--vault] [--vault-password-file FILE] [--ask-become-pass|-K]"
       exit 2
       ;;
   esac

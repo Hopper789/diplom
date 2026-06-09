@@ -4,6 +4,9 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="$ROOT_DIR/config/generated.env"
 
+# shellcheck source=scripts/lib/debug.sh
+source "$ROOT_DIR/scripts/lib/debug.sh"
+
 WAIT=0
 MAX_SECONDS="${BOINC_DUMP_WAIT_SECONDS:-0}"
 INTERVAL_SECONDS="${BOINC_DUMP_INTERVAL_SECONDS:-15}"
@@ -12,7 +15,7 @@ TO="${GRAFANA_DUMP_TO:-now}"
 WIDTH="${GRAFANA_DUMP_WIDTH:-1600}"
 HEIGHT="${GRAFANA_DUMP_HEIGHT:-900}"
 OUT_DIR=""
-QUIET=0
+QUIET="${BOINC_DUMP_QUIET:-1}"
 
 usage() {
   cat <<'USAGE'
@@ -33,9 +36,16 @@ Options:
   --width PX                rendered panel width; default: 1600
   --height PX               rendered panel height; default: 900
   --quiet                   suppress progress output; errors are still printed
+  --debug                   show full command output
   --help, -h
 USAGE
 }
+
+strip_debug_args "$@"
+set -- "${DEBUG_ARGS[@]}"
+if debug_enabled; then
+  QUIET=0
+fi
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -137,7 +147,7 @@ if [[ -z "$OUT_DIR" ]]; then
 fi
 
 sql_tsv() {
-  docker exec boinc-mysql mariadb -u root -proot -N -B -D "$PROJECT_NAME" -e "$1"
+  docker exec boinc-mariadb mariadb -u root -proot -N -B -D "$PROJECT_NAME" -e "$1"
 }
 
 read_progress() {
@@ -162,8 +172,8 @@ read_progress() {
 }
 
 is_complete() {
-  if ! docker ps --format '{{.Names}}' | grep -qx 'boinc-mysql'; then
-    echo "ERROR: boinc-mysql is not running." >&2
+  if ! docker ps --format '{{.Names}}' | grep -qx 'boinc-mariadb'; then
+    echo "ERROR: boinc-mariadb is not running." >&2
     return 2
   fi
 

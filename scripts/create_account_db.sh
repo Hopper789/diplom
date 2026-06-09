@@ -5,6 +5,12 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="${ENV_FILE:-$ROOT_DIR/config/generated.env}"
 ANSIBLE_GROUP_VARS="$ROOT_DIR/ansible/group_vars/all/main.yml"
 
+# shellcheck source=scripts/lib/debug.sh
+source "$ROOT_DIR/scripts/lib/debug.sh"
+
+strip_debug_args "$@"
+set -- "${DEBUG_ARGS[@]}"
+
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "ERROR: config/generated.env not found. Run:"
   echo "  ./scripts/init_config.sh"
@@ -41,8 +47,8 @@ PY
   echo "Generated account password: $PASSWORD"
 fi
 
-if ! docker ps --format '{{.Names}}' | grep -qx 'boinc-mysql'; then
-  echo "ERROR: boinc-mysql container is not running."
+if ! docker ps --format '{{.Names}}' | grep -qx 'boinc-mariadb'; then
+  echo "ERROR: boinc-mariadb container is not running."
   echo "Run:"
   echo "  ./scripts/server_up.sh"
   exit 1
@@ -66,7 +72,7 @@ echo "Email:    $EMAIL"
 echo "Username: $USERNAME"
 
 EXISTING_ROW="$(
-  docker exec boinc-mysql \
+  docker exec boinc-mariadb \
     mariadb -u root -proot "$PROJECT_NAME" -N -B \
     -e "SELECT id, email_addr, name, authenticator FROM user WHERE email_addr='${EMAIL_SQL}' OR name='${USERNAME_SQL}' LIMIT 1;" \
     2>/dev/null || true
@@ -113,7 +119,7 @@ PY
   AUTHENTICATOR_SQL="$(sql_escape "$AUTHENTICATOR")"
   PASSWD_HASH_SQL="$(sql_escape "$PASSWD_HASH")"
 
-  docker exec boinc-mysql \
+  docker exec boinc-mariadb \
     mariadb -u root -proot "$PROJECT_NAME" \
     -e "
 INSERT INTO user (
@@ -185,7 +191,7 @@ VALUES (
 "
 
   USER_ID="$(
-    docker exec boinc-mysql \
+    docker exec boinc-mariadb \
       mariadb -u root -proot "$PROJECT_NAME" -N -B \
       -e "SELECT id FROM user WHERE email_addr='${EMAIL_SQL}' LIMIT 1;"
   )"
@@ -271,4 +277,4 @@ echo "  grep boinc_account_key ansible/group_vars/all/main.yml"
 
 echo
 echo "Database:"
-echo "  docker exec -it boinc-mysql mariadb -u root -proot $PROJECT_NAME -e \"SELECT id, email_addr, name, authenticator FROM user;\""
+echo "  docker exec -it boinc-mariadb mariadb -u root -proot $PROJECT_NAME -e \"SELECT id, email_addr, name, authenticator FROM user;\""

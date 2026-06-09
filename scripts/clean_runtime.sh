@@ -26,6 +26,7 @@ Options:
   --ask-vault-pass, --vault  ask Vault password manually
   --vault-password-file F    use custom Vault password file
   --ask-become-pass, -K      ask sudo password
+  --debug                    show full command output
   --help, -h
 USAGE
 }
@@ -72,7 +73,7 @@ clean_server_runtime() {
   if [[ -f "$ROOT_DIR/monitoring/docker-compose.yml" ]]; then
     (
       cd "$ROOT_DIR/monitoring"
-      docker compose down -v --remove-orphans || true
+      compose_run down -v --remove-orphans || true
     )
   fi
 
@@ -81,20 +82,21 @@ clean_server_runtime() {
   if [[ -f "$ROOT_DIR/server/docker-compose.yml" ]]; then
     (
       cd "$ROOT_DIR/server"
-      docker compose down -v --remove-orphans || true
+      compose_run down -v --remove-orphans || true
     )
   fi
 
   echo
   echo "Removing server runtime directories..."
   remove_runtime_dir "$ROOT_DIR/server/project"
+  remove_runtime_dir "$ROOT_DIR/server/mariadb-data"
   remove_runtime_dir "$ROOT_DIR/server/mysql-data"
 
   mkdir -p "$ROOT_DIR/server/project"
 
   echo
   echo "Removing dangling BOINC server containers if any..."
-  docker rm -f boinc-server boinc-mysql 2>/dev/null || true
+  docker rm -f boinc-server boinc-mariadb boinc-mysql 2>/dev/null || true
 }
 
 remove_generated_runtime_configs() {

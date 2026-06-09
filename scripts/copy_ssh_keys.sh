@@ -5,6 +5,12 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CLUSTER_FILE="${CLUSTER_FILE:-$ROOT_DIR/config/cluster.yml}"
 SSH_KEY="${SSH_KEY:-$HOME/.ssh/id_ed25519}"
 
+# shellcheck source=scripts/lib/debug.sh
+source "$ROOT_DIR/scripts/lib/debug.sh"
+
+strip_debug_args "$@"
+set -- "${DEBUG_ARGS[@]}"
+
 if [[ ! -f "$CLUSTER_FILE" ]]; then
   echo "ERROR: cluster config not found: $CLUSTER_FILE"
   echo "Create it first:"
@@ -141,9 +147,15 @@ while IFS="|" read -r NAME USER IP PORT; do
     SSH_COPY_ID_ARGS+=(-p "$PORT")
   fi
 
-  ssh-copy-id \
-    "${SSH_COPY_ID_ARGS[@]}" \
-    "$USER@$IP"
+  if debug_enabled; then
+    ssh-copy-id \
+      "${SSH_COPY_ID_ARGS[@]}" \
+      "$USER@$IP"
+  else
+    ssh-copy-id \
+      "${SSH_COPY_ID_ARGS[@]}" \
+      "$USER@$IP" >/dev/null
+  fi
 
   echo
 done <<< "$NODES"

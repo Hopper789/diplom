@@ -25,11 +25,12 @@ Usage:
   ./scripts/monitoring_up.sh [options]
 
 Options:
-  --skip-client-agents       do not deploy node-exporter/cAdvisor/promtail on BOINC clients
+  --skip-client-agents       do not deploy node-exporter/promtail on BOINC clients
   --force-recreate           force Docker Compose to recreate monitoring containers
   --ask-vault-pass, --vault  ask Vault password manually
   --vault-password-file F    use custom Vault password file
   --ask-become-pass, -K      ask sudo password
+  --debug                    show full command output
   --help, -h
 USAGE
 }
@@ -92,11 +93,11 @@ SERVER_IP=$SERVER_IP
 BOINC_EXPORTER_IMAGE=$BOINC_EXPORTER_IMAGE
 PROJECT_NAME=$PROJECT_NAME
 PROJECT_URL=$BOINC_PROJECT_URL
-MYSQL_HOST=boinc-mysql
-MYSQL_PORT=3306
-MYSQL_USER=root
-MYSQL_PASSWORD=root
-MYSQL_DATABASE=$PROJECT_NAME
+MARIADB_HOST=boinc-mariadb
+MARIADB_PORT=3306
+MARIADB_USER=root
+MARIADB_PASSWORD=root
+MARIADB_DATABASE=$PROJECT_NAME
 TASK_SECONDS=${TASK_SECONDS:-1200}
 DISTRIBUTED_TARGET_NRESULTS=${DISTRIBUTED_TARGET_NRESULTS:-1}
 DISTRIBUTED_MIN_QUORUM=${DISTRIBUTED_MIN_QUORUM:-1}
@@ -134,7 +135,12 @@ ensure_boinc_exporter_image() {
   echo "BOINC exporter image not found locally: $BOINC_EXPORTER_IMAGE"
   echo "Building it from base image: $BOINC_EXPORTER_BASE_IMAGE"
 
-  if ! retry_command 5 20 docker pull "$BOINC_EXPORTER_BASE_IMAGE"; then
+  pull_cmd=(docker pull "$BOINC_EXPORTER_BASE_IMAGE")
+  if ! debug_enabled; then
+    pull_cmd=(quiet_run docker pull "$BOINC_EXPORTER_BASE_IMAGE")
+  fi
+
+  if ! retry_command 5 20 "${pull_cmd[@]}"; then
     echo
     echo "ERROR: failed to pull BOINC exporter base image: $BOINC_EXPORTER_BASE_IMAGE" >&2
     echo "Docker Hub may be unavailable from this machine." >&2
@@ -144,11 +150,19 @@ ensure_boinc_exporter_image() {
     exit 1
   fi
 
-  retry_command 3 20 \
-    docker build \
-      --build-arg "PYTHON_BASE_IMAGE=$BOINC_EXPORTER_BASE_IMAGE" \
-      -t "$BOINC_EXPORTER_IMAGE" \
-      "$MONITORING_DIR"
+  if debug_enabled; then
+    retry_command 3 20 \
+      docker build \
+        --build-arg "PYTHON_BASE_IMAGE=$BOINC_EXPORTER_BASE_IMAGE" \
+        -t "$BOINC_EXPORTER_IMAGE" \
+        "$MONITORING_DIR"
+  else
+    retry_command 3 20 \
+      docker build -q \
+        --build-arg "PYTHON_BASE_IMAGE=$BOINC_EXPORTER_BASE_IMAGE" \
+        -t "$BOINC_EXPORTER_IMAGE" \
+        "$MONITORING_DIR" >/dev/null
+  fi
 }
 
 python3 - "$ROOT_DIR" "$MONITORING_DIR/prometheus.yml" <<'PY'
@@ -187,7 +201,6 @@ if inventory.exists():
             hosts.append(host)
 
 node_targets = [f"{host}:9100" for host in hosts]
-cadvisor_targets = [f"{host}:8081" for host in hosts]
 
 def yaml_list(items, indent="          "):
     if not items:
@@ -209,16 +222,15 @@ scrape_configs:
       - targets:
           - boinc-exporter:9101
 
-  - job_name: cadvisor_server
+  - job_name: node_exporter_server
     static_configs:
       - targets:
-          - cadvisor:8080
+          - node-exporter:9100
+
 """
 
 content += "\n  - job_name: node_exporter_clients\n    static_configs:\n      - targets:\n"
 content += yaml_list(node_targets)
-content += "\n  - job_name: cadvisor_clients\n    static_configs:\n      - targets:\n"
-content += yaml_list(cadvisor_targets)
 
 out_path.write_text(content, encoding="utf-8")
 
@@ -228,7 +240,6 @@ if hosts:
     print("Client monitoring targets:")
     for host in hosts:
         print(f"  node-exporter: {host}:9100")
-        print(f"  cAdvisor:      {host}:8081")
 else:
     print("No boinc_clients found in ansible/inventory.ini; only server metrics will be scraped.")
 PY
@@ -254,7 +265,7 @@ ensure_boinc_exporter_image
   if [[ "$FORCE_RECREATE" == "1" ]]; then
     compose_args+=(--force-recreate)
   fi
-  COMPOSE_BAKE=false docker compose "${compose_args[@]}"
+  compose_run "${compose_args[@]}"
 )
 
 echo
@@ -264,10 +275,10 @@ echo "  Grafana:    http://$SERVER_IP:3000"
 echo "  Exporter:   http://$SERVER_IP:9101/metrics"
 echo "  Loki:       http://$SERVER_IP:3100"
 echo "  Renderer:   boinc-grafana-renderer"
+echo "  Server node-exporter: boinc-node-exporter:9100"
 echo
 echo "Client agent endpoints are scraped from ansible/inventory.ini:"
 echo "  node-exporter: http://CLIENT_IP:9100/metrics"
-echo "  cAdvisor:      http://CLIENT_IP:8081/metrics"
 echo "  Promtail:      pushes Docker logs to http://$SERVER_IP:3100"
 echo
 echo "Grafana:"

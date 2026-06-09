@@ -37,6 +37,7 @@ usage() {
   --ask-vault-pass|--vault Передать Ansible --ask-vault-pass.
   --vault-password-file F  Передать Ansible --vault-password-file.
   --ask-become-pass|-K     Передать Ansible --ask-become-pass.
+  --debug                  Показать полный вывод команд.
 
 Перед запуском:
   ./scripts/quickstart.sh --with-monitoring
@@ -162,8 +163,8 @@ require_runtime() {
     exit 1
   fi
 
-  if ! docker ps --format '{{.Names}}' | grep -qx 'boinc-mysql'; then
-    echo "boinc-mysql не запущен. Запусти quickstart перед бенчмарками." >&2
+  if ! docker ps --format '{{.Names}}' | grep -qx 'boinc-mariadb'; then
+    echo "boinc-mariadb не запущен. Запусти quickstart перед бенчмарками." >&2
     exit 1
   fi
 }
@@ -259,7 +260,7 @@ PY
 }
 
 sql_tsv() {
-  docker exec boinc-mysql mariadb -u root -proot -N -B -D "$PROJECT_NAME" -e "$1"
+  docker exec boinc-mariadb mariadb -u root -proot -N -B -D "$PROJECT_NAME" -e "$1"
 }
 
 request_client_update() {
@@ -372,7 +373,7 @@ def sql(query: str) -> list[str]:
         [
             "docker",
             "exec",
-            "boinc-mysql",
+            "boinc-mariadb",
             "mariadb",
             "-u",
             "root",
@@ -474,10 +475,10 @@ def avg(values: list[float]) -> float | None:
 def max_or_none(values: list[float]) -> float | None:
     return max(values) if values else None
 
-cpu_values = prom_query_range('100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{job="node_exporter_clients",mode="idle"}[30s])))')
-ram_values = prom_query_range('100 * (1 - node_memory_MemAvailable_bytes{job="node_exporter_clients"} / node_memory_MemTotal_bytes{job="node_exporter_clients"})')
-rx_values = prom_query_range('sum by(instance) (rate(node_network_receive_bytes_total{job="node_exporter_clients",device!~"lo|docker.*|veth.*|br.*"}[30s]))')
-tx_values = prom_query_range('sum by(instance) (rate(node_network_transmit_bytes_total{job="node_exporter_clients",device!~"lo|docker.*|veth.*|br.*"}[30s]))')
+cpu_values = prom_query_range('100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{job=~"node_exporter_(clients|server)",mode="idle"}[30s])))')
+ram_values = prom_query_range('100 * (1 - node_memory_MemAvailable_bytes{job=~"node_exporter_(clients|server)"} / node_memory_MemTotal_bytes{job=~"node_exporter_(clients|server)"})')
+rx_values = prom_query_range('sum by(instance) (rate(node_network_receive_bytes_total{job=~"node_exporter_(clients|server)",device!~"lo|docker.*|veth.*|br.*"}[30s]))')
+tx_values = prom_query_range('sum by(instance) (rate(node_network_transmit_bytes_total{job=~"node_exporter_(clients|server)",device!~"lo|docker.*|veth.*|br.*"}[30s]))')
 
 data = {
     "scenario": scenario,

@@ -2,6 +2,13 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+# shellcheck source=scripts/lib/debug.sh
+source "$ROOT_DIR/scripts/lib/debug.sh"
+
+strip_debug_args "$@"
+set -- "${DEBUG_ARGS[@]}"
+
 EXPERIMENT_ENV_FILE="$ROOT_DIR/config/experiment.env"
 DISTRIBUTED_ENV_FILE="$ROOT_DIR/config/distributed.env"
 BUILD_DIR="$ROOT_DIR/apps/ml_grid_search/build"
@@ -39,7 +46,7 @@ TASK_LAMBDA_GRID="${TASK_LAMBDA_GRID:-0,0.001,0.003,0.01,0.03,0.1,0.3,1,3,10}"
 usage() {
   cat <<'USAGE'
 Usage:
-  apps/ml_grid_search/run_task.sh [boinc|local]
+  apps/ml_grid_search/run_task.sh [--debug] [boinc|local]
 
 Environment:
   EXPERIMENT_WALL_SECONDS  target experiment duration for automatic task count

@@ -26,7 +26,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --help|-h)
-      echo "Usage: ./scripts/run_experiment.sh [--submit-only] [--ask-vault-pass|--vault] [--vault-password-file FILE] [--ask-become-pass|-K]"
+      echo "Usage: ./scripts/run_experiment.sh [--submit-only] [--debug] [--ask-vault-pass|--vault] [--vault-password-file FILE] [--ask-become-pass|-K]"
       exit 0
       ;;
     *)
@@ -38,7 +38,7 @@ done
 ANSIBLE_REMAINING_ARGS=("$@")
 if [[ "${#ANSIBLE_REMAINING_ARGS[@]}" -gt 0 ]]; then
   echo "Unknown argument: ${ANSIBLE_REMAINING_ARGS[0]}"
-  echo "Usage: ./scripts/run_experiment.sh [--submit-only] [--ask-vault-pass|--vault] [--vault-password-file FILE] [--ask-become-pass|-K]"
+  echo "Usage: ./scripts/run_experiment.sh [--submit-only] [--debug] [--ask-vault-pass|--vault] [--vault-password-file FILE] [--ask-become-pass|-K]"
   exit 2
 fi
 
@@ -70,7 +70,7 @@ if [[ "${#ANSIBLE_ARGS[@]}" -gt 0 ]]; then
 fi
 
 sql_tsv() {
-  docker exec boinc-mysql mariadb -u root -proot -N -B -D "$PROJECT_NAME" -e "$1"
+  docker exec boinc-mariadb mariadb -u root -proot -N -B -D "$PROJECT_NAME" -e "$1"
 }
 
 run_selected_experiment() {

@@ -21,7 +21,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     *)
       echo "Unknown argument: $1"
-      echo "Usage: ./scripts/monitoring_down.sh [--with-client-agents|--agents] [--ask-vault-pass|--vault] [--vault-password-file FILE] [--ask-become-pass|-K]"
+      echo "Usage: ./scripts/monitoring_down.sh [--with-client-agents|--agents] [--debug] [--ask-vault-pass|--vault] [--vault-password-file FILE] [--ask-become-pass|-K]"
       exit 2
       ;;
   esac
@@ -30,7 +30,7 @@ done
 if [[ -f "$ROOT_DIR/monitoring/docker-compose.yml" ]]; then
   (
     cd "$ROOT_DIR/monitoring"
-    docker compose down -v --remove-orphans
+    compose_run down -v --remove-orphans
   )
 else
   echo "Monitoring compose file not found."

@@ -13,16 +13,12 @@ scrape_configs:
       - targets:
           - boinc-exporter:9101
 
-  - job_name: cadvisor_server
+  - job_name: node_exporter_server
     static_configs:
       - targets:
-          - cadvisor:8080
+          - node-exporter:9100
 
   # monitoring_up.sh перезаписывает этот файл и заполняет цели клиентов из ansible/inventory.ini.
   - job_name: node_exporter_clients
-    static_configs:
-      - targets: []
-
-  - job_name: cadvisor_clients
     static_configs:
       - targets: []
