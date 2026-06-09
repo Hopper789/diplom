@@ -318,7 +318,7 @@
           "unit": "percent",
           "decimals": 1,
           "noValue": "-",
-          "description": "Уникально завершённые задачи / реально выполненные attempts. До первых выполненных attempts показывается пусто."
+          "description": "Доля времени успешных attempts, потраченная на run(params). Остальное - доставка, очередь, upload/download и служебные расходы."
         },
         "overrides": []
       },
@@ -340,7 +340,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Уникально завершённые задачи / реально выполненные attempts. До первых выполненных attempts показывается пусто."
+      "description": "Доля времени успешных attempts, потраченная на run(params). Остальное - доставка, очередь, upload/download и служебные расходы."
     },
     {
       "id": 8,
@@ -364,10 +364,10 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "ops",
+          "unit": "suffix: задач/с",
           "decimals": 4,
           "noValue": "-",
-          "description": "Задач в секунду."
+          "description": "Завершённых задач в секунду."
         },
         "overrides": []
       },
@@ -389,7 +389,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Задач в секунду."
+      "description": "Завершённых задач в секунду."
     },
     {
       "id": 9,

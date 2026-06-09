@@ -114,4 +114,4 @@ PYTHON_TASK_PARAMS=apps/python_task_runner/examples/sum_params/params.jsonl
 В Grafana:
 
 - `Факт. репликация` — реально выполненные attempts на workunit;
-- `Полезная нагрузка` — уникально завершённые workunit'ы / реально выполненные attempts.
+- `Полезная нагрузка` — доля времени успешных attempts, потраченная на саму функцию `run(params)`.

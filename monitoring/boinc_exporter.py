@@ -116,7 +116,7 @@ boinc_estimated_remaining_seconds = Gauge(
 )
 boinc_useful_compute_percent = Gauge(
     "boinc_useful_compute_percent",
-    "Unique completed workunits divided by executed result attempts, percent",
+    "Percent of successful result wall time spent inside useful task computation",
 )
 
 # Distributed-computing configuration loaded from config/distributed.env through monitoring/.env.
@@ -283,7 +283,40 @@ def update_db_metrics() -> None:
             boinc_experiment_throughput_workunits_per_second.set(throughput)
             boinc_completion_percent.set((float(completed_wu) / float(workunits) * 100.0) if workunits else 0)
             boinc_estimated_remaining_seconds.set(estimated_remaining_seconds)
-            boinc_useful_compute_percent.set((float(completed_wu) / float(executed) * 100.0) if executed else 0)
+
+            try:
+                cur.execute(
+                    """
+                    SELECT
+                      COALESCE(SUM(elapsed_time), 0) AS compute_seconds,
+                      COALESCE(SUM(
+                        GREATEST(
+                          elapsed_time,
+                          CASE
+                            WHEN received_time > 0 AND sent_time > 0
+                              THEN received_time - sent_time
+                            WHEN received_time > 0 AND create_time > 0
+                              THEN received_time - create_time
+                            ELSE elapsed_time
+                          END
+                        )
+                      ), 0) AS total_seconds
+                    FROM result
+                    WHERE outcome = 1 AND elapsed_time > 0
+                    """
+                )
+                useful_row = cur.fetchone() or {}
+                useful_compute_seconds = float(useful_row.get("compute_seconds") or 0)
+                useful_total_seconds = float(useful_row.get("total_seconds") or 0)
+            except Exception:
+                useful_compute_seconds = 0.0
+                useful_total_seconds = 0.0
+
+            useful_percent = 0.0
+            if useful_total_seconds > 0:
+                useful_percent = max(0.0, min(100.0, useful_compute_seconds / useful_total_seconds * 100.0))
+            boinc_useful_compute_percent.set(useful_percent)
+
             avg_turnaround = float(
                 safe_fetch_one(
                     cur,
