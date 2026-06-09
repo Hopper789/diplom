@@ -16,7 +16,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--out", required=True, help="Output params.jsonl path")
     parser.add_argument("--wall-seconds", type=float, default=1800.0)
     parser.add_argument("--cores", type=float, default=1.0)
-    parser.add_argument("--task-seconds", type=float, default=1800.0)
+    parser.add_argument("--task-seconds", type=float, default=600.0)
     parser.add_argument("--task-count", type=int, default=None)
     parser.add_argument("--matrix-size", type=int, default=1200)
     parser.add_argument("--seed-base", type=int, default=10_000)

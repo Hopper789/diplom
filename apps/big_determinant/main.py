@@ -18,6 +18,9 @@ except ModuleNotFoundError as exc:  # pragma: no cover - validated on client ima
     ) from exc
 
 
+MIN_WORKUNIT_SECONDS = 600.0
+
+
 @njit(cache=True)
 def _fill_matrix(size: int, seed: int, diagonal_boost: float) -> np.ndarray:
     matrix = np.empty((size, size), dtype=np.float64)
@@ -63,7 +66,8 @@ def run(params: dict[str, Any]) -> dict[str, Any]:
     task_id = _as_int(params, "task_id", 1)
     size = max(2, _as_int(params, "matrix_size", 1200))
     seed = _as_int(params, "seed", 10_000 + task_id)
-    target_seconds = max(0.0, _as_float(params, "target_seconds", 1800.0))
+    requested_target_seconds = max(0.0, _as_float(params, "target_seconds", MIN_WORKUNIT_SECONDS))
+    target_seconds = max(MIN_WORKUNIT_SECONDS, requested_target_seconds)
     max_repeats = max(0, _as_int(params, "max_repeats", 0))
     diagonal_boost = _as_float(params, "diagonal_boost", max(1.0, size * 0.01))
 
@@ -101,6 +105,8 @@ def run(params: dict[str, Any]) -> dict[str, Any]:
         "matrix_size": size,
         "seed": seed,
         "target_seconds": target_seconds,
+        "requested_target_seconds": requested_target_seconds,
+        "min_workunit_seconds": MIN_WORKUNIT_SECONDS,
         "elapsed_seconds": round(elapsed, 6),
         "repeats": repeats,
         "first_determinant_seconds": round(first_det_seconds, 6),

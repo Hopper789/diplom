@@ -37,7 +37,7 @@ APP_NAME="${DETERMINANT_APP_NAME:-big_determinant}"
 PLATFORM="${PLATFORM:-x86_64-pc-linux-gnu}"
 EXPERIMENT_WALL_SECONDS="${DETERMINANT_WALL_SECONDS:-${EXPERIMENT_WALL_SECONDS:-1800}}"
 EXPERIMENT_CORES="${EXPERIMENT_CORES:-1}"
-TASK_SECONDS="${DETERMINANT_TASK_SECONDS:-1800}"
+TASK_SECONDS="${DETERMINANT_TASK_SECONDS:-600}"
 TASK_COUNT="${DETERMINANT_TASK_COUNT:-${TASK_COUNT:-}}"
 TASK_MATRIX_SIZE="${DETERMINANT_MATRIX_SIZE:-1200}"
 TASK_SEED_BASE="${DETERMINANT_SEED_BASE:-10000}"
@@ -52,7 +52,7 @@ Usage:
 Environment:
   EXPERIMENT_WALL_SECONDS  target wall-clock duration for automatic task count
   EXPERIMENT_CORES         expected CPU slots for automatic task count
-  DETERMINANT_TASK_SECONDS target seconds per BOINC workunit, default 1800
+  DETERMINANT_TASK_SECONDS target seconds per BOINC workunit, default 600
   DETERMINANT_TASK_COUNT   exact number of workunits, optional
   DETERMINANT_MATRIX_SIZE  generated square matrix size, default 1200
   DETERMINANT_SEED_BASE    base seed for generated matrices
