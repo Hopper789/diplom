@@ -418,9 +418,29 @@ PY
 }
 
 prepare_input_from_boinc_files() {
-  if [[ -s input.json ]]; then
+  input_json_valid() {
+    python3 - <<'PY'
+import json
+from pathlib import Path
+
+try:
+    with Path("input.json").open("r", encoding="utf-8") as handle:
+        data = json.load(handle)
+except Exception:
+    raise SystemExit(1)
+
+if not isinstance(data, dict):
+    raise SystemExit(1)
+if "task_id" not in data or not isinstance(data.get("params"), dict):
+    raise SystemExit(1)
+PY
+  }
+
+  if input_json_valid; then
     return 0
   fi
+
+  rm -f input.json
 
   local boinc_input
   local candidate
