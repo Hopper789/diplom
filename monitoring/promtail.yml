@@ -22,7 +22,7 @@ scrape_configs:
     pipeline_stages:
       - docker: {}
       - drop:
-          expression: 'caller=(metrics\.go|engine\.go):[0-9]+ .* query='
+          expression: 'caller=(metrics\.go|engine\.go|roundtrip\.go):[0-9]+ .* query=|logger=tsdb\.loki .* query='
 
   - job_name: boinc-project-logs
     static_configs:
