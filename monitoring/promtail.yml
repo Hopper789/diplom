@@ -21,6 +21,8 @@ scrape_configs:
           __path__: /var/lib/docker/containers/*/*-json.log
     pipeline_stages:
       - docker: {}
+      - drop:
+          expression: 'caller=(metrics\.go|engine\.go):[0-9]+ .* query='
 
   - job_name: boinc-project-logs
     static_configs:
