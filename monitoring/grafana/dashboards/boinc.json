@@ -3,7 +3,7 @@
   "title": "BOINC",
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 2,
+  "version": 3,
   "refresh": "10s",
   "tags": [
     "boinc"
@@ -56,7 +56,16 @@
         "defaults": {
           "unit": "short",
           "decimals": 0,
-          "noValue": "-"
+          "noValue": "-",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
         },
         "overrides": []
       },
@@ -70,7 +79,7 @@
         },
         "orientation": "auto",
         "textMode": "value_and_name",
-        "colorMode": "none",
+        "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "center"
       },
@@ -108,7 +117,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "text",
+                "color": "green",
                 "value": null
               }
             ]
@@ -126,7 +135,7 @@
         },
         "orientation": "auto",
         "textMode": "auto",
-        "colorMode": "none",
+        "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "center"
       },
@@ -160,7 +169,16 @@
           "unit": "s",
           "decimals": 0,
           "noValue": "-",
-          "description": "Оценка по текущей пропускной способности; до первых завершений — по длительности задачи и активным хостам."
+          "description": "Оценка по текущей пропускной способности; до первых завершений — по длительности задачи и активным хостам.",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
         },
         "overrides": []
       },
@@ -269,7 +287,16 @@
           "unit": "s",
           "decimals": 2,
           "noValue": "-",
-          "description": "Среднее время вычисления одной задачи."
+          "description": "Среднее время вычисления одной задачи.",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
         },
         "overrides": []
       },
@@ -318,7 +345,16 @@
           "unit": "percent",
           "decimals": 1,
           "noValue": "-",
-          "description": "Доля времени успешных attempts, потраченная на run(params). Остальное - доставка, очередь, upload/download и служебные расходы."
+          "description": "Доля времени успешных attempts, потраченная на run(params). Остальное - доставка, очередь, upload/download и служебные расходы.",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
         },
         "overrides": []
       },
@@ -367,7 +403,16 @@
           "unit": "suffix: задач/с",
           "decimals": 4,
           "noValue": "-",
-          "description": "Завершённых задач в секунду."
+          "description": "Завершённых задач в секунду.",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
         },
         "overrides": []
       },
@@ -416,7 +461,16 @@
           "unit": "short",
           "decimals": 2,
           "noValue": "-",
-          "description": "Реально выполненные attempts на workunit."
+          "description": "Реально выполненные attempts на workunit.",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
         },
         "overrides": []
       },
