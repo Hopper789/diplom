@@ -127,7 +127,7 @@ run_boinc() {
   export PYTHON_TASK_APP_FRIENDLY_NAME="${PYTHON_TASK_APP_FRIENDLY_NAME:-Big determinant CPU}"
   export PYTHON_TASK_APP_VERSION="${DETERMINANT_APP_VERSION:-${PYTHON_TASK_APP_VERSION:-}}"
 
-  "$PYTHON_RUNNER" --task "$MAIN_FILE" --params "$PARAMS_FILE" --device cpu
+  "$PYTHON_RUNNER" --task "$MAIN_FILE" --params "$PARAMS_FILE" --device cpu --fail-on-error
 }
 
 run_local() {

@@ -76,6 +76,18 @@ if docker ps --format '{{.Names}}' | grep -qx 'boinc-mariadb'; then
     FROM result
     GROUP BY server_state, outcome, client_state, hostid
     ORDER BY server_state, outcome, client_state, hostid;
+    SELECT
+      id,
+      name,
+      server_state,
+      outcome,
+      client_state,
+      hostid,
+      elapsed_time,
+      LEFT(REPLACE(REPLACE(COALESCE(stderr_out, ''), '\n', ' '), '\r', ' '), 500) AS stderr_preview
+    FROM result
+    ORDER BY id DESC
+    LIMIT 10;
     SELECT id, name, appid, min_quorum, target_nresults, max_success_results, max_total_results
     FROM workunit
     ORDER BY id DESC
@@ -83,6 +95,23 @@ if docker ps --format '{{.Names}}' | grep -qx 'boinc-mariadb'; then
   " || true
 else
   echo "boinc-mariadb is not running on this machine."
+fi
+
+echo
+echo "== Recent uploaded output samples =="
+if docker ps --format '{{.Names}}' | grep -qx 'boinc-server'; then
+  docker exec boinc-server bash -lc "
+    cd '/project/$PROJECT_NAME' || exit 0
+    find upload -type f 2>/dev/null \
+      | xargs -r ls -t 2>/dev/null \
+      | head -5 \
+      | while IFS= read -r file; do
+          echo '---' \"\$file\"
+          head -80 \"\$file\" 2>/dev/null || true
+        done
+  " || true
+else
+  echo "boinc-server is not running on this machine."
 fi
 
 echo
