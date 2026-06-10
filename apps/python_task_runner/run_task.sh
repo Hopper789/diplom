@@ -353,6 +353,101 @@ for name in matches:
 PY
 }
 
+resolve_input_files() {
+  python3 - <<'PY'
+from pathlib import Path
+import re
+
+def first_tag(text: str, names: tuple[str, ...]) -> str:
+    for name in names:
+        match = re.search(rf"<{name}>(.*?)</{name}>", text, flags=re.S)
+        if match:
+            return match.group(1).strip()
+    return ""
+
+init_text = Path("init_data.xml").read_text(encoding="utf-8", errors="replace") if Path("init_data.xml").exists() else ""
+wu_name = first_tag(init_text, ("wu_name", "wu"))
+
+if not wu_name:
+    raise SystemExit(1)
+
+state_paths = [
+    Path("/var/lib/boinc-client/client_state.xml"),
+    Path("/var/lib/boinc/client_state.xml"),
+    Path("../../client_state.xml"),
+    Path("../client_state.xml"),
+]
+
+state_text = ""
+for path in state_paths:
+    if path.exists():
+        state_text = path.read_text(encoding="utf-8", errors="replace")
+        break
+
+if not state_text:
+    raise SystemExit(1)
+
+matches = []
+for block in re.findall(r"<workunit>.*?</workunit>", state_text, flags=re.S):
+    block_wu_name = first_tag(block, ("name",))
+    if block_wu_name != wu_name:
+        continue
+
+    for ref in re.findall(r"<file_ref>.*?</file_ref>", block, flags=re.S):
+        open_name = first_tag(ref, ("open_name",))
+        file_name = first_tag(ref, ("file_name",))
+        if open_name == "input.json" and file_name:
+            matches.append(file_name)
+
+seen = set()
+for name in matches:
+    if name not in seen:
+        seen.add(name)
+        print(name)
+PY
+}
+
+prepare_input_from_boinc_files() {
+  if [[ -s input.json ]]; then
+    return 0
+  fi
+
+  local boinc_input
+  local candidate
+  local cwd
+  cwd="\$(pwd -P)"
+
+  copy_input_candidate() {
+    local path="\$1"
+
+    [[ -s "\$path" ]] || return 1
+    if [[ "\$path" == "\$cwd/input.json" ]]; then
+      return 0
+    fi
+
+    cp "\$path" input.json
+  }
+
+  while IFS= read -r boinc_input; do
+    [[ -n "\$boinc_input" ]] || continue
+
+    for candidate in \
+      "\$boinc_input" \
+      "\$cwd/\$boinc_input" \
+      "\$SCRIPT_DIR/\$boinc_input"; do
+      copy_input_candidate "\$candidate" && return 0
+    done
+
+    for candidate in /var/lib/boinc/projects/*/"\$boinc_input" /var/lib/boinc/slots/*/"\$boinc_input"; do
+      copy_input_candidate "\$candidate" && return 0
+    done
+  done < <(resolve_input_files || true)
+
+  if [[ -e input.json && ! -s input.json ]]; then
+    rm -f input.json
+  fi
+}
+
 copy_output_to_boinc_files() {
   if [[ ! -f output.json ]]; then
     echo "ERROR: runner exited successfully but output.json is missing" >&2
@@ -405,6 +500,7 @@ copy_output_to_boinc_files() {
   fi
 }
 
+prepare_input_from_boinc_files || true
 python3 "\$SCRIPT_DIR/runner.py" --task "\$SCRIPT_DIR/user_task.py" --input input.json --output output.json$fail_arg
 status="\$?"
 if [[ -f output.json ]]; then
