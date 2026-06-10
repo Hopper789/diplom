@@ -371,6 +371,9 @@ wu_name = first_tag(init_text, ("wu_name", "wu"))
 if not wu_name:
     raise SystemExit(1)
 
+derived_match = re.search(r"_(\d{6})$", wu_name)
+derived_input = f"input_{derived_match.group(1)}.json" if derived_match else ""
+
 state_paths = [
     Path("/var/lib/boinc-client/client_state.xml"),
     Path("/var/lib/boinc/client_state.xml"),
@@ -384,8 +387,11 @@ for path in state_paths:
         state_text = path.read_text(encoding="utf-8", errors="replace")
         break
 
+if derived_input:
+    print(derived_input)
+
 if not state_text:
-    raise SystemExit(1)
+    raise SystemExit(0)
 
 matches = []
 for block in re.findall(r"<workunit>.*?</workunit>", state_text, flags=re.S):
