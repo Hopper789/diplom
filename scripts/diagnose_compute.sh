@@ -89,7 +89,7 @@ echo
 echo "== Remote BOINC client CPU/tasks =="
 remote_cmd="$(cat <<EOF
 echo '--- docker containers ---'
-docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
+docker ps --no-trunc | sed -n '1,20p'
 
 echo '--- BOINC tasks ---'
 docker exec boinc-client boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' --get_tasks || true
