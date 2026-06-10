@@ -60,11 +60,26 @@ def _as_int(params: dict[str, Any], key: str, default: int) -> int:
     return int(params.get(key, default))
 
 
-def _available_cpu_count() -> int:
+def _visible_cpu_count() -> int:
+    return max(1, os.cpu_count() or 1)
+
+
+def _affinity_count() -> int:
     try:
         return max(1, len(os.sched_getaffinity(0)))
     except AttributeError:
-        return max(1, os.cpu_count() or 1)
+        return _visible_cpu_count()
+
+
+def _expand_affinity_to_visible_cpus() -> bool:
+    if not hasattr(os, "sched_setaffinity"):
+        return False
+
+    try:
+        os.sched_setaffinity(0, set(range(_visible_cpu_count())))
+        return True
+    except OSError:
+        return False
 
 
 def _warm_up_numba() -> None:
@@ -125,6 +140,7 @@ def _run_determinant_loop(
 
 def _worker_main(queue: Any, kwargs: dict[str, Any]) -> None:
     try:
+        _expand_affinity_to_visible_cpus()
         queue.put({"ok": True, "result": _run_determinant_loop(**kwargs)})
     except Exception:
         queue.put({"ok": False, "error": traceback.format_exc()})
@@ -202,7 +218,11 @@ def run(params: dict[str, Any]) -> dict[str, Any]:
     size = BENCHMARK_MATRIX_SIZE
     seed = _as_int(params, "seed", 10_000 + task_id)
     diagonal_boost = BENCHMARK_DIAGONAL_BOOST
-    workers = _available_cpu_count()
+    visible_cpus = _visible_cpu_count()
+    affinity_before = _affinity_count()
+    affinity_expanded = _expand_affinity_to_visible_cpus()
+    affinity_after = _affinity_count()
+    workers = max(1, affinity_after)
 
     started = time.perf_counter()
     worker_results = _run_all_cpu_determinants(
@@ -232,6 +252,12 @@ def run(params: dict[str, Any]) -> dict[str, Any]:
         "elapsed_seconds": round(elapsed, 6),
         "repeats": repeats,
         "workers": workers,
+        "cpu": {
+            "visible": visible_cpus,
+            "affinity_before": affinity_before,
+            "affinity_after": affinity_after,
+            "affinity_expanded": affinity_expanded,
+        },
         "first_determinant_seconds": round(first_det_seconds, 6),
         "determinant": {
             "sign": last_sign,
