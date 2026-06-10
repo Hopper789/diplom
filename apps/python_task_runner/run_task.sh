@@ -407,10 +407,10 @@ copy_output_to_boinc_files() {
 
 python3 "\$SCRIPT_DIR/runner.py" --task "\$SCRIPT_DIR/user_task.py" --input input.json --output output.json$fail_arg
 status="\$?"
-if [[ "\$status" -eq 0 ]]; then
-  if copy_output_to_boinc_files; then
+if [[ -f output.json ]]; then
+  if copy_output_to_boinc_files && [[ "\$status" -eq 0 ]]; then
     printf '0\n' > boinc_finish_called
-  else
+  elif [[ "\$status" -eq 0 ]]; then
     status=1
   fi
 fi
