@@ -367,11 +367,13 @@ def first_tag(text: str, names: tuple[str, ...]) -> str:
 
 init_text = Path("init_data.xml").read_text(encoding="utf-8", errors="replace") if Path("init_data.xml").exists() else ""
 wu_name = first_tag(init_text, ("wu_name", "wu"))
+result_name = first_tag(init_text, ("result_name", "result"))
 
-if not wu_name:
+if not wu_name and not result_name:
     raise SystemExit(1)
 
-derived_match = re.search(r"_(\d{6})$", wu_name)
+derived_source = wu_name or result_name
+derived_match = re.search(r"_(\d{6})(?:_\d+)?$", derived_source)
 derived_input = f"input_{derived_match.group(1)}.json" if derived_match else ""
 
 state_paths = [
@@ -396,7 +398,9 @@ if not state_text:
 matches = []
 for block in re.findall(r"<workunit>.*?</workunit>", state_text, flags=re.S):
     block_wu_name = first_tag(block, ("name",))
-    if block_wu_name != wu_name:
+    if wu_name and block_wu_name != wu_name:
+        continue
+    if not wu_name and derived_input and derived_input not in block:
         continue
 
     for ref in re.findall(r"<file_ref>.*?</file_ref>", block, flags=re.S):
@@ -454,6 +458,32 @@ prepare_input_from_boinc_files() {
   fi
 }
 
+write_missing_input_output() {
+  python3 - <<'PY'
+import json
+from pathlib import Path
+
+cwd = Path.cwd()
+project_inputs = sorted(str(path) for path in Path("/var/lib/boinc/projects").glob("*/*input*.json"))
+slot_inputs = sorted(str(path) for path in Path("/var/lib/boinc/slots").glob("*/*input*.json"))
+data = {
+    "status": "error",
+    "task_id": None,
+    "error": "input.json is missing or empty after BOINC input resolution",
+    "diagnostics": {
+        "cwd": str(cwd),
+        "cwd_files": sorted(path.name for path in cwd.iterdir()),
+        "init_data_xml": Path("init_data.xml").read_text(encoding="utf-8", errors="replace")[:2000]
+        if Path("init_data.xml").exists()
+        else "",
+        "project_inputs": project_inputs[-20:],
+        "slot_inputs": slot_inputs[-20:],
+    },
+}
+Path("output.json").write_text(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+PY
+}
+
 copy_output_to_boinc_files() {
   if [[ ! -f output.json ]]; then
     echo "ERROR: runner exited successfully but output.json is missing" >&2
@@ -507,6 +537,11 @@ copy_output_to_boinc_files() {
 }
 
 prepare_input_from_boinc_files || true
+if [[ ! -s input.json ]]; then
+  write_missing_input_output || true
+  copy_output_to_boinc_files || true
+  exit 1
+fi
 python3 "\$SCRIPT_DIR/runner.py" --task "\$SCRIPT_DIR/user_task.py" --input input.json --output output.json$fail_arg
 status="\$?"
 if [[ -f output.json ]]; then
