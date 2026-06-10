@@ -1,4 +1,4 @@
-# big_det
+# determinant
 
 Фиксированный CPU-бенчмарк для BOINC Python runner.
 
@@ -19,7 +19,7 @@ apps/big_determinant/run_task.sh boinc --workunits 2
 Запуск через общий runner:
 
 ```bash
-./scripts/run_experiment.sh --task big-det --workunits 2
+./scripts/run_experiment.sh --task determinant --workunits 2
 ```
 
 У задачи нет внешних параметров сложности: размер матрицы, длительность и

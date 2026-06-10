@@ -38,7 +38,13 @@ nano config/cluster.yml
 Чтобы вместо шаблона пользовательской задачи отправить CPU-бенчмарк:
 
 ```bash
-./scripts/quickstart.sh --with-monitoring --run-experiment --task big-det --workunits 2
+./scripts/quickstart.sh --with-monitoring --run-experiment --task determinant --workunits 2
+```
+
+Чтобы отправить grid search:
+
+```bash
+./scripts/quickstart.sh --with-monitoring --run-experiment --task grid-search
 ```
 
 ## 4. Смотреть прогресс

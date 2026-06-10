@@ -114,11 +114,11 @@ read_progress() {
   row="$(sql_tsv "
     SELECT
       COUNT(DISTINCT w.id),
-      COUNT(DISTINCT CASE WHEN r.outcome = 1 THEN w.id END),
+      COUNT(DISTINCT CASE WHEN w.canonical_resultid > 0 THEN w.id END),
       COALESCE(SUM(CASE WHEN r.outcome = 0 THEN 1 ELSE 0 END), 0),
       COALESCE(SUM(CASE WHEN r.outcome IN (2, 3, 4, 6) THEN 1 ELSE 0 END), 0),
       COALESCE(SUM(CASE WHEN r.outcome = 5 THEN 1 ELSE 0 END), 0),
-      COUNT(DISTINCT CASE WHEN r.hostid != 0 THEN r.hostid END)
+      COUNT(DISTINCT CASE WHEN r.hostid != 0 AND r.outcome = 0 THEN r.hostid END)
     FROM workunit w
     LEFT JOIN result r ON r.workunitid = w.id;
   ")"
@@ -203,7 +203,7 @@ EOF\"
 print_diagnostics() {
   echo
   echo "== Auto-update diagnostics =="
-  echo "Клиенты не получили ни одной задачи: active_hosts=0."
+  echo "Клиенты не получили назначенных result: active_hosts=0."
   echo
 
   if docker ps --format '{{.Names}}' | grep -qx 'boinc-mariadb'; then

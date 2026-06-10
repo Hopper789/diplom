@@ -216,11 +216,14 @@ ansible_ping_clients() {
 print_ssh_failed() {
   echo "SSH access to client nodes failed."
   echo
+  echo "Check config/cluster.yml:"
+  echo "  clients[].ip / clients[].user / clients[].ssh_port"
+  echo
   echo "Try:"
   echo "  ./scripts/prepare_system.sh --copy-ssh-keys"
   echo
   echo "Or check manually:"
-  echo "  ssh USER@CLIENT_IP"
+  echo "  ssh -p SSH_PORT USER@CLIENT_IP"
 }
 
 check_ssh_access() {

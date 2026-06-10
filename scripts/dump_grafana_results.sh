@@ -155,7 +155,7 @@ read_progress() {
   row="$(sql_tsv "
     SELECT
       COUNT(DISTINCT w.id),
-      COUNT(DISTINCT CASE WHEN r.outcome = 1 THEN w.id END),
+      COUNT(DISTINCT CASE WHEN w.canonical_resultid > 0 THEN w.id END),
       COALESCE(SUM(CASE WHEN r.outcome = 0 THEN 1 ELSE 0 END), 0),
       COALESCE(SUM(CASE WHEN r.outcome IN (2, 3, 4, 6) THEN 1 ELSE 0 END), 0),
       COALESCE(SUM(CASE WHEN r.outcome = 5 THEN 1 ELSE 0 END), 0)

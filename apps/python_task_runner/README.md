@@ -62,7 +62,7 @@ Runner превращает строки в файлы:
 
 ```bash
 python3 apps/python_task_runner/generate_inputs.py \
-  --params apps/python_task_runner/examples/sum_params/params.jsonl \
+  --params apps/user_task_template/params.jsonl \
   --out /tmp/python_task_inputs \
   --device cpu
 ```
@@ -71,7 +71,7 @@ python3 apps/python_task_runner/generate_inputs.py \
 
 ```bash
 python3 apps/python_task_runner/runner.py \
-  --task apps/python_task_runner/examples/sum_params/user_task.py \
+  --task apps/user_task_template/user_task.py \
   --input /tmp/python_task_inputs/input_000001.json \
   --output /tmp/output.json
 ```
@@ -81,7 +81,7 @@ python3 apps/python_task_runner/runner.py \
 ```bash
 cp /tmp/python_task_inputs/input_000001.json /tmp/input.json
 python3 apps/python_task_runner/runner.py \
-  --task apps/python_task_runner/examples/sum_params/user_task.py \
+  --task apps/user_task_template/user_task.py \
   --input /tmp/input.json \
   --output /tmp/output.json
 ```
@@ -104,16 +104,16 @@ cat /tmp/output.json
 
 ```bash
 apps/python_task_runner/run_task.sh \
-  --task apps/python_task_runner/examples/sum_params/user_task.py \
-  --params apps/python_task_runner/examples/sum_params/params.jsonl
+  --task apps/user_task_template/user_task.py \
+  --params apps/user_task_template/params.jsonl
 ```
 
-Для CPU/GPU-метки входа:
+Для CPU-метки входа:
 
 ```bash
 apps/python_task_runner/run_task.sh \
-  --task apps/python_task_runner/examples/monte_carlo_pi/user_task.py \
-  --params apps/python_task_runner/examples/monte_carlo_pi/params.jsonl \
+  --task apps/user_task_template/user_task.py \
+  --params apps/user_task_template/params.jsonl \
   --device cpu
 ```
 
@@ -123,13 +123,8 @@ apps/python_task_runner/run_task.sh \
 
 Клиентский контейнер устанавливает `numpy` и `numba`. Пользовательские задачи могут использовать их напрямую, например для JIT-компиляции горячих циклов.
 
-## Benchmark-примеры
+## Поддерживаемые задачи в репозитории
 
-Готовые наборы:
-
-- `examples/monte_carlo_pi` — CPU-bound;
-- `examples/tiny_tasks_overhead` — очень короткие задачи;
-- `examples/synthetic_cpu` — фиксированное CPU-время;
-- `examples/memory_scan` — memory-bound;
-- `examples/io_test` — I/O-heavy;
-- `examples/failure_demo` — проверка ошибок.
+- `apps/user_task_template` — шаблон пользовательской задачи;
+- `apps/ml_grid_search` — grid search;
+- `apps/big_determinant` — determinant CPU-бенчмарк.

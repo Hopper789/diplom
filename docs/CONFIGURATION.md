@@ -55,14 +55,16 @@ DISTRIBUTED_MAX_ERROR_RESULTS=3
 DISTRIBUTED_MAX_TOTAL_RESULTS=3
 ```
 
-Если нужно 3 реплики и quorum 2:
+Если нужно “2 успешных результата, третий только запасной”:
 
 ```bash
-DISTRIBUTED_TARGET_NRESULTS=3
+DISTRIBUTED_TARGET_NRESULTS=2
 DISTRIBUTED_MIN_QUORUM=2
 DISTRIBUTED_MAX_SUCCESS_RESULTS=2
 DISTRIBUTED_MAX_TOTAL_RESULTS=3
 ```
+
+`target_nresults` — сколько result BOINC старается держать сначала. `max_total_results=3` разрешает третью попытку при ошибке/таймауте, но не заставляет создавать её сразу.
 
 BOINC может создать больше result-записей, чем уникальных workunit'ов. Это нормально: result — попытка выполнения, workunit — уникальная задача.
 

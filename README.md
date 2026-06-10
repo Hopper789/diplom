@@ -38,7 +38,8 @@ Grafana открывается без логина. Админский вход:
 ./scripts/prepare_system.sh --copy-ssh-keys
 ./scripts/launch_cluster.sh --with-monitoring
 ./scripts/run_experiment.sh
-./scripts/run_experiment.sh --task big-det --workunits 2
+./scripts/run_experiment.sh --task determinant --workunits 2
+./scripts/run_experiment.sh --task grid-search
 ./scripts/status.sh
 ./scripts/clean_runtime.sh
 ```
@@ -63,7 +64,6 @@ Grafana открывается без логина. Админский вход:
 - [Эксперименты](docs/EXPERIMENTS.md)
 - [Мониторинг](docs/MONITORING.md)
 - [Диагностика](docs/TROUBLESHOOTING.md)
-- [Разработка и структура](docs/DEVELOPMENT.md)
 
 ## Что не коммитится
 

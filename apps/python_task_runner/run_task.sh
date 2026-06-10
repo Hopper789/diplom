@@ -52,8 +52,8 @@ usage() {
 
 Пример:
   apps/python_task_runner/run_task.sh \
-    --task apps/python_task_runner/examples/sum_params/user_task.py \
-    --params apps/python_task_runner/examples/sum_params/params.jsonl
+    --task apps/user_task_template/user_task.py \
+    --params apps/user_task_template/params.jsonl
 USAGE
 }
 

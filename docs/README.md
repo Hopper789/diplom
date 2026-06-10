@@ -9,7 +9,6 @@
 3. [Эксперименты](EXPERIMENTS.md) — как выбрать задачу и запускать бенчмарки.
 4. [Мониторинг](MONITORING.md) — Grafana, Prometheus, Loki, финальные метрики.
 5. [Диагностика](TROUBLESHOOTING.md) — что смотреть, когда что-то не работает.
-6. [Разработка и структура](DEVELOPMENT.md) — архитектура, свои Python-задачи, cleanup.
 
 ## Главная идея
 
@@ -21,3 +20,20 @@ BOINC server хранит workunit'ы, клиенты забирают их, с�
 - отправку задач;
 - мониторинг нагрузки всего узла через node-exporter;
 - сбор ошибок через Loki.
+
+## Структура проекта
+
+- `apps/ml_grid_search` — задача grid search.
+- `apps/big_determinant` — CPU-бенчмарк determinant.
+- `apps/user_task_template` — шаблон пользовательской Python-задачи.
+- `apps/python_task_runner` — общий BOINC runner для Python-задач.
+- `scripts/` — подготовка, запуск, диагностика и очистка.
+- `monitoring/` — Prometheus, Grafana, Loki и exporter.
+- `server/` — BOINC server и MariaDB.
+
+## BOINC-сущности
+
+- `workunit` — уникальная задача.
+- `result` — попытка выполнения workunit.
+- `host` — зарегистрированный клиент.
+- `app_version` — версия приложения под платформу клиента.

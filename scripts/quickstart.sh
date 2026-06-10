@@ -24,10 +24,11 @@ Usage:
 Options:
   --with-monitoring     start monitoring during launch
   --run-experiment      submit the experiment during launch
-  --task user|big-det   task for --run-experiment; default: user
+  --task user|grid-search|determinant
+                       task for --run-experiment; default: user
   --user-task PATH      Python file for --task user
   --user-params PATH    params.jsonl for --task user
-  --workunits N         number of big-det workunits
+  --workunits N         number of determinant workunits
   --install-local       install local control-machine dependencies during preparation
   --copy-ssh-keys       copy SSH keys to clients during preparation
   --skip-prepare        run only launch_cluster.sh
@@ -40,7 +41,8 @@ Options:
 Examples:
   ./scripts/quickstart.sh
   ./scripts/quickstart.sh --with-monitoring
-  ./scripts/quickstart.sh --with-monitoring --run-experiment --task big-det
+  ./scripts/quickstart.sh --with-monitoring --run-experiment --task determinant --workunits 2
+  ./scripts/quickstart.sh --with-monitoring --run-experiment --task grid-search
 
 Default experiment task is the user task template in apps/user_task_template.
 USAGE
@@ -73,8 +75,12 @@ while [[ $# -gt 0 ]]; do
       EXPERIMENT_ARGS+=("$1")
       shift
       ;;
-    --big-det|--big_det)
-      EXPERIMENT_ARGS+=(--big-det)
+    --big-det|--big_det|--determinant)
+      EXPERIMENT_ARGS+=(--task determinant)
+      shift
+      ;;
+    --grid-search|--grid_search)
+      EXPERIMENT_ARGS+=(--task grid-search)
       shift
       ;;
     --user-task)

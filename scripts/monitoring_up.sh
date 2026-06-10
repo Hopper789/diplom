@@ -153,8 +153,8 @@ ensure_boinc_exporter_image() {
   if ! retry_command 5 20 "${pull_cmd[@]}"; then
     echo
     echo "ERROR: failed to pull BOINC exporter base image: $BOINC_EXPORTER_BASE_IMAGE" >&2
-    echo "Docker Hub may be unavailable from this machine." >&2
-    echo "Try a cached tag or local registry, for example:" >&2
+    echo "This is usually a network/DNS/proxy problem reaching Docker Hub from the server, not a BOINC code error." >&2
+    echo "Retry later, pre-pull the image, or use a cached tag/local registry, for example:" >&2
     echo "  BOINC_EXPORTER_BASE_IMAGE=python:3 ./scripts/monitoring_up.sh" >&2
     echo "  BOINC_EXPORTER_BASE_IMAGE=registry.local/library/python:3.12-slim ./scripts/monitoring_up.sh" >&2
     exit 1

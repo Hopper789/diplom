@@ -31,12 +31,18 @@
 Тяжёлый determinant benchmark:
 
 ```bash
-./scripts/run_experiment.sh --task big-det --workunits 2 --submit-only
+./scripts/run_experiment.sh --task determinant --workunits 2 --submit-only
 ```
 
-`big-det` фиксирован в коде: одна workunit примерно 10 минут, матрица
+`determinant` фиксирован в коде: одна workunit примерно 10 минут, матрица
 `1200 x 1200`, worker-процесс по каждому CPU. Сложность через конфиг не
 настраивается.
+
+Grid search:
+
+```bash
+./scripts/run_experiment.sh --task grid-search --submit-only
+```
 
 ## Пользовательская Python-задача
 
@@ -59,35 +65,25 @@ def run(params):
 ```bash
 ./scripts/run_experiment.sh \
   --task user \
-  --user-task apps/python_task_runner/examples/sum_params/user_task.py \
-  --user-params apps/python_task_runner/examples/sum_params/params.jsonl \
+  --user-task apps/user_task_template/user_task.py \
+  --user-params apps/user_task_template/params.jsonl \
   --submit-only
 ```
 
-## Бенчмарки
-
-Для быстрого подбора конфигурации:
-
-```bash
-./scripts/quickstart.sh --with-monitoring
-./scripts/run_quick_benchmarks.sh --yes --replicas 2
-```
-
-Бенчмарки короткие и сравнивают:
-
-- лёгкие задачи;
-- CPU-тяжёлые задачи;
-- IO-задачи;
-- memory scan;
-- репликацию.
-
-Отчёт сохраняется в `reports/quick_benchmarks/`.
-
 ## Репликация и quorum
 
-Если `target_nresults=3`, `min_quorum=2`, BOINC создаёт до 3 попыток, но задача считается полезно завершённой после quorum. Лишние attempts могут стать redundant.
+Если нужен режим “2 успешных результата, третий только запасной”:
+
+```bash
+DISTRIBUTED_TARGET_NRESULTS=2
+DISTRIBUTED_MIN_QUORUM=2
+DISTRIBUTED_MAX_SUCCESS_RESULTS=2
+DISTRIBUTED_MAX_TOTAL_RESULTS=3
+```
+
+При `target_nresults=3` BOINC может создать и раздать 3 attempts сразу.
 
 В Grafana:
 
 - `Факт. репликация` — реально выполненные attempts на workunit;
-- `Полезная нагрузка` — доля времени успешных attempts, потраченная на саму функцию `run(params)`.
+- `Полезная нагрузка` — доля времени, потраченная на canonical result, без зачёта лишних реплик как полезной работы.

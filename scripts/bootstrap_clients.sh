@@ -61,8 +61,12 @@ if ! ANSIBLE_HOST_KEY_CHECKING=False \
   ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients "${ANSIBLE_ARGS[@]}" -m ping; then
   echo
   echo "SSH ping failed."
+  echo "Check config/cluster.yml: client ip, user and ssh_port."
   echo "You can try copying SSH keys:"
-  echo "  ./scripts/copy_ssh_keys.sh"
+  echo "  ./scripts/prepare_system.sh --copy-ssh-keys"
+  echo
+  echo "Manual check example:"
+  echo "  ssh -p SSH_PORT USER@CLIENT_IP"
   echo
   echo "Then rerun:"
   echo "  ./scripts/bootstrap_clients.sh"

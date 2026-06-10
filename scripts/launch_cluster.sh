@@ -22,10 +22,11 @@ Usage:
 Options:
   --with-monitoring         start monitoring stack
   --run-experiment          submit and pump the experiment
-  --task user|big-det       task for --run-experiment; default: user
+  --task user|grid-search|determinant
+                           task for --run-experiment; default: user
   --user-task PATH          Python file for --task user
   --user-params PATH        params.jsonl for --task user
-  --workunits N             number of big-det workunits
+  --workunits N             number of determinant workunits
   --submit-only             with --run-experiment, submit work without auto-update/status wait
   --server-only             launch only BOINC server
   --clients-only            launch only BOINC clients
@@ -92,8 +93,12 @@ while [[ $# -gt 0 ]]; do
       EXPERIMENT_ARGS+=("$1")
       shift
       ;;
-    --big-det|--big_det)
-      EXPERIMENT_ARGS+=(--big-det)
+    --big-det|--big_det|--determinant)
+      EXPERIMENT_ARGS+=(--task determinant)
+      shift
+      ;;
+    --grid-search|--grid_search)
+      EXPERIMENT_ARGS+=(--task grid-search)
       shift
       ;;
     --user-task)

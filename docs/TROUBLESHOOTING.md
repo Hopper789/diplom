@@ -79,10 +79,12 @@ ansible -i ansible/inventory.ini boinc_clients -m ping
 
 Смотри в `status.sh`:
 
-- есть ли `active_hosts`;
+- есть ли активные/назначенные result на клиентах;
 - есть ли подходящая `app_version`;
 - нет ли `This project doesn't support computers of type...`;
 - не стоят ли задачи в `uninitialized`.
+
+В Grafana `Хосты` показывает host'ы, у которых есть назначенные незавершённые BOINC result. Это не ICMP ping и не SSH ping.
 
 ## BOINC-клиент пишет `suspended`
 
@@ -144,10 +146,17 @@ docker logs boinc-promtail --tail 100
 Частые причины:
 
 - output-файл не создан;
+- входной `input.json` не найден или невалиден;
 - app version не подходит платформе;
 - клиент не скачал приложение;
 - задача падает с исключением;
 - не совпадают шаблоны input/output.
+
+Быстрая диагностика вычислений:
+
+```bash
+./scripts/diagnose_compute.sh --debug
+```
 
 ## Полная очистка
 
