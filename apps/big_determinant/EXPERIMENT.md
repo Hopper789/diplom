@@ -16,15 +16,22 @@ CPU-задача для BOINC Python runner: вычисление определ
 Ручной запуск через BOINC:
 
 ```bash
-apps/big_determinant/run_task.sh boinc --workunits 2
+apps/big_determinant/run_task.sh boinc
 ```
 
 Запуск через общий runner:
 
 ```bash
-./scripts/run_experiment.sh --task determinant --workunits 2
+./scripts/run_experiment.sh --task determinant
 ```
 
-У задачи нет внешних параметров сложности: размер матрицы задан в
-`apps/big_determinant/main.py`. Через `--workunits` задаётся только количество
-BOINC-задач.
+У задачи нет внешних параметров сложности: размер матрицы и стратегия дробления
+на workunit заданы в `apps/big_determinant/main.py`.
+
+Текущая стратегия:
+
+- `WORKUNITS = 20`.
+
+Будет создано 20 workunit независимо от числа клиентов. BOINC раздаёт их
+клиентам динамически, поэтому быстрые узлы могут забрать больше задач, а
+медленные не останавливают общий прогресс.

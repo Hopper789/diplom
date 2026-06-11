@@ -26,7 +26,6 @@ Options:
                            task for --run-experiment; default: user
   --user-task PATH          Python file for --task user
   --user-params PATH        params.jsonl for --task user
-  --workunits N             number of determinant workunits
   --submit-only             with --run-experiment, submit work without auto-update/status wait
   --server-only             launch only BOINC server
   --clients-only            launch only BOINC clients
@@ -115,14 +114,6 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       EXPERIMENT_ARGS+=(--user-params "$2")
-      shift 2
-      ;;
-    --workunits|--task-count)
-      if [[ $# -lt 2 ]]; then
-        echo "--workunits requires a value." >&2
-        exit 2
-      fi
-      EXPERIMENT_ARGS+=(--workunits "$2")
       shift 2
       ;;
     --submit-only)

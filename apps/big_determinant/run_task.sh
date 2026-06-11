@@ -17,7 +17,6 @@ MAIN_FILE="$ROOT_DIR/apps/big_determinant/main.py"
 PYTHON_RUNNER="$ROOT_DIR/apps/python_task_runner/run_task.sh"
 
 MODE="boinc"
-TASK_COUNT=""
 SEED_BASE=10000
 
 if [[ -f "$DISTRIBUTED_ENV_FILE" ]]; then
@@ -33,13 +32,11 @@ PLATFORM="${PLATFORM:-x86_64-pc-linux-gnu}"
 usage() {
   cat <<'USAGE'
 Usage:
-  apps/big_determinant/run_task.sh [--debug] [boinc|local] [--workunits N]
-
-Options:
-  --workunits N            number of determinant BOINC workunits
+  apps/big_determinant/run_task.sh [--debug] [boinc|local]
 
 The workload computes one real determinant per workunit. BOINC task return
 deadline is controlled by DISTRIBUTED_DELAY_BOUND; default is 86400 seconds.
+The number of workunits is defined by apps/big_determinant/main.py.
 USAGE
 }
 
@@ -48,14 +45,6 @@ while [[ $# -gt 0 ]]; do
     boinc|local)
       MODE="$1"
       shift
-      ;;
-    --workunits|--task-count)
-      if [[ $# -lt 2 ]]; then
-        echo "--workunits requires a value." >&2
-        exit 2
-      fi
-      TASK_COUNT="$2"
-      shift 2
       ;;
     --help|-h|help)
       usage
@@ -69,50 +58,13 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -n "$TASK_COUNT" ]]; then
-  if ! [[ "$TASK_COUNT" =~ ^[0-9]+$ ]] || (( TASK_COUNT < 1 )); then
-    echo "--workunits must be a positive integer." >&2
-    exit 2
-  fi
-fi
-
-default_workunits() {
-  python3 - "$ROOT_DIR/ansible/inventory.ini" <<'PY'
-import sys
-from pathlib import Path
-
-inventory = Path(sys.argv[1])
-count = 0
-inside = False
-
-if inventory.exists():
-    for raw in inventory.read_text(encoding="utf-8").splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#"):
-            continue
-        if line.startswith("[") and line.endswith("]"):
-            inside = line == "[boinc_clients]"
-            continue
-        if inside:
-            count += 1
-
-print(max(1, count))
-PY
-}
-
 prepare_task() {
   mkdir -p "$BUILD_DIR"
-
-  local count="$TASK_COUNT"
-  if [[ -z "$count" ]]; then
-    count="$(default_workunits)"
-  fi
 
   local args=(
     "$PREPARE_FILE"
     --main "$MAIN_FILE"
     --out "$PARAMS_FILE"
-    --task-count "$count"
     --seed-base "$SEED_BASE"
   )
 

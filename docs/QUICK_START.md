@@ -35,10 +35,10 @@ nano config/cluster.yml
 
 `quickstart --run-experiment` отправляет задачи и завершает работу. Он не ждёт окончания вычислений и не запускает `status.sh` автоматически.
 
-Чтобы вместо шаблона пользовательской задачи отправить CPU-бенчмарк:
+Чтобы вместо шаблона пользовательской задачи отправить CPU-задачу:
 
 ```bash
-./scripts/quickstart.sh --with-monitoring --run-experiment --task determinant --workunits 2
+./scripts/quickstart.sh --with-monitoring --run-experiment --task determinant
 ```
 
 Чтобы отправить grid search:

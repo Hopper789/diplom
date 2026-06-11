@@ -10,7 +10,6 @@ SUBMIT_ONLY="${BOINC_SUBMIT_ONLY:-0}"
 EXPERIMENT_TASK="user"
 USER_TASK_FILE="$ROOT_DIR/apps/user_task_template/user_task.py"
 USER_TASK_PARAMS="$ROOT_DIR/apps/user_task_template/params.jsonl"
-WORKUNITS=""
 
 # shellcheck source=scripts/lib/ansible_args.sh
 source "$ROOT_DIR/scripts/lib/ansible_args.sh"
@@ -64,14 +63,6 @@ while [[ $# -gt 0 ]]; do
       USER_TASK_PARAMS="$2"
       shift 2
       ;;
-    --workunits|--task-count)
-      if [[ $# -lt 2 ]]; then
-        echo "--workunits requires a value." >&2
-        exit 2
-      fi
-      WORKUNITS="$2"
-      shift 2
-      ;;
     --help|-h)
       cat <<'USAGE'
 Usage:
@@ -82,7 +73,6 @@ Options:
                            task to submit; default: user
   --user-task PATH          Python file for --task user
   --user-params PATH        params.jsonl for --task user
-  --workunits N             number of determinant workunits
   --submit-only             submit work without client pumping/Grafana dump
   --debug                   show full command output
   --ask-vault-pass, --vault ask Vault password manually
@@ -108,13 +98,6 @@ fi
 if [[ -z "$EXPERIMENT_TASK" ]]; then
   echo "--task cannot be empty." >&2
   exit 2
-fi
-
-if [[ -n "$WORKUNITS" ]]; then
-  if ! [[ "$WORKUNITS" =~ ^[0-9]+$ ]] || (( WORKUNITS < 1 )); then
-    echo "--workunits must be a positive integer." >&2
-    exit 2
-  fi
 fi
 
 if [[ ! -f "$ROOT_DIR/config/generated.env" ]]; then
@@ -166,9 +149,6 @@ run_selected_experiment() {
     determinant|big-det|big_det|big-determinant|big_determinant)
       debug_enabled && echo "Experiment task: determinant"
       local args=(apps/big_determinant/run_task.sh boinc)
-      if [[ -n "$WORKUNITS" ]]; then
-        args+=(--workunits "$WORKUNITS")
-      fi
       quiet_run_all "${args[@]}"
       ;;
     *)
@@ -206,9 +186,6 @@ read_progress() {
 if debug_enabled; then
   echo "Experiment task:"
   echo "  $EXPERIMENT_TASK"
-  if [[ -n "$WORKUNITS" ]]; then
-    echo "  workunits=$WORKUNITS"
-  fi
   echo
   echo "Distributed computing config:"
   if [[ -f "$ROOT_DIR/config/distributed.env" ]]; then

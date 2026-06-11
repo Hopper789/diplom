@@ -27,27 +27,14 @@ fi
 
 APP_NAME="${APP_NAME:-ml_grid_search}"
 PLATFORM="${PLATFORM:-x86_64-pc-linux-gnu}"
-EXPERIMENT_WALL_SECONDS="${EXPERIMENT_WALL_SECONDS:-1200}"
-EXPERIMENT_CORES="${EXPERIMENT_CORES:-1}"
-TASK_SECONDS="${TASK_SECONDS:-1200}"
-TASK_COUNT="${TASK_COUNT:-}"
-TASK_DATASET_SIZE="${TASK_DATASET_SIZE:-500}"
-TASK_SEED_BASE="${TASK_SEED_BASE:-1000}"
-TASK_LAMBDA_GRID="${TASK_LAMBDA_GRID:-0,0.001,0.003,0.01,0.03,0.1,0.3,1,3,10}"
 
 usage() {
   cat <<'USAGE'
 Usage:
   apps/ml_grid_search/run_task.sh [--debug] [boinc|local]
 
-Environment:
-  EXPERIMENT_WALL_SECONDS  target experiment duration for automatic task count
-  EXPERIMENT_CORES         expected CPU cores for automatic task count
-  TASK_SECONDS             target seconds per BOINC workunit
-  TASK_COUNT               exact number of workunits, optional
-  TASK_DATASET_SIZE        synthetic dataset size
-  TASK_SEED_BASE           base seed for generated tasks
-  TASK_LAMBDA_GRID         comma-separated lambda grid
+The workload computes one real ridge-regression point per workunit. The number
+of workunits and task parameters are defined by apps/ml_grid_search/main.py.
 USAGE
 }
 
@@ -58,17 +45,7 @@ prepare_task() {
     "$PREPARE_FILE"
     --main "$MAIN_FILE"
     --out "$PARAMS_FILE"
-    --wall-seconds "$EXPERIMENT_WALL_SECONDS"
-    --cores "$EXPERIMENT_CORES"
-    --task-seconds "$TASK_SECONDS"
-    --dataset-size "$TASK_DATASET_SIZE"
-    --seed-base "$TASK_SEED_BASE"
-    --lambda-grid "$TASK_LAMBDA_GRID"
   )
-
-  if [[ -n "$TASK_COUNT" ]]; then
-    args+=(--task-count "$TASK_COUNT")
-  fi
 
   step "Preparing grid-search workunits..."
   quiet_run_all python3 "${args[@]}"

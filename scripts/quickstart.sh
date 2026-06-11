@@ -28,7 +28,6 @@ Options:
                        task for --run-experiment; default: user
   --user-task PATH      Python file for --task user
   --user-params PATH    params.jsonl for --task user
-  --workunits N         number of determinant workunits
   --install-local       install local control-machine dependencies during preparation
   --copy-ssh-keys       copy SSH keys to clients during preparation
   --skip-prepare        run only launch_cluster.sh
@@ -41,7 +40,7 @@ Options:
 Examples:
   ./scripts/quickstart.sh
   ./scripts/quickstart.sh --with-monitoring
-  ./scripts/quickstart.sh --with-monitoring --run-experiment --task determinant --workunits 2
+  ./scripts/quickstart.sh --with-monitoring --run-experiment --task determinant
   ./scripts/quickstart.sh --with-monitoring --run-experiment --task grid-search
 
 Default experiment task is the user task template in apps/user_task_template.
@@ -97,14 +96,6 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       EXPERIMENT_ARGS+=(--user-params "$2")
-      shift 2
-      ;;
-    --workunits|--task-count)
-      if [[ $# -lt 2 ]]; then
-        echo "--workunits requires a value." >&2
-        exit 2
-      fi
-      EXPERIMENT_ARGS+=(--workunits "$2")
       shift 2
       ;;
     --install-local)

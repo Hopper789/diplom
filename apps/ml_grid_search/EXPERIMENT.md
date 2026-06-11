@@ -1,61 +1,45 @@
 # Эксперимент ml_grid_search
 
-`run_task.sh` создаёт BOINC workunits и отправляет Python-задачу `main.py` через `apps/python_task_runner`.
+CPU-задача для BOINC Python runner: grid search по параметру регуляризации
+ridge-регрессии.
 
-`prepare.py` готовит `params.jsonl` и проверяет, что в `main.py` есть функция `run(params)`. `main.py` содержит вычислительный код parameter sweep для ridge-регрессии. Вычислительная часть ускоряется через `numpy` и `numba`.
+Каждая workunit:
 
-```bash
-EXPERIMENT_WALL_SECONDS=1200
-EXPERIMENT_CORES=1
-TASK_SECONDS=1200
-TASK_LAMBDA_GRID=0,0.001,0.003,0.01,0.03,0.1,0.3,1,3,10
-```
+- генерирует синтетический датасет по `seed`;
+- считает ridge-регрессию для одного значения `lambda`;
+- возвращает параметры выданной задачи, веса модели, loss и время выполнения.
 
-Количество задач считается так:
+Искусственной длительности нет: задача завершается после реального вычисления.
+Максимальный срок возврата результата задаётся BOINC-параметром
+`DISTRIBUTED_DELAY_BOUND`; по умолчанию это `86400` секунд, то есть 1 день.
 
-```text
-TASK_COUNT = ceil(EXPERIMENT_WALL_SECONDS * EXPERIMENT_CORES / TASK_SECONDS)
-```
-
-При настройках по умолчанию:
-
-```text
-TASK_COUNT = ceil(1200 * 1 / 1200) = 1 задача
-```
-
-Запуск:
+Запуск через BOINC:
 
 ```bash
 apps/ml_grid_search/run_task.sh boinc
 ```
 
-Для другой машины можно поменять число ядер:
+Запуск через общий runner:
 
 ```bash
-EXPERIMENT_CORES=8 EXPERIMENT_WALL_SECONDS=1200 TASK_SECONDS=1200 apps/ml_grid_search/run_task.sh boinc
+./scripts/run_experiment.sh --task grid-search
 ```
 
-Фиксированное количество задач:
+У задачи нет внешних параметров запуска. Размер датасета, количество workunit,
+базовый seed и сетка lambda заданы в `apps/ml_grid_search/main.py`.
+
+Текущая стратегия:
+
+- `WORKUNITS = 20`;
+- `DATASET_SIZE = 50000`;
+- `LAMBDA_GRID = [0.0, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0]`.
+
+Будет создано 20 workunit независимо от числа клиентов. BOINC раздаёт их из
+общей очереди, поэтому быстрые узлы могут забрать больше задач, а медленные не
+останавливают общий прогресс.
+
+Локальная проверка того же Python-пайплайна:
 
 ```bash
-TASK_COUNT=100 TASK_SECONDS=5 apps/ml_grid_search/run_task.sh boinc
-```
-
-## Как менять сложность
-
-- `TASK_SECONDS` — главная ручка. Время одной workunit почти линейно: `600` около
-  10 минут, `1200` около 20 минут, `1800` около 30 минут.
-- `TASK_COUNT` — точное число workunits. Если пусто, считается по формуле выше.
-- `EXPERIMENT_CORES` — сколько параллельных workunits планируется держать в работе
-  при автоматическом расчёте `TASK_COUNT`.
-- `TASK_DATASET_SIZE` — размер синтетического набора данных. Влияет примерно
-  линейно на часть с построением массива и ridge-регрессией, но при большом
-  `TASK_SECONDS` вклад обычно мал.
-- `TASK_LAMBDA_GRID` — список значений lambda. Он меняет параметры задач, но не
-  делает одну задачу тяжелее; значения распределяются по workunits циклически.
-
-Локальная проверка одного и того же Python-пайплайна:
-
-```bash
-TASK_COUNT=1 TASK_SECONDS=0 apps/ml_grid_search/run_task.sh local
+apps/ml_grid_search/run_task.sh local
 ```

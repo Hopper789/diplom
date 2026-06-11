@@ -31,7 +31,7 @@
 Тяжёлая determinant-задача:
 
 ```bash
-./scripts/run_experiment.sh --task determinant --workunits 2 --submit-only
+./scripts/run_experiment.sh --task determinant --submit-only
 ```
 
 `determinant` выполняет одну реальную задачу: генерирует детерминированную
@@ -42,6 +42,10 @@
 (`task_id`, `seed`, размер матрицы) и результат вычисления: знак определителя,
 `log_abs` и научная форма.
 
+Количество workunit задаётся самой задачей в `apps/big_determinant/main.py`.
+Сейчас используется простая константа `WORKUNITS=20`: будет создано 20 workunit
+независимо от числа клиентов. BOINC сам раздаёт их клиентам из общей очереди.
+
 Максимальное время возврата BOINC-задачи задаётся через
 `DISTRIBUTED_DELAY_BOUND`. По умолчанию это `86400` секунд, то есть 1 день.
 
@@ -50,6 +54,11 @@ Grid search:
 ```bash
 ./scripts/run_experiment.sh --task grid-search --submit-only
 ```
+
+`grid-search` выполняет реальные workunit: каждая считает ridge-регрессию для
+одного значения `lambda` на синтетическом датасете. Количество workunit и
+параметры сетки заданы в `apps/ml_grid_search/main.py`. Сейчас используется
+`WORKUNITS=20`; искусственного ожидания или цикла “работать N минут” нет.
 
 ## Пользовательская Python-задача
 

@@ -18,6 +18,7 @@ except ModuleNotFoundError as exc:  # pragma: no cover - validated on client ima
 
 MATRIX_SIZE = 1200
 DIAGONAL_BOOST = max(1.0, MATRIX_SIZE * 0.01)
+WORKUNITS = 20
 
 
 def _as_int(params: dict[str, Any], key: str, default: int) -> int:

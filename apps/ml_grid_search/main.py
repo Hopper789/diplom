@@ -18,6 +18,12 @@ except ModuleNotFoundError as exc:  # pragma: no cover - validated on client ima
     ) from exc
 
 
+WORKUNITS = 20
+DATASET_SIZE = 50_000
+SEED_BASE = 1000
+LAMBDA_GRID = [0.0, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0]
+
+
 @njit
 def _noise(index: int, seed: int) -> float:
     value = math.sin((seed + 1) * (index + 1) * 12.9898) * 43758.5453
@@ -76,47 +82,14 @@ def _mean_squared_error(xs: np.ndarray, ys: np.ndarray, intercept: float, slope:
     return total / max(1, xs.size)
 
 
-@njit
-def _burn_chunk(iterations: int, seed: int) -> float:
-    value = 0.125 + seed * 0.000001
-    checksum = 0.0
-    for index in range(iterations):
-        value = math.sin(value + index * 0.000013) + math.cos(value * 1.000017)
-        checksum += math.sqrt(abs(value) + 1.0)
-    return checksum
-
-
 def _as_int(params: dict[str, Any], key: str, default: int) -> int:
     return int(params.get(key, default))
-
-
-def _as_float(params: dict[str, Any], key: str, default: float) -> float:
-    return float(params.get(key, default))
 
 
 def _warm_up_numba() -> None:
     xs, ys = _build_dataset(8, 1)
     intercept, slope = _ridge_fit(xs, ys, 0.1)
     _mean_squared_error(xs, ys, intercept, slope)
-    _burn_chunk(16, 1)
-
-
-def _burn_for_seconds(target_seconds: float, seed: int) -> tuple[int, float, float]:
-    if target_seconds <= 0:
-        return 0, 0.0, 0.0
-
-    iterations_per_chunk = 250_000
-    iterations = 0
-    checksum = 0.0
-    started = time.perf_counter()
-
-    while True:
-        checksum += float(_burn_chunk(iterations_per_chunk, seed + iterations))
-        iterations += iterations_per_chunk
-
-        elapsed = time.perf_counter() - started
-        if elapsed >= target_seconds:
-            return iterations, checksum, elapsed
 
 
 def run(params: dict[str, Any]) -> dict[str, Any]:
@@ -124,33 +97,28 @@ def run(params: dict[str, Any]) -> dict[str, Any]:
 
     task_id = _as_int(params, "task_id", 0)
     regularization = float(params.get("lambda", params.get("regularization", 0.0)))
-    seed = _as_int(params, "seed", 1000 + task_id)
-    dataset_size = max(2, _as_int(params, "n", 500))
-    target_seconds = max(0.0, _as_float(params, "target_seconds", 0.0))
+    seed = _as_int(params, "seed", SEED_BASE + task_id)
+    dataset_size = max(2, _as_int(params, "n", DATASET_SIZE))
 
     _warm_up_numba()
 
+    started = time.perf_counter()
     xs, ys = _build_dataset(dataset_size, seed)
     intercept, slope = _ridge_fit(xs, ys, regularization)
     loss = _mean_squared_error(xs, ys, intercept, slope)
-    burn_iterations, burn_checksum, burn_seconds = _burn_for_seconds(target_seconds, seed)
+    elapsed = time.perf_counter() - started
 
     return {
         "task_id": task_id,
         "lambda": regularization,
         "seed": seed,
         "n": dataset_size,
-        "target_seconds": target_seconds,
         "weights": {
             "intercept": intercept,
             "slope": slope,
         },
         "loss": loss,
-        "burn": {
-            "iterations": burn_iterations,
-            "seconds": round(burn_seconds, 6),
-            "checksum": burn_checksum,
-        },
+        "elapsed_seconds": round(elapsed, 6),
         "backend": {
             "python": platform.python_implementation(),
             "numpy": np.__version__,

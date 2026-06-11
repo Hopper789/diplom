@@ -1,33 +1,31 @@
 #!/usr/bin/env python3
-"""Prepare params.jsonl for the ml_grid_search Python workload."""
+"""Prepare params.jsonl for the ml_grid_search workload."""
 
 from __future__ import annotations
 
 import argparse
 import ast
 import json
-import math
 from pathlib import Path
+from typing import Any
 
 
-DEFAULT_LAMBDA_GRID = "0,0.001,0.003,0.01,0.03,0.1,0.3,1,3,10"
+DEFAULTS: dict[str, Any] = {
+    "WORKUNITS": 1,
+    "DATASET_SIZE": 500,
+    "SEED_BASE": 1000,
+    "LAMBDA_GRID": [0.0, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0],
+}
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Prepare ml_grid_search for BOINC")
+    parser = argparse.ArgumentParser(description="Prepare ml_grid_search BOINC tasks")
     parser.add_argument("--main", required=True, help="Path to main.py with run(params)")
     parser.add_argument("--out", required=True, help="Output params.jsonl path")
-    parser.add_argument("--wall-seconds", type=float, default=1200.0)
-    parser.add_argument("--cores", type=float, default=1.0)
-    parser.add_argument("--task-seconds", type=float, default=1200.0)
-    parser.add_argument("--task-count", type=int, default=None)
-    parser.add_argument("--dataset-size", type=int, default=500)
-    parser.add_argument("--seed-base", type=int, default=1000)
-    parser.add_argument("--lambda-grid", default=DEFAULT_LAMBDA_GRID)
     return parser.parse_args()
 
 
-def validate_main(path: Path) -> None:
+def read_task_config(path: Path) -> dict[str, Any]:
     if not path.exists():
         raise FileNotFoundError(f"Main task file not found: {path}")
 
@@ -36,44 +34,44 @@ def validate_main(path: Path) -> None:
     if not has_run:
         raise ValueError(f"{path} must define a top-level run(params) function")
 
-
-def parse_lambda_grid(value: str) -> list[float]:
-    grid: list[float] = []
-    for item in value.split(","):
-        item = item.strip()
-        if not item:
+    config = dict(DEFAULTS)
+    for node in tree.body:
+        if not isinstance(node, ast.Assign) or len(node.targets) != 1:
             continue
-        grid.append(float(item))
+        target = node.targets[0]
+        if not isinstance(target, ast.Name) or target.id not in config:
+            continue
+        config[target.id] = ast.literal_eval(node.value)
 
-    if not grid:
-        raise ValueError("lambda grid must contain at least one value")
-    return grid
+    config["WORKUNITS"] = int(config["WORKUNITS"])
+    config["DATASET_SIZE"] = int(config["DATASET_SIZE"])
+    config["SEED_BASE"] = int(config["SEED_BASE"])
+    config["LAMBDA_GRID"] = [float(value) for value in config["LAMBDA_GRID"]]
+
+    if config["WORKUNITS"] < 1:
+        raise ValueError("WORKUNITS must be >= 1")
+    if config["DATASET_SIZE"] < 2:
+        raise ValueError("DATASET_SIZE must be >= 2")
+    if not config["LAMBDA_GRID"]:
+        raise ValueError("LAMBDA_GRID must contain at least one value")
+
+    return config
 
 
-def resolve_task_count(args: argparse.Namespace) -> int:
-    if args.task_count is not None:
-        return max(1, args.task_count)
+def write_params(config: dict[str, Any], output_path: Path) -> int:
+    task_count = int(config["WORKUNITS"])
+    dataset_size = int(config["DATASET_SIZE"])
+    seed_base = int(config["SEED_BASE"])
+    lambda_grid = list(config["LAMBDA_GRID"])
 
-    task_seconds = max(1.0, args.task_seconds)
-    cores = max(1.0, args.cores)
-    wall_seconds = max(1.0, args.wall_seconds)
-    return max(1, math.ceil(wall_seconds * cores / task_seconds))
-
-
-def write_params(args: argparse.Namespace, output_path: Path) -> int:
-    task_count = resolve_task_count(args)
-    lambda_grid = parse_lambda_grid(args.lambda_grid)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-
     with output_path.open("w", encoding="utf-8") as handle:
         for task_id in range(1, task_count + 1):
-            regularization = lambda_grid[(task_id - 1) % len(lambda_grid)]
             payload = {
                 "task_id": task_id,
-                "lambda": regularization,
-                "seed": args.seed_base + task_id,
-                "n": max(2, args.dataset_size),
-                "target_seconds": max(0.0, args.task_seconds),
+                "lambda": lambda_grid[(task_id - 1) % len(lambda_grid)],
+                "seed": seed_base + task_id,
+                "n": dataset_size,
             }
             json.dump(payload, handle, ensure_ascii=False, sort_keys=True)
             handle.write("\n")
@@ -86,11 +84,13 @@ def main() -> int:
     main_path = Path(args.main)
     output_path = Path(args.out)
 
-    validate_main(main_path)
-    task_count = write_params(args, output_path)
+    config = read_task_config(main_path)
+    task_count = write_params(config, output_path)
 
     print(f"Prepared ml_grid_search main: {main_path}")
-    print(f"Generated ml_grid_search params: {task_count}")
+    print(f"Generated ml_grid_search workunits: {task_count}")
+    print(f"Dataset size: {config['DATASET_SIZE']}")
+    print(f"Lambda grid size: {len(config['LAMBDA_GRID'])}")
     print(f"Output: {output_path}")
     return 0
 
