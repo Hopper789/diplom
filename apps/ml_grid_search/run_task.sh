@@ -70,7 +70,8 @@ prepare_task() {
     args+=(--task-count "$TASK_COUNT")
   fi
 
-  python3 "${args[@]}"
+  step "Preparing grid-search workunits..."
+  quiet_run_all python3 "${args[@]}"
 }
 
 run_boinc() {
@@ -86,12 +87,13 @@ run_boinc() {
     export PYTHON_TASK_APP_VERSION="$APP_VERSION"
   else
     if [[ "${APP_VERSION:-}" == "1.04" ]]; then
-      echo "Legacy APP_VERSION=1.04 detected; Python runner will auto-select the next BOINC app version."
+      debug_enabled && echo "Legacy APP_VERSION=1.04 detected; Python runner will auto-select the next BOINC app version."
     fi
     export PYTHON_TASK_APP_VERSION=""
   fi
 
-  "$PYTHON_RUNNER" --task "$MAIN_FILE" --params "$PARAMS_FILE" --device cpu
+  step "Submitting grid-search workunits..."
+  quiet_run_all "$PYTHON_RUNNER" --task "$MAIN_FILE" --params "$PARAMS_FILE" --device cpu
 }
 
 run_local() {
@@ -101,7 +103,8 @@ run_local() {
   local output_dir="$BUILD_DIR/local_outputs"
   mkdir -p "$input_dir" "$output_dir"
 
-  python3 "$ROOT_DIR/apps/python_task_runner/generate_inputs.py" \
+  step "Generating local inputs..."
+  quiet_run_all python3 "$ROOT_DIR/apps/python_task_runner/generate_inputs.py" \
     --params "$PARAMS_FILE" \
     --out "$input_dir" \
     --device cpu
@@ -114,14 +117,15 @@ run_local() {
 
     local name
     name="$(basename "$input_file")"
-    python3 "$ROOT_DIR/apps/python_task_runner/runner.py" \
+    quiet_run_all python3 "$ROOT_DIR/apps/python_task_runner/runner.py" \
       --task "$MAIN_FILE" \
       --input "$input_file" \
       --output "$output_dir/${name%.json}.output.json" \
       --fail-on-error
   done
 
-  echo "Local outputs: $output_dir"
+  step "Local grid-search run completed."
+  debug_enabled && echo "Local outputs: $output_dir"
 }
 
 case "$MODE" in

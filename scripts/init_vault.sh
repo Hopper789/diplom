@@ -93,7 +93,7 @@ cat > "$VAULT_EXAMPLE" <<'EOF'
 ansible_become_password: "your_client_sudo_password"
 EOF
 
-ansible-vault encrypt "$VAULT_FILE" --vault-password-file "$VAULT_PASS_FILE"
+quiet_run_all ansible-vault encrypt "$VAULT_FILE" --vault-password-file "$VAULT_PASS_FILE"
 
 echo
 echo "Создано:"

@@ -28,7 +28,8 @@ if ! command -v python3 >/dev/null 2>&1; then
   exit 1
 fi
 
-python3 - "$ROOT_DIR" "$CLUSTER_CONFIG" "$ENV_FILE" "$ANSIBLE_INVENTORY" "$ANSIBLE_GROUP_VARS" "$MONITORING_ENV" <<'PY'
+step "Generating configuration files..."
+python3 - "$ROOT_DIR" "$CLUSTER_CONFIG" "$ENV_FILE" "$ANSIBLE_INVENTORY" "$ANSIBLE_GROUP_VARS" "$MONITORING_ENV" <<'PY' | quiet_output
 import sys
 import secrets
 from pathlib import Path

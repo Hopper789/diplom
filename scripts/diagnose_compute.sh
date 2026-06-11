@@ -53,6 +53,13 @@ if [[ ! -f "$ROOT_DIR/ansible/inventory.ini" ]]; then
   exit 1
 fi
 
+if ! debug_enabled; then
+  step "Compute diagnostics are available with --debug."
+  echo "Run:"
+  echo "  ./scripts/diagnose_compute.sh --debug"
+  exit 0
+fi
+
 echo "== BOINC DB app/version/result states =="
 if docker ps --format '{{.Names}}' | grep -qx 'boinc-mariadb'; then
   docker exec boinc-mariadb mariadb -u root -proot -D "$PROJECT_NAME" -e "

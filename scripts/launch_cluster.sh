@@ -160,15 +160,16 @@ fi
 
 check_prepared
 
-echo "== Launching BOINC cluster =="
-echo
+step "Launching BOINC cluster..."
 
 if [[ "$CLIENTS_ONLY" != "1" ]]; then
-  ./scripts/bootstrap_server.sh --skip-status
+  step "Starting BOINC server..."
+  quiet_run_all ./scripts/bootstrap_server.sh --skip-status
 fi
 
 if [[ "$SERVER_ONLY" != "1" ]]; then
-  ./scripts/bootstrap_clients.sh --skip-status --skip-runtime-check "${ANSIBLE_ARGS[@]}"
+  step "Starting BOINC clients..."
+  quiet_run_all ./scripts/bootstrap_clients.sh --skip-status --skip-runtime-check "${ANSIBLE_ARGS[@]}"
 fi
 
 if [[ "$WITH_MONITORING" == "1" ]]; then
@@ -176,7 +177,8 @@ if [[ "$WITH_MONITORING" == "1" ]]; then
   if [[ "$SERVER_ONLY" == "1" ]]; then
     monitoring_args+=(--skip-client-agents)
   fi
-  ./scripts/monitoring_up.sh "${monitoring_args[@]}"
+  step "Starting monitoring..."
+  quiet_run_all ./scripts/monitoring_up.sh "${monitoring_args[@]}"
 fi
 
 if [[ "$RUN_EXPERIMENT" == "1" ]]; then
@@ -185,16 +187,18 @@ if [[ "$RUN_EXPERIMENT" == "1" ]]; then
   if [[ "$SUBMIT_ONLY" == "1" ]]; then
     experiment_args+=(--submit-only)
   fi
-  ./scripts/run_experiment.sh "${experiment_args[@]}"
+  step "Submitting experiment..."
+  quiet_run_all ./scripts/run_experiment.sh "${experiment_args[@]}"
 fi
 
 if [[ "$SKIP_STATUS" != "1" ]]; then
+  step "Checking cluster status..."
   if [[ "$SERVER_ONLY" == "1" ]]; then
-    ./scripts/status.sh --server-only "${ANSIBLE_ARGS[@]}"
+    quiet_run_all ./scripts/status.sh --server-only "${ANSIBLE_ARGS[@]}"
   else
-    ./scripts/status.sh "${ANSIBLE_ARGS[@]}"
+    quiet_run_all ./scripts/status.sh "${ANSIBLE_ARGS[@]}"
   fi
 fi
 
 echo
-echo "Cluster launch completed."
+step "Cluster launch completed."

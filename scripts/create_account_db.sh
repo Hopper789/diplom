@@ -44,7 +44,7 @@ import secrets
 print(secrets.token_urlsafe(18))
 PY
 )"
-  echo "Generated account password: $PASSWORD"
+  debug_enabled && echo "Generated account password: $PASSWORD"
 fi
 
 if ! docker ps --format '{{.Names}}' | grep -qx 'boinc-mariadb'; then
@@ -66,10 +66,10 @@ PY
 EMAIL_SQL="$(sql_escape "$EMAIL")"
 USERNAME_SQL="$(sql_escape "$USERNAME")"
 
-echo "Creating or looking up BOINC account directly in MariaDB..."
-echo "Project:  $PROJECT_NAME"
-echo "Email:    $EMAIL"
-echo "Username: $USERNAME"
+step "Creating or looking up BOINC account..."
+debug_enabled && echo "Project:  $PROJECT_NAME"
+debug_enabled && echo "Email:    $EMAIL"
+debug_enabled && echo "Username: $USERNAME"
 
 EXISTING_ROW="$(
   docker exec boinc-mariadb \
@@ -84,12 +84,12 @@ if [[ -n "$EXISTING_ROW" ]]; then
   FOUND_NAME="$(echo "$EXISTING_ROW" | awk -F '\t' '{print $3}')"
   ACCOUNT_KEY="$(echo "$EXISTING_ROW" | awk -F '\t' '{print $4}')"
 
-  echo "Account already exists."
-  echo "User ID: $USER_ID"
-  echo "Email:   $FOUND_EMAIL"
-  echo "Name:    $FOUND_NAME"
+  step "BOINC account exists."
+  debug_enabled && echo "User ID: $USER_ID"
+  debug_enabled && echo "Email:   $FOUND_EMAIL"
+  debug_enabled && echo "Name:    $FOUND_NAME"
 else
-  echo "Account does not exist. Creating..."
+  step "Creating BOINC account..."
 
   AUTHENTICATOR="$(
     python3 - "$EMAIL" "$USERNAME" <<'PY'
@@ -119,7 +119,7 @@ PY
   AUTHENTICATOR_SQL="$(sql_escape "$AUTHENTICATOR")"
   PASSWD_HASH_SQL="$(sql_escape "$PASSWD_HASH")"
 
-  docker exec boinc-mariadb \
+  quiet_run_all docker exec boinc-mariadb \
     mariadb -u root -proot "$PROJECT_NAME" \
     -e "
 INSERT INTO user (
@@ -193,20 +193,21 @@ VALUES (
   USER_ID="$(
     docker exec boinc-mariadb \
       mariadb -u root -proot "$PROJECT_NAME" -N -B \
-      -e "SELECT id FROM user WHERE email_addr='${EMAIL_SQL}' LIMIT 1;"
+      -e "SELECT id FROM user WHERE email_addr='${EMAIL_SQL}' LIMIT 1;" 2>/dev/null
   )"
 
   ACCOUNT_KEY="$AUTHENTICATOR"
 
-  echo "Created account."
-  echo "User ID: $USER_ID"
+  step "BOINC account created."
+  debug_enabled && echo "User ID: $USER_ID"
 fi
 
-echo
-echo "BOINC_ACCOUNT_KEY:"
-echo "$ACCOUNT_KEY"
+debug_enabled && echo
+debug_enabled && echo "BOINC_ACCOUNT_KEY:"
+debug_enabled && echo "$ACCOUNT_KEY"
 
-python3 - "$ENV_FILE" "$ANSIBLE_GROUP_VARS" "$ACCOUNT_KEY" "$PASSWORD" <<'PY'
+step "Writing BOINC account configuration..."
+quiet_run_all python3 - "$ENV_FILE" "$ANSIBLE_GROUP_VARS" "$ACCOUNT_KEY" "$PASSWORD" <<'PY'
 import sys
 from pathlib import Path
 
@@ -265,16 +266,17 @@ upsert_env(env_path, "BOINC_ACCOUNT_PASSWORD", account_password)
 upsert_yaml(vars_path, "boinc_account_key", account_key)
 PY
 
-echo
-echo "Updated:"
-echo "  $ENV_FILE"
-echo "  $ANSIBLE_GROUP_VARS"
-
-echo
-echo "Check:"
-echo "  grep BOINC_ACCOUNT_KEY config/generated.env"
-echo "  grep boinc_account_key ansible/group_vars/all/main.yml"
-
-echo
-echo "Database:"
-echo "  docker exec -it boinc-mariadb mariadb -u root -proot $PROJECT_NAME -e \"SELECT id, email_addr, name, authenticator FROM user;\""
+step "BOINC account configuration updated."
+if debug_enabled; then
+  echo
+  echo "Updated:"
+  echo "  $ENV_FILE"
+  echo "  $ANSIBLE_GROUP_VARS"
+  echo
+  echo "Check:"
+  echo "  grep BOINC_ACCOUNT_KEY config/generated.env"
+  echo "  grep boinc_account_key ansible/group_vars/all/main.yml"
+  echo
+  echo "Database:"
+  echo "  docker exec -it boinc-mariadb mariadb -u root -proot $PROJECT_NAME -e \"SELECT id, email_addr, name, authenticator FROM user;\""
+fi

@@ -12,8 +12,7 @@ cd "$ROOT_DIR"
 SKIP_STATUS=0
 SKIP_RUNTIME_CHECK=0
 
-echo "== BOINC clients bootstrap =="
-echo
+step "Bootstrapping BOINC clients..."
 
 build_ansible_args "$@"
 set -- "${ANSIBLE_REMAINING_ARGS[@]}"
@@ -56,9 +55,9 @@ fi
 
 refresh_client_known_hosts "$ROOT_DIR/ansible/inventory.ini"
 
-echo "Checking SSH access to clients..."
+step "Establishing SSH connection..."
 if ! ANSIBLE_HOST_KEY_CHECKING=False \
-  ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients "${ANSIBLE_ARGS[@]}" -m ping; then
+  quiet_run_all ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients "${ANSIBLE_ARGS[@]}" -m ping; then
   echo
   echo "SSH ping failed."
   echo "Check config/cluster.yml: client ip, user and ssh_port."
@@ -73,24 +72,21 @@ if ! ANSIBLE_HOST_KEY_CHECKING=False \
   exit 1
 fi
 
-echo
-echo "Deploying BOINC Docker clients..."
-./scripts/deploy_clients.sh "${ANSIBLE_ARGS[@]}"
+step "Deploying BOINC Docker clients..."
+quiet_run_all ./scripts/deploy_clients.sh "${ANSIBLE_ARGS[@]}"
 
 if [[ "$SKIP_STATUS" != "1" ]]; then
-  echo
-  echo "Clients status:"
-  ./scripts/status.sh "${ANSIBLE_ARGS[@]}" || true
+  step "Checking client status..."
+  quiet_run_all ./scripts/status.sh "${ANSIBLE_ARGS[@]}" || true
 fi
 
 if [[ "$SKIP_RUNTIME_CHECK" != "1" ]]; then
-  echo
-  echo "Client runtime check:"
-  ./scripts/check_client_runtime.sh "${ANSIBLE_ARGS[@]}" || true
+  step "Checking client runtime..."
+  quiet_run_all ./scripts/check_client_runtime.sh "${ANSIBLE_ARGS[@]}" || true
 fi
 
 echo
-echo "Clients bootstrap completed."
+step "Clients bootstrap completed."
 echo
 echo "Next step:"
 echo "  ./scripts/run_experiment.sh"

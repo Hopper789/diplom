@@ -28,6 +28,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -f "$ROOT_DIR/monitoring/docker-compose.yml" ]]; then
+  step "Stopping monitoring stack..."
   (
     cd "$ROOT_DIR/monitoring"
     compose_run down -v --remove-orphans
@@ -38,8 +39,8 @@ fi
 
 if [[ "$STOP_CLIENT_AGENTS" == "1" ]]; then
   if [[ -f "$ROOT_DIR/ansible/inventory.ini" ]] && command -v ansible >/dev/null 2>&1; then
-    echo "Stopping monitoring agents on BOINC clients..."
-    ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b "${ANSIBLE_ARGS[@]}" -m shell -a '
+    step "Stopping monitoring agents on BOINC clients..."
+    quiet_run_all ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b "${ANSIBLE_ARGS[@]}" -m shell -a '
       docker rm -f boinc-node-exporter boinc-client-cadvisor boinc-client-promtail 2>/dev/null || true
       rm -rf /opt/boinc-monitoring
     ' || true
@@ -48,4 +49,4 @@ if [[ "$STOP_CLIENT_AGENTS" == "1" ]]; then
   fi
 fi
 
-echo "Monitoring stopped."
+step "Monitoring stopped."

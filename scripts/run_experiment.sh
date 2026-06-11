@@ -17,8 +17,7 @@ source "$ROOT_DIR/scripts/lib/ansible_args.sh"
 
 cd "$ROOT_DIR"
 
-echo "== BOINC experiment runner =="
-echo
+step "Starting BOINC experiment runner..."
 
 build_ansible_args "$@"
 set -- "${ANSIBLE_REMAINING_ARGS[@]}"
@@ -134,7 +133,7 @@ set +a
 MONITORING_HOST="${SERVER_IP:-localhost}"
 
 if [[ ! -f "$ROOT_DIR/config/distributed.env" && -f "$ROOT_DIR/config/distributed.example.env" ]]; then
-  echo "Creating config/distributed.env from example..."
+  step "Creating distributed config..."
   cp "$ROOT_DIR/config/distributed.example.env" "$ROOT_DIR/config/distributed.env"
 fi
 
@@ -150,27 +149,27 @@ run_selected_experiment() {
   local task="$EXPERIMENT_TASK"
   case "$task" in
     user|python|python_task|python-task)
-      echo "Experiment task: user"
-      echo "Task file: $USER_TASK_FILE"
-      echo "Params:    $USER_TASK_PARAMS"
+      debug_enabled && echo "Experiment task: user"
+      debug_enabled && echo "Task file: $USER_TASK_FILE"
+      debug_enabled && echo "Params:    $USER_TASK_PARAMS"
       export PYTHON_TASK_APP_NAME="${PYTHON_TASK_APP_NAME:-user_python_task}"
       export PYTHON_TASK_APP_FRIENDLY_NAME="${PYTHON_TASK_APP_FRIENDLY_NAME:-User Python task}"
-      apps/python_task_runner/run_task.sh \
+      quiet_run_all apps/python_task_runner/run_task.sh \
         --task "$USER_TASK_FILE" \
         --params "$USER_TASK_PARAMS" \
         --device cpu
       ;;
     grid-search|grid_search|ml-grid-search|ml_grid_search)
-      echo "Experiment task: grid-search"
-      apps/ml_grid_search/run_task.sh boinc
+      debug_enabled && echo "Experiment task: grid-search"
+      quiet_run_all apps/ml_grid_search/run_task.sh boinc
       ;;
     determinant|big-det|big_det|big-determinant|big_determinant)
-      echo "Experiment task: determinant"
+      debug_enabled && echo "Experiment task: determinant"
       local args=(apps/big_determinant/run_task.sh boinc)
       if [[ -n "$WORKUNITS" ]]; then
         args+=(--workunits "$WORKUNITS")
       fi
-      "${args[@]}"
+      quiet_run_all "${args[@]}"
       ;;
     *)
       echo "Unknown task: $task" >&2
@@ -204,63 +203,62 @@ read_progress() {
   REDUNDANT="${REDUNDANT:-0}"
 }
 
-echo "Experiment task:"
-echo "  $EXPERIMENT_TASK"
-if [[ -n "$WORKUNITS" ]]; then
-  echo "  workunits=$WORKUNITS"
-fi
-echo
-echo "Distributed computing config:"
-if [[ -f "$ROOT_DIR/config/distributed.env" ]]; then
-  grep -v '^#' "$ROOT_DIR/config/distributed.env" | grep -v '^$' || true
-else
-  echo "No config/distributed.env found; using defaults from run_task.sh."
+if debug_enabled; then
+  echo "Experiment task:"
+  echo "  $EXPERIMENT_TASK"
+  if [[ -n "$WORKUNITS" ]]; then
+    echo "  workunits=$WORKUNITS"
+  fi
+  echo
+  echo "Distributed computing config:"
+  if [[ -f "$ROOT_DIR/config/distributed.env" ]]; then
+    grep -v '^#' "$ROOT_DIR/config/distributed.env" | grep -v '^$' || true
+  else
+    echo "No config/distributed.env found; using defaults from run_task.sh."
+  fi
 fi
 
-echo
-echo "Submitting BOINC work..."
+step "Submitting BOINC work..."
 export ANSIBLE_HOST_KEY_CHECKING=False
 run_selected_experiment
 
-echo
 if [[ "$STATUS_AFTER_SUBMIT" == "1" ]]; then
-  echo "Status after submitting work:"
-  ./scripts/status.sh "${ANSIBLE_ARGS[@]}" || true
-  echo
+  step "Checking status after submitting work..."
+  quiet_run_all ./scripts/status.sh "${ANSIBLE_ARGS[@]}" || true
 fi
 
 if [[ "$SUBMIT_ONLY" == "1" ]]; then
-  echo "Experiment submitted."
-  echo "Auto-update, Grafana dump, and status check were skipped."
+  step "Experiment submitted."
+  debug_enabled && echo "Auto-update, Grafana dump, and status check were skipped."
   exit 0
 fi
 
-echo
-./scripts/pump_clients.sh \
+step "Requesting BOINC client updates..."
+quiet_run_all ./scripts/pump_clients.sh \
   --max-seconds "$AUTO_UPDATE_SECONDS" \
   --interval-seconds "$AUTO_UPDATE_INTERVAL_SECONDS" \
   --quiet \
   "${ANSIBLE_ARGS[@]}"
 
-echo
 if [[ "$AUTO_DUMP_RESULTS" == "1" ]]; then
   if docker ps --format '{{.Names}}' | grep -qx 'boinc-grafana'; then
     read_progress
     if [[ "$CLIENT_ERRORS" -gt 0 || "$WORKUNITS" -eq 0 || "$COMPLETED" -lt "$WORKUNITS" ]]; then
-      echo "Skipping Grafana dump because computations are not clean:"
-      echo "  workunits=$WORKUNITS completed=$COMPLETED unfinished=$UNFINISHED client_errors=$CLIENT_ERRORS redundant=$REDUNDANT"
+      step "Skipping Grafana dump because computations are not complete."
+      debug_enabled && echo "  workunits=$WORKUNITS completed=$COMPLETED unfinished=$UNFINISHED client_errors=$CLIENT_ERRORS redundant=$REDUNDANT"
       echo "Check the reason with:"
       echo "  ./scripts/diagnose_compute.sh --debug"
       echo "  ./scripts/status.sh --debug"
       echo "After fixing the computation, rerun the experiment, then dump manually if needed:"
       echo "  ./scripts/dump_grafana_results.sh --wait --max-seconds 600"
     else
-      if ./scripts/dump_grafana_results.sh \
+      step "Dumping Grafana results..."
+      if quiet_run_all ./scripts/dump_grafana_results.sh \
         --wait \
         --max-seconds "${BOINC_DUMP_WAIT_SECONDS:-$AUTO_UPDATE_SECONDS}" \
         --interval-seconds "${BOINC_DUMP_INTERVAL_SECONDS:-15}" \
         --quiet; then
-        echo "Grafana dump saved."
+        step "Grafana dump saved."
       else
         echo "WARNING: Grafana dump was skipped or failed. Check computations and monitoring, then run:"
         echo "  ./scripts/dump_grafana_results.sh --wait --max-seconds 600"
@@ -273,8 +271,7 @@ if [[ "$AUTO_DUMP_RESULTS" == "1" ]]; then
   fi
 fi
 
-echo
-echo "Experiment submitted."
-echo "Use monitoring or status command to watch progress:"
-echo "  ./scripts/status.sh"
-echo "  http://$MONITORING_HOST:3000"
+step "Experiment submitted."
+debug_enabled && echo "Use monitoring or status command to watch progress:"
+debug_enabled && echo "  ./scripts/status.sh --debug"
+debug_enabled && echo "  http://$MONITORING_HOST:3000"

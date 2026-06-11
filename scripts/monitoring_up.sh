@@ -128,7 +128,7 @@ retry_command() {
     fi
 
     if [[ "$attempt" -lt "$attempts" ]]; then
-      echo "Command failed, retrying in ${delay_seconds}s ($attempt/$attempts): $*" >&2
+      debug_enabled && echo "Command failed, retrying in ${delay_seconds}s ($attempt/$attempts): $*" >&2
       sleep "$delay_seconds"
     fi
   done
@@ -138,16 +138,15 @@ retry_command() {
 
 ensure_boinc_exporter_image() {
   if docker image inspect "$BOINC_EXPORTER_IMAGE" >/dev/null 2>&1; then
-    echo "Using existing BOINC exporter image: $BOINC_EXPORTER_IMAGE"
+    step "Checking BOINC exporter image..."
     return 0
   fi
 
-  echo "BOINC exporter image not found locally: $BOINC_EXPORTER_IMAGE"
-  echo "Building it from base image: $BOINC_EXPORTER_BASE_IMAGE"
+  step "Building BOINC exporter image..."
 
   pull_cmd=(docker pull "$BOINC_EXPORTER_BASE_IMAGE")
   if ! debug_enabled; then
-    pull_cmd=(quiet_run docker pull "$BOINC_EXPORTER_BASE_IMAGE")
+    pull_cmd=(quiet_run_all docker pull "$BOINC_EXPORTER_BASE_IMAGE")
   fi
 
   if ! retry_command 5 20 "${pull_cmd[@]}"; then
@@ -171,11 +170,12 @@ ensure_boinc_exporter_image() {
       docker build -q \
         --build-arg "PYTHON_BASE_IMAGE=$BOINC_EXPORTER_BASE_IMAGE" \
         -t "$BOINC_EXPORTER_IMAGE" \
-        "$MONITORING_DIR" >/dev/null
+        "$MONITORING_DIR" >/dev/null 2>&1
   fi
 }
 
-python3 - "$ROOT_DIR" "$MONITORING_DIR/prometheus.yml" <<'PY'
+step "Generating monitoring configuration..."
+python3 - "$ROOT_DIR" "$MONITORING_DIR/prometheus.yml" <<'PY' | quiet_output
 import sys
 from pathlib import Path
 
@@ -255,20 +255,18 @@ else:
 PY
 
 if [[ "$DEPLOY_CLIENT_AGENTS" == "1" && -f "$ROOT_DIR/ansible/inventory.ini" ]]; then
-  echo
   refresh_client_known_hosts "$ROOT_DIR/ansible/inventory.ini"
 
-  echo
-  echo "Deploying monitoring agents on BOINC clients..."
+  step "Deploying monitoring agents..."
   ANSIBLE_HOST_KEY_CHECKING=False \
-  ./scripts/deploy_monitoring_agents.sh "${ANSIBLE_ARGS[@]}" || true
+  quiet_run_all ./scripts/deploy_monitoring_agents.sh "${ANSIBLE_ARGS[@]}" || true
 else
-  echo
-  echo "Skipping client monitoring agent deployment."
+  step "Skipping client monitoring agent deployment."
 fi
 
 ensure_boinc_exporter_image
 
+step "Starting monitoring stack..."
 (
   cd "$MONITORING_DIR"
   compose_args=(up -d)
@@ -278,8 +276,7 @@ ensure_boinc_exporter_image
   compose_run "${compose_args[@]}"
 )
 
-echo
-echo "Monitoring is running:"
+step "Monitoring is running:"
 echo "  Prometheus: http://$SERVER_IP:9090"
 echo "  Grafana:    http://$SERVER_IP:3000"
 echo "  Exporter:   http://$SERVER_IP:9101/metrics"

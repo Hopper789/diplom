@@ -71,17 +71,13 @@ fi
 project_url_q="$(printf "%q" "${BOINC_PROJECT_URL:-}")"
 rpc_password_q="$(printf "%q" "${BOINC_CLIENT_RPC_PASSWORD:-}")"
 
-echo "== Checking BOINC client runtime =="
-echo
-
-echo "Ansible ping:"
+step "Establishing SSH connection..."
 ANSIBLE_HOST_KEY_CHECKING=False \
-  ansible -i "$INVENTORY_FILE" boinc_clients "${ANSIBLE_ARGS[@]}" -m ping
+  quiet_run_all ansible -i "$INVENTORY_FILE" boinc_clients "${ANSIBLE_ARGS[@]}" -m ping
 
-echo
-echo "Docker and Python runtime inside boinc-client:"
+step "Checking BOINC client runtime..."
 ANSIBLE_HOST_KEY_CHECKING=False \
-  ansible -i "$INVENTORY_FILE" boinc_clients -b "${ANSIBLE_ARGS[@]}" -m shell -a "
+  quiet_run_all ansible -i "$INVENTORY_FILE" boinc_clients -b "${ANSIBLE_ARGS[@]}" -m shell -a "
     set -e
 
     docker version >/dev/null
@@ -115,5 +111,4 @@ print(\"numba=\" + numba.__version__)
     fi
   "
 
-echo
-echo "Client runtime check completed."
+step "Client runtime check completed."

@@ -28,7 +28,7 @@ quiet_run() {
   if debug_enabled; then
     "$@"
   else
-    "$@" >/dev/null
+    "$@" >/dev/null 2>&1
   fi
 }
 
@@ -40,11 +40,23 @@ quiet_run_all() {
   fi
 }
 
+quiet_output() {
+  if debug_enabled; then
+    cat
+  else
+    cat >/dev/null
+  fi
+}
+
+step() {
+  echo "$@"
+}
+
 compose_run() {
   if debug_enabled; then
     COMPOSE_BAKE=false docker compose "$@"
   else
-    COMPOSE_BAKE=false COMPOSE_PROGRESS=quiet docker compose "$@" >/dev/null
+    COMPOSE_BAKE=false COMPOSE_PROGRESS=quiet docker compose "$@" >/dev/null 2>&1
   fi
 }
 

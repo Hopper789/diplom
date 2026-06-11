@@ -54,7 +54,7 @@ remove_runtime_dir() {
     fi
 
     echo "  Removing root-owned runtime path with sudo: $path"
-    sudo rm -rf "$path"
+    quiet_run_all sudo rm -rf "$path"
   fi
 }
 
@@ -68,8 +68,7 @@ load_generated_env() {
 }
 
 clean_server_runtime() {
-  echo
-  echo "Stopping monitoring stack..."
+  step "Stopping monitoring stack..."
   if [[ -f "$ROOT_DIR/monitoring/docker-compose.yml" ]]; then
     (
       cd "$ROOT_DIR/monitoring"
@@ -77,8 +76,7 @@ clean_server_runtime() {
     )
   fi
 
-  echo
-  echo "Stopping BOINC server stack..."
+  step "Stopping BOINC server stack..."
   if [[ -f "$ROOT_DIR/server/docker-compose.yml" ]]; then
     (
       cd "$ROOT_DIR/server"
@@ -86,22 +84,19 @@ clean_server_runtime() {
     )
   fi
 
-  echo
-  echo "Removing server runtime directories..."
+  step "Removing server runtime directories..."
   remove_runtime_dir "$ROOT_DIR/server/project"
   remove_runtime_dir "$ROOT_DIR/server/mariadb-data"
   remove_runtime_dir "$ROOT_DIR/server/mysql-data"
 
   mkdir -p "$ROOT_DIR/server/project"
 
-  echo
-  echo "Removing dangling BOINC server containers if any..."
-  docker rm -f boinc-server boinc-mariadb boinc-mysql 2>/dev/null || true
+  step "Removing dangling BOINC server containers..."
+  quiet_run_all docker rm -f boinc-server boinc-mariadb boinc-mysql || true
 }
 
 remove_generated_runtime_configs() {
-  echo
-  echo "Removing generated runtime configs..."
+  step "Removing generated runtime configs..."
   rm -f "$ROOT_DIR/config/generated.env"
   rm -f "$ROOT_DIR/ansible/inventory.ini"
   rm -f "$ROOT_DIR/ansible/group_vars/all/main.yml"
@@ -118,8 +113,7 @@ ensure_remote_cleanup_possible() {
 }
 
 reset_client_tasks() {
-  echo
-  echo "Resetting BOINC project tasks on remote clients..."
+  step "Resetting BOINC project tasks on remote clients..."
 
   if ! ensure_remote_cleanup_possible; then
     return 0
@@ -137,7 +131,7 @@ reset_client_tasks() {
   rpc_password_q="$(printf "%q" "${BOINC_CLIENT_RPC_PASSWORD:-}")"
 
   ANSIBLE_HOST_KEY_CHECKING=False \
-    ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b "${ANSIBLE_ARGS[@]}" -m shell -a "
+    quiet_run_all ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b "${ANSIBLE_ARGS[@]}" -m shell -a "
       BOINC_PROJECT_URL=$project_url_q
       BOINC_CLIENT_RPC_PASSWORD=$rpc_password_q
       export BOINC_PROJECT_URL BOINC_CLIENT_RPC_PASSWORD
@@ -171,15 +165,14 @@ reset_client_tasks() {
 }
 
 purge_remote_clients() {
-  echo
-  echo "Fully removing remote BOINC clients..."
+  step "Fully removing remote BOINC clients..."
 
   if ! ensure_remote_cleanup_possible; then
     return 0
   fi
 
   ANSIBLE_HOST_KEY_CHECKING=False \
-    ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b "${ANSIBLE_ARGS[@]}" -m shell -a '
+    quiet_run_all ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b "${ANSIBLE_ARGS[@]}" -m shell -a '
       docker rm -f boinc-client 2>/dev/null || true
       rm -rf /opt/boinc-client/data
 
@@ -233,7 +226,7 @@ fi
 
 load_generated_env
 
-echo "Cleaning BOINC runtime data..."
+step "Cleaning BOINC runtime data..."
 
 if [[ "$CLIENTS_ONLY" != "1" ]]; then
   clean_server_runtime
@@ -252,7 +245,7 @@ if [[ "$CLIENTS_ONLY" != "1" ]]; then
 fi
 
 echo
-echo "Runtime cleanup completed."
+step "Runtime cleanup completed."
 echo
 echo "Next steps:"
 echo "  ./scripts/prepare_system.sh"

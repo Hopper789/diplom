@@ -179,16 +179,17 @@ if [[ "$ASK_BECOME_PASS" == "1" ]]; then
   launch_args+=(--ask-become-pass)
 fi
 
-echo "== BOINC cluster quickstart =="
-echo
+step "Starting BOINC cluster quickstart..."
 
 if [[ "$SKIP_PREPARE" != "1" ]]; then
-  ./scripts/prepare_system.sh "${prepare_args[@]}"
+  step "Preparing system..."
+  quiet_run_all ./scripts/prepare_system.sh "${prepare_args[@]}"
 fi
 
 if [[ "$SKIP_LAUNCH" != "1" ]]; then
-  ./scripts/launch_cluster.sh "${launch_args[@]}"
+  step "Launching cluster..."
+  quiet_run_all ./scripts/launch_cluster.sh "${launch_args[@]}"
 fi
 
 echo
-echo "Quickstart completed."
+step "Quickstart completed."

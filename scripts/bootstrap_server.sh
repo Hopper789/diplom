@@ -44,7 +44,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-echo "== Запуск BOINC server =="
+step "Starting BOINC server..."
 
 if [[ ! -f config/cluster.yml ]]; then
   echo "Не найден config/cluster.yml."
@@ -59,15 +59,19 @@ chmod +x apps/ml_grid_search/run_task.sh 2>/dev/null || true
 chmod +x server/entrypoint.sh 2>/dev/null || true
 chmod +x server/scripts/*.sh 2>/dev/null || true
 
-./scripts/init_config.sh
-./scripts/server_up.sh
-./scripts/create_account_db.sh
+step "Generating configuration..."
+quiet_run_all ./scripts/init_config.sh
+step "Starting server containers..."
+quiet_run_all ./scripts/server_up.sh
+step "Creating BOINC account..."
+quiet_run_all ./scripts/create_account_db.sh
 
 if [[ "$SKIP_STATUS" != "1" ]]; then
-  ./scripts/status.sh --server-only || true
+  step "Checking server status..."
+  quiet_run_all ./scripts/status.sh --server-only || true
 fi
 
 echo
-echo "Серверная часть готова."
+step "Серверная часть готова."
 echo "Следующий шаг:"
 echo "  ./scripts/bootstrap_clients.sh"

@@ -171,7 +171,8 @@ print_missing_dependencies() {
 
 ensure_local_dependencies() {
   if [[ "$INSTALL_LOCAL" == "1" ]]; then
-    ./scripts/install_server_requirements.sh
+    step "Installing local dependencies..."
+    quiet_run_all ./scripts/install_server_requirements.sh
   fi
 
   check_local_dependencies
@@ -183,34 +184,34 @@ ensure_local_dependencies() {
 
 ensure_vault() {
   if [[ -f "$VAULT_FILE" && -f "$VAULT_PASS_FILE" ]]; then
-    echo "Vault exists; keeping current files."
+    step "Checking Vault..."
     return 0
   fi
 
-  echo "Initializing Ansible Vault..."
+  step "Initializing Ansible Vault..."
   ./scripts/init_vault.sh
 }
 
 ensure_ssh_key() {
   if [[ -f "$HOME/.ssh/id_ed25519" ]]; then
-    echo "SSH key found: ~/.ssh/id_ed25519"
+    step "Checking SSH key..."
     return 0
   fi
 
   if [[ -f "$HOME/.ssh/id_rsa" ]]; then
-    echo "SSH key found: ~/.ssh/id_rsa"
+    step "Checking SSH key..."
     return 0
   fi
 
-  echo "SSH key not found; generating ~/.ssh/id_ed25519..."
+  step "Generating SSH key..."
   mkdir -p "$HOME/.ssh"
   chmod 700 "$HOME/.ssh"
-  ssh-keygen -t ed25519 -f "$HOME/.ssh/id_ed25519" -N ""
+  quiet_run_all ssh-keygen -t ed25519 -f "$HOME/.ssh/id_ed25519" -N ""
 }
 
 ansible_ping_clients() {
   ANSIBLE_HOST_KEY_CHECKING=False \
-    ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients "${ANSIBLE_ARGS[@]}" -m ping
+    quiet_run_all ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients "${ANSIBLE_ARGS[@]}" -m ping
 }
 
 print_ssh_failed() {
@@ -227,17 +228,17 @@ print_ssh_failed() {
 }
 
 check_ssh_access() {
-  echo "Checking SSH access to BOINC clients..."
+  step "Establishing SSH connection..."
   if ansible_ping_clients; then
     return 0
   fi
 
   if [[ "$COPY_SSH_KEYS" == "1" ]]; then
     echo
-    echo "Copying SSH keys to client nodes..."
+    step "Copying SSH keys..."
     ./scripts/copy_ssh_keys.sh
     echo
-    echo "Rechecking SSH access to BOINC clients..."
+    step "Establishing SSH connection..."
     if ansible_ping_clients; then
       return 0
     fi
@@ -250,9 +251,9 @@ check_ssh_access() {
 
 prepare_client_nodes() {
   echo
-  echo "Preparing BOINC client nodes..."
+  step "Preparing BOINC client nodes..."
   ANSIBLE_HOST_KEY_CHECKING=False \
-    ansible-playbook \
+    quiet_run_all ansible-playbook \
       -i "$ROOT_DIR/ansible/inventory.ini" \
       "$ROOT_DIR/ansible/prepare_nodes.yml" \
       "${ANSIBLE_ARGS[@]}"
@@ -283,7 +284,8 @@ check_not_sudo
 check_cluster_config
 ensure_local_dependencies
 
-./scripts/init_config.sh
+step "Generating configuration..."
+quiet_run_all ./scripts/init_config.sh
 ensure_vault
 ensure_ssh_key
 

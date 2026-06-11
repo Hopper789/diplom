@@ -45,17 +45,16 @@ refresh_client_known_hosts() {
     return 0
   fi
 
-  echo "Refreshing SSH known_hosts for remote clients..."
+  step "Refreshing SSH known_hosts..."
   while IFS="|" read -r host port; do
     [[ -z "$host" ]] && continue
 
     if [[ -n "$port" ]]; then
-      echo "  removing old SSH host key for $host:$port"
+      debug_enabled && echo "  removing old SSH host key for $host:$port"
       ssh-keygen -R "[$host]:$port" >/dev/null 2>&1 || true
     else
-      echo "  removing old SSH host key for $host"
+      debug_enabled && echo "  removing old SSH host key for $host"
       ssh-keygen -R "$host" >/dev/null 2>&1 || true
     fi
   done < <(inventory_client_hosts "$inventory")
-  echo
 }

@@ -274,8 +274,8 @@ resolve_app_version() {
 }
 
 generate_inputs() {
-  echo "Генерация input.json-файлов из params.jsonl..."
-  python3 "$APP_DIR/generate_inputs.py" \
+  step "Generating BOINC input files..."
+  quiet_run_all python3 "$APP_DIR/generate_inputs.py" \
     --params "$PARAMS_FILE" \
     --out "$INPUT_DIR" \
     --device "$DEVICE"
@@ -598,7 +598,7 @@ EOF
 }
 
 declare_app_in_project_xml() {
-  docker exec boinc-server bash -lc "
+  quiet_run_all docker exec boinc-server bash -lc "
     cd '/project/$PROJECT_NAME'
     if ! grep -q '<name>$APP_NAME</name>' project.xml; then
       python3 - <<'PY'
@@ -623,31 +623,33 @@ PY
 }
 
 deploy_app_to_server() {
-  echo "Деплой Python task runner в BOINC server..."
-  echo "  APP_NAME=$APP_NAME"
-  echo "  APP_VERSION=$APP_VERSION"
-  echo "  PLATFORM=$PLATFORM"
+  step "Deploying Python task runner..."
+  if debug_enabled; then
+    echo "  APP_NAME=$APP_NAME"
+    echo "  APP_VERSION=$APP_VERSION"
+    echo "  PLATFORM=$PLATFORM"
+  fi
 
   generate_input_template
   write_launcher
   write_version_xml
 
-  docker exec boinc-server bash -lc "
+  quiet_run_all docker exec boinc-server bash -lc "
     mkdir -p \
       '/project/$PROJECT_NAME/apps/$APP_NAME/$APP_VERSION/$PLATFORM' \
       '/project/$PROJECT_NAME/templates' \
       '/project/$PROJECT_NAME/work_inputs'
   "
 
-  docker cp "$BUILD_DIR/$BIN_NAME" "boinc-server:/project/$PROJECT_NAME/apps/$APP_NAME/$APP_VERSION/$PLATFORM/$BIN_NAME"
-  docker cp "$APP_DIR/runner.py" "boinc-server:/project/$PROJECT_NAME/apps/$APP_NAME/$APP_VERSION/$PLATFORM/runner.py"
-  docker cp "$APP_DIR/task_api.py" "boinc-server:/project/$PROJECT_NAME/apps/$APP_NAME/$APP_VERSION/$PLATFORM/task_api.py"
-  docker cp "$TASK_FILE" "boinc-server:/project/$PROJECT_NAME/apps/$APP_NAME/$APP_VERSION/$PLATFORM/user_task.py"
-  docker cp "$VERSION_XML" "boinc-server:/project/$PROJECT_NAME/apps/$APP_NAME/$APP_VERSION/$PLATFORM/version.xml"
-  docker cp "$TPL_IN" "boinc-server:/project/$PROJECT_NAME/templates/${APP_NAME}_in"
-  docker cp "$TPL_OUT" "boinc-server:/project/$PROJECT_NAME/templates/${APP_NAME}_out"
+  quiet_run_all docker cp "$BUILD_DIR/$BIN_NAME" "boinc-server:/project/$PROJECT_NAME/apps/$APP_NAME/$APP_VERSION/$PLATFORM/$BIN_NAME"
+  quiet_run_all docker cp "$APP_DIR/runner.py" "boinc-server:/project/$PROJECT_NAME/apps/$APP_NAME/$APP_VERSION/$PLATFORM/runner.py"
+  quiet_run_all docker cp "$APP_DIR/task_api.py" "boinc-server:/project/$PROJECT_NAME/apps/$APP_NAME/$APP_VERSION/$PLATFORM/task_api.py"
+  quiet_run_all docker cp "$TASK_FILE" "boinc-server:/project/$PROJECT_NAME/apps/$APP_NAME/$APP_VERSION/$PLATFORM/user_task.py"
+  quiet_run_all docker cp "$VERSION_XML" "boinc-server:/project/$PROJECT_NAME/apps/$APP_NAME/$APP_VERSION/$PLATFORM/version.xml"
+  quiet_run_all docker cp "$TPL_IN" "boinc-server:/project/$PROJECT_NAME/templates/${APP_NAME}_in"
+  quiet_run_all docker cp "$TPL_OUT" "boinc-server:/project/$PROJECT_NAME/templates/${APP_NAME}_out"
 
-  docker exec boinc-server bash -lc "
+  quiet_run_all docker exec boinc-server bash -lc "
     chmod +x '/project/$PROJECT_NAME/apps/$APP_NAME/$APP_VERSION/$PLATFORM/$BIN_NAME'
     chmod 0644 \
       '/project/$PROJECT_NAME/apps/$APP_NAME/$APP_VERSION/$PLATFORM/runner.py' \
@@ -658,8 +660,8 @@ deploy_app_to_server() {
 
   declare_app_in_project_xml
 
-  docker exec boinc-server bash -lc "cd '/project/$PROJECT_NAME' && ./bin/xadd"
-  docker exec boinc-server bash -lc "cd '/project/$PROJECT_NAME' && ./bin/update_versions --noconfirm"
+  quiet_run_all docker exec boinc-server bash -lc "cd '/project/$PROJECT_NAME' && ./bin/xadd"
+  quiet_run_all docker exec boinc-server bash -lc "cd '/project/$PROJECT_NAME' && ./bin/update_versions --noconfirm"
 }
 
 assert_app_version_registered() {
@@ -715,12 +717,12 @@ create_workunits() {
     "
   done
 
-  docker exec boinc-server bash -lc "cd '/project/$PROJECT_NAME' && touch reread_db"
+  quiet_run_all docker exec boinc-server bash -lc "cd '/project/$PROJECT_NAME' && touch reread_db"
 }
 
 restart_project_daemons() {
-  echo "Перезапуск BOINC daemons, чтобы сервер перечитал очередь задач..."
-  docker exec boinc-server bash -lc "
+  step "Restarting BOINC daemons..."
+  quiet_run_all docker exec boinc-server bash -lc "
     cd '/project/$PROJECT_NAME'
     ./bin/stop || true
     sleep 2
@@ -731,14 +733,14 @@ restart_project_daemons() {
 
 update_clients() {
   if [[ ! -f "$ROOT_DIR/ansible/inventory.ini" ]] || ! command -v ansible >/dev/null 2>&1; then
-    echo "Ansible недоступен или нет inventory; обновление клиентов пропущено."
+    debug_enabled && echo "Ansible недоступен или нет inventory; обновление клиентов пропущено."
     return 0
   fi
 
-  echo "Запрос project update на клиентах..."
+  step "Requesting BOINC client updates..."
   # shellcheck disable=SC2086
   ANSIBLE_HOST_KEY_CHECKING=False \
-  ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b $ANSIBLE_EXTRA_ARGS -m shell -a "
+  quiet_run_all ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b $ANSIBLE_EXTRA_ARGS -m shell -a "
     docker exec boinc-client sh -lc \"cat > /var/lib/boinc/global_prefs_override.xml <<'EOF'
 <global_preferences>
   <run_on_batteries>1</run_on_batteries>

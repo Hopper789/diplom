@@ -191,7 +191,7 @@ EOF\"
   rc=$?
   set -e
 
-  if [[ "$VERBOSE" == "1" || "$rc" -ne 0 ]]; then
+  if [[ "$VERBOSE" == "1" || ( "$rc" -ne 0 && "${DEBUG:-0}" == "1" ) ]]; then
     echo "$output"
   fi
 
@@ -308,7 +308,11 @@ while true; do
   request_update
 
   if [[ "$zero_active_rounds" -ge 4 ]]; then
-    print_diagnostics
+    if debug_enabled; then
+      print_diagnostics
+    else
+      echo "BOINC clients did not receive work. Run with --debug for diagnostics." >&2
+    fi
     exit 1
   fi
 

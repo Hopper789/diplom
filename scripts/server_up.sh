@@ -33,11 +33,11 @@ mkdir -p "$ROOT_DIR/server/project" "$ROOT_DIR/server/mariadb-data"
   fi
 )
 
-echo "Waiting for MariaDB to be ready..."
+step "Waiting for MariaDB..."
 attempts=30
 for ((i=1; i<=attempts; i++)); do
   if docker exec boinc-mariadb mariadb -u root -proot -e "SELECT 1" >/dev/null 2>&1; then
-    echo "MariaDB is ready."
+    step "MariaDB is ready."
     break
   fi
   if [[ "$i" -eq "$attempts" ]]; then
@@ -47,10 +47,12 @@ for ((i=1; i<=attempts; i++)); do
   sleep 2
 done
 
-"$ROOT_DIR/server/scripts/create_project.sh"
-"$ROOT_DIR/server/scripts/fix_project_url.sh"
+step "Creating BOINC project..."
+quiet_run_all "$ROOT_DIR/server/scripts/create_project.sh"
+step "Updating BOINC project URL..."
+quiet_run_all "$ROOT_DIR/server/scripts/fix_project_url.sh"
 
 quiet_run docker restart boinc-server
 
-echo "BOINC server is ready:"
-echo "$BOINC_PROJECT_URL"
+step "BOINC server is ready."
+debug_enabled && echo "$BOINC_PROJECT_URL"

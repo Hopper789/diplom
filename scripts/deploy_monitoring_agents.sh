@@ -21,7 +21,8 @@ if [[ ! -f "$ROOT_DIR/ansible/inventory.ini" ]]; then
   exit 1
 fi
 
-ansible-playbook \
+step "Deploying monitoring agents..."
+quiet_run_all ansible-playbook \
   -i "$ROOT_DIR/ansible/inventory.ini" \
   "$ROOT_DIR/ansible/install_monitoring_agents.yml" \
   "${ANSIBLE_ARGS[@]}"

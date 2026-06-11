@@ -35,8 +35,8 @@ fi
 
 if [[ ! -f "$SSH_KEY" ]]; then
   echo "SSH key not found: $SSH_KEY"
-  echo "Generating new SSH key..."
-  ssh-keygen -t ed25519 -f "$SSH_KEY" -N ""
+  step "Generating SSH key..."
+  quiet_run_all ssh-keygen -t ed25519 -f "$SSH_KEY" -N ""
 fi
 
 PUB_KEY="${SSH_KEY}.pub"
@@ -118,13 +118,7 @@ if [[ -z "$NODES" ]]; then
   exit 1
 fi
 
-echo "Using SSH key:"
-echo "  private: $SSH_KEY"
-echo "  public:  $PUB_KEY"
-echo
-
-echo "Copying SSH public key to clients from $CLUSTER_FILE..."
-echo
+step "Copying SSH public key to clients..."
 
 while IFS="|" read -r NAME USER IP PORT; do
   [[ -z "$USER" || -z "$IP" ]] && continue
@@ -137,7 +131,8 @@ while IFS="|" read -r NAME USER IP PORT; do
     LABEL="$LABEL:$PORT"
   fi
 
-  echo "==> $LABEL as $USER"
+  step "Establishing SSH connection..."
+  debug_enabled && echo "==> $LABEL as $USER"
 
   SSH_COPY_ID_ARGS=(
     -i "$PUB_KEY"
@@ -156,11 +151,6 @@ while IFS="|" read -r NAME USER IP PORT; do
       "${SSH_COPY_ID_ARGS[@]}" \
       "$USER@$IP" >/dev/null
   fi
-
-  echo
 done <<< "$NODES"
 
-echo "Done."
-echo
-echo "Now test:"
-echo "  ansible -i ansible/inventory.ini boinc_clients -m ping"
+step "SSH keys copied."

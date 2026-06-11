@@ -59,6 +59,47 @@ raise SystemExit(0 if result else 1)
 '
 }
 
+if ! debug_enabled; then
+  step "Checking server containers..."
+  if docker ps --format '{{.Names}}' | grep -qx 'boinc-server'; then
+    echo "BOINC server: running"
+  else
+    echo "BOINC server: not running"
+  fi
+
+  if docker ps --format '{{.Names}}' | grep -qx 'boinc-mariadb'; then
+    echo "MariaDB: running"
+  else
+    echo "MariaDB: not running"
+  fi
+
+  if [[ "$SERVER_ONLY" != "1" && -f "$ROOT_DIR/ansible/inventory.ini" ]] && command -v ansible >/dev/null 2>&1; then
+    step "Establishing SSH connection..."
+    if ANSIBLE_HOST_KEY_CHECKING=False quiet_run_all \
+      ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients "${ANSIBLE_ARGS[@]}" -m ping; then
+      echo "BOINC clients: reachable"
+    else
+      echo "BOINC clients: unreachable"
+    fi
+  fi
+
+  step "Checking monitoring..."
+  if docker ps --format '{{.Names}}' | grep -qx 'boinc-grafana'; then
+    echo "Grafana: running"
+  else
+    echo "Grafana: not running"
+  fi
+
+  if docker ps --format '{{.Names}}' | grep -qx 'boinc-prometheus'; then
+    echo "Prometheus: running"
+  else
+    echo "Prometheus: not running"
+  fi
+
+  echo "Use --debug for full status details."
+  exit 0
+fi
+
 echo "== Docker containers on server =="
 docker ps --filter name=boinc || true
 docker ps --filter name=monitoring || true
