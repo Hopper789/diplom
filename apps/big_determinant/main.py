@@ -1,89 +1,27 @@
-"""CPU-heavy determinant workload for the BOINC Python runner."""
+"""Real determinant workload for the BOINC Python runner."""
 
 from __future__ import annotations
 
 import math
-import multiprocessing as mp
-import os
 import platform
 import time
-import traceback
-from queue import Empty
 from typing import Any
-
-# One BOINC workunit should occupy the whole client CPU.  Keep BLAS single
-# threaded and parallelize explicitly with one worker process per CPU.
-for _thread_env in (
-    "OPENBLAS_NUM_THREADS",
-    "OMP_NUM_THREADS",
-    "MKL_NUM_THREADS",
-    "NUMEXPR_NUM_THREADS",
-):
-    os.environ[_thread_env] = "1"
 
 try:
     import numpy as np
-    import numba
-    from numba import njit
 except ModuleNotFoundError as exc:  # pragma: no cover - validated on client image
     raise RuntimeError(
-        "big_det requires numpy and numba. "
+        "big_determinant requires numpy. "
         "Run ./scripts/prepare_system.sh --install-local and redeploy BOINC clients."
     ) from exc
 
 
-BENCHMARK_SECONDS = 600.0
-BENCHMARK_MATRIX_SIZE = 1200
-BENCHMARK_DIAGONAL_BOOST = max(1.0, BENCHMARK_MATRIX_SIZE * 0.01)
-WORKER_SEED_STRIDE = 1_000_003
-
-
-@njit(cache=True)
-def _fill_matrix(size: int, seed: int, diagonal_boost: float) -> np.ndarray:
-    matrix = np.empty((size, size), dtype=np.float64)
-    seed_value = float(seed + 1)
-
-    for row in range(size):
-        row_value = float(row + 1)
-        for col in range(size):
-            col_value = float(col + 1)
-            angle = (row_value * 12.9898 + col_value * 78.233 + seed_value * 0.137)
-            value = math.sin(angle) * 0.5 + math.cos(angle * 0.37) * 0.5
-            if row == col:
-                value += diagonal_boost
-            matrix[row, col] = value
-
-    return matrix
+MATRIX_SIZE = 1200
+DIAGONAL_BOOST = max(1.0, MATRIX_SIZE * 0.01)
 
 
 def _as_int(params: dict[str, Any], key: str, default: int) -> int:
     return int(params.get(key, default))
-
-
-def _visible_cpu_count() -> int:
-    return max(1, os.cpu_count() or 1)
-
-
-def _affinity_count() -> int:
-    try:
-        return max(1, len(os.sched_getaffinity(0)))
-    except AttributeError:
-        return _visible_cpu_count()
-
-
-def _expand_affinity_to_visible_cpus() -> bool:
-    if not hasattr(os, "sched_setaffinity"):
-        return False
-
-    try:
-        os.sched_setaffinity(0, set(range(_visible_cpu_count())))
-        return True
-    except OSError:
-        return False
-
-
-def _warm_up_numba() -> None:
-    _fill_matrix(4, 1, 1.0)
 
 
 def _scientific_from_log(sign: float, log_abs_det: float) -> dict[str, Any]:
@@ -95,188 +33,46 @@ def _scientific_from_log(sign: float, log_abs_det: float) -> dict[str, Any]:
     return {"mantissa": mantissa, "exponent10": int(exponent10)}
 
 
-def _run_determinant_loop(
-    *,
-    size: int,
-    seed: int,
-    diagonal_boost: float,
-    deadline: float,
-    worker_index: int,
-) -> dict[str, Any]:
-    repeats = 0
-    last_sign = 0.0
-    last_log_abs_det = 0.0
-    checksum = 0.0
-    first_det_seconds = 0.0
-    worker_started = time.perf_counter()
-    worker_seed = seed + worker_index * WORKER_SEED_STRIDE
-
-    while True:
-        repeat_started = time.perf_counter()
-        matrix = _fill_matrix(size, worker_seed + repeats, diagonal_boost)
-        sign, log_abs_det = np.linalg.slogdet(matrix)
-        repeat_seconds = time.perf_counter() - repeat_started
-
-        repeats += 1
-        last_sign = float(sign)
-        last_log_abs_det = float(log_abs_det)
-        checksum += last_sign * last_log_abs_det
-        if repeats == 1:
-            first_det_seconds = repeat_seconds
-
-        if time.perf_counter() >= deadline:
-            break
-
-    return {
-        "worker_index": worker_index,
-        "repeats": repeats,
-        "checksum": checksum,
-        "last_sign": last_sign,
-        "last_log_abs_det": last_log_abs_det,
-        "first_det_seconds": first_det_seconds,
-        "elapsed_seconds": time.perf_counter() - worker_started,
-    }
-
-
-def _worker_main(queue: Any, kwargs: dict[str, Any]) -> None:
-    try:
-        _expand_affinity_to_visible_cpus()
-        queue.put({"ok": True, "result": _run_determinant_loop(**kwargs)})
-    except Exception:
-        queue.put({"ok": False, "error": traceback.format_exc()})
-        raise
-
-
-def _run_all_cpu_determinants(
-    *,
-    size: int,
-    seed: int,
-    diagonal_boost: float,
-    workers: int,
-) -> list[dict[str, Any]]:
-    _warm_up_numba()
-
-    if workers <= 1 or "fork" not in mp.get_all_start_methods():
-        return [
-            _run_determinant_loop(
-                size=size,
-                seed=seed,
-                diagonal_boost=diagonal_boost,
-                deadline=time.perf_counter() + BENCHMARK_SECONDS,
-                worker_index=0,
-            )
-        ]
-
-    ctx = mp.get_context("fork")
-    queue = ctx.Queue()
-    deadline = time.perf_counter() + BENCHMARK_SECONDS
-    processes = []
-
-    for worker_index in range(workers):
-        kwargs = {
-            "size": size,
-            "seed": seed,
-            "diagonal_boost": diagonal_boost,
-            "deadline": deadline,
-            "worker_index": worker_index,
-        }
-        process = ctx.Process(target=_worker_main, args=(queue, kwargs))
-        process.start()
-        processes.append(process)
-
-    for process in processes:
-        process.join()
-
-    messages = []
-    for _ in processes:
-        try:
-            messages.append(queue.get(timeout=1))
-        except Empty:
-            break
-
-    errors = [message.get("error", "") for message in messages if not message.get("ok")]
-    bad_exitcodes = [process.exitcode for process in processes if process.exitcode not in (0, None)]
-    missing_messages = len(processes) - len(messages)
-    if errors or bad_exitcodes or missing_messages:
-        details = "\n".join(errors) if errors else f"worker exit codes: {bad_exitcodes}"
-        if missing_messages:
-            details = f"{details}; missing worker messages: {missing_messages}"
-        raise RuntimeError(f"determinant workers failed:\n{details}")
-
-    return [message["result"] for message in messages]
+def _build_matrix(size: int, seed: int) -> np.ndarray:
+    rng = np.random.default_rng(seed)
+    matrix = rng.standard_normal((size, size)).astype(np.float64, copy=False)
+    diagonal = np.diag_indices_from(matrix)
+    matrix[diagonal] += DIAGONAL_BOOST
+    return matrix
 
 
 def run(params: dict[str, Any]) -> dict[str, Any]:
-    """Run one fixed big_det benchmark workunit.
-
-    This benchmark deliberately ignores user computation configuration.  The
-    only per-workunit input is the task id/seed used to generate a deterministic
-    matrix stream.
-    """
+    """Compute one determinant for one deterministic matrix."""
 
     task_id = _as_int(params, "task_id", 1)
-    size = BENCHMARK_MATRIX_SIZE
     seed = _as_int(params, "seed", 10_000 + task_id)
-    diagonal_boost = BENCHMARK_DIAGONAL_BOOST
-    visible_cpus = _visible_cpu_count()
-    affinity_before = _affinity_count()
-    affinity_expanded = _expand_affinity_to_visible_cpus()
-    affinity_after = _affinity_count()
-    workers = max(1, affinity_after)
 
     started = time.perf_counter()
-    worker_results = _run_all_cpu_determinants(
-        size=size,
-        seed=seed,
-        diagonal_boost=diagonal_boost,
-        workers=workers,
-    )
-
+    matrix = _build_matrix(MATRIX_SIZE, seed)
+    sign, log_abs_det = np.linalg.slogdet(matrix)
     elapsed = time.perf_counter() - started
-    repeats = sum(int(result["repeats"]) for result in worker_results)
-    checksum = sum(float(result["checksum"]) for result in worker_results)
-    first_det_seconds = min(
-        (float(result["first_det_seconds"]) for result in worker_results if result["first_det_seconds"] > 0),
-        default=0.0,
-    )
-    last_result = max(worker_results, key=lambda result: (result["elapsed_seconds"], result["worker_index"]))
-    last_sign = float(last_result["last_sign"])
-    last_log_abs_det = float(last_result["last_log_abs_det"])
+
+    sign = float(sign)
+    log_abs_det = float(log_abs_det)
 
     return {
         "task_id": task_id,
-        "benchmark": "big_det",
-        "matrix_size": size,
-        "seed": seed,
-        "target_seconds": BENCHMARK_SECONDS,
-        "elapsed_seconds": round(elapsed, 6),
-        "repeats": repeats,
-        "workers": workers,
-        "cpu": {
-            "visible": visible_cpus,
-            "affinity_before": affinity_before,
-            "affinity_after": affinity_after,
-            "affinity_expanded": affinity_expanded,
+        "workload": "big_determinant",
+        "matrix": {
+            "size": MATRIX_SIZE,
+            "seed": seed,
+            "diagonal_boost": DIAGONAL_BOOST,
+            "dtype": "float64",
         },
-        "first_determinant_seconds": round(first_det_seconds, 6),
         "determinant": {
-            "sign": last_sign,
-            "log_abs": last_log_abs_det,
-            "scientific": _scientific_from_log(last_sign, last_log_abs_det),
+            "sign": sign,
+            "log_abs": log_abs_det,
+            "scientific": _scientific_from_log(sign, log_abs_det),
         },
-        "worker_results": [
-            {
-                "worker_index": int(result["worker_index"]),
-                "repeats": int(result["repeats"]),
-                "elapsed_seconds": round(float(result["elapsed_seconds"]), 6),
-                "first_determinant_seconds": round(float(result["first_det_seconds"]), 6),
-            }
-            for result in sorted(worker_results, key=lambda result: result["worker_index"])
-        ],
-        "checksum": checksum,
+        "elapsed_seconds": round(elapsed, 6),
         "backend": {
             "python": platform.python_implementation(),
             "numpy": np.__version__,
-            "numba": numba.__version__,
+            "linear_algebra": "numpy.linalg.slogdet",
         },
     }

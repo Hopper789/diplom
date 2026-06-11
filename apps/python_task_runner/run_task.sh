@@ -741,32 +741,6 @@ update_clients() {
   # shellcheck disable=SC2086
   ANSIBLE_HOST_KEY_CHECKING=False \
   quiet_run_all ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b $ANSIBLE_EXTRA_ARGS -m shell -a "
-    docker exec boinc-client sh -lc \"cat > /var/lib/boinc/global_prefs_override.xml <<'EOF'
-<global_preferences>
-  <run_on_batteries>1</run_on_batteries>
-  <run_if_user_active>1</run_if_user_active>
-  <run_gpu_if_user_active>0</run_gpu_if_user_active>
-  <suspend_cpu_usage>0.000000</suspend_cpu_usage>
-  <cpu_usage_limit>100.000000</cpu_usage_limit>
-  <max_ncpus_pct>100.000000</max_ncpus_pct>
-  <work_buf_min_days>0.000000</work_buf_min_days>
-  <work_buf_additional_days>0.000000</work_buf_additional_days>
-  <disk_max_used_gb>50.000000</disk_max_used_gb>
-  <disk_interval>60.000000</disk_interval>
-</global_preferences>
-EOF\"
-    docker exec boinc-client \
-      boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' \
-      --read_global_prefs_override || true
-    docker exec boinc-client \
-      boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' \
-      --set_run_mode always || true
-    docker exec boinc-client \
-      boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' \
-      --set_network_mode always || true
-    docker exec boinc-client \
-      boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' \
-      --project '$BOINC_PROJECT_URL' allowmorework || true
     docker exec boinc-client \
       boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' \
       --project '$BOINC_PROJECT_URL' update

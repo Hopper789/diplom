@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare params.jsonl for the fixed big_det benchmark."""
+"""Prepare params.jsonl for the big determinant workload."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from pathlib import Path
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Prepare fixed big_det BOINC tasks")
+    parser = argparse.ArgumentParser(description="Prepare big determinant BOINC tasks")
     parser.add_argument("--main", required=True, help="Path to main.py with run(params)")
     parser.add_argument("--out", required=True, help="Output params.jsonl path")
     parser.add_argument("--task-count", type=int, default=1, help="Number of BOINC workunits")

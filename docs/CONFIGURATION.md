@@ -68,6 +68,15 @@ DISTRIBUTED_MAX_TOTAL_RESULTS=3
 
 BOINC может создать больше result-записей, чем уникальных workunit'ов. Это нормально: result — попытка выполнения, workunit — уникальная задача.
 
+Максимальное время на возврат результата задаёт:
+
+```bash
+DISTRIBUTED_DELAY_BOUND=86400
+```
+
+Значение по умолчанию — 1 день. Это лимит BOINC-задачи, а не искусственная
+длительность вычисления внутри Python-кода.
+
 ## MariaDB
 
 Runtime-контейнер базы называется `boinc-mariadb`, service в compose — `mariadb`, данные лежат в `server/mariadb-data/`.

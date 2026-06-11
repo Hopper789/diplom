@@ -36,10 +36,10 @@ Usage:
   apps/big_determinant/run_task.sh [--debug] [boinc|local] [--workunits N]
 
 Options:
-  --workunits N            number of fixed 10-minute BOINC workunits
+  --workunits N            number of determinant BOINC workunits
 
-The benchmark ignores computation config: matrix size, repeat count, and
-runtime are fixed in apps/big_determinant/main.py.
+The workload computes one real determinant per workunit. BOINC task return
+deadline is controlled by DISTRIBUTED_DELAY_BOUND; default is 86400 seconds.
 USAGE
 }
 
