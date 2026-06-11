@@ -7,8 +7,9 @@
 1. [Быстрый старт](QUICK_START.md) — как запустить кластер первый раз.
 2. [Конфигурация](CONFIGURATION.md) — что менять в `cluster.yml` и `distributed.env`.
 3. [Эксперименты](EXPERIMENTS.md) — как выбрать задачу и запускать бенчмарки.
-4. [Мониторинг](MONITORING.md) — Grafana, Prometheus, Loki, финальные метрики.
-5. [Диагностика](TROUBLESHOOTING.md) — что смотреть, когда что-то не работает.
+4. [Выгрузка результатов](RESULT_EXPORT.md) — где найти `output.json` и поле `result`.
+5. [Мониторинг](MONITORING.md) — Grafana, Prometheus, Loki, финальные метрики.
+6. [Диагностика](TROUBLESHOOTING.md) — что смотреть, когда что-то не работает.
 
 ## Главная идея
 
