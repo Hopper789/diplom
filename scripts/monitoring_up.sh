@@ -285,6 +285,7 @@ check_monitoring_ready() {
   wait_for_url_match "Grafana" "http://127.0.0.1:3000/api/health" '"database":' || failed=1
   wait_for_http "Prometheus" "http://127.0.0.1:9090/-/ready" || failed=1
   wait_for_url_match "BOINC exporter metrics" "http://127.0.0.1:9101/metrics" '^boinc_db_up' || failed=1
+  wait_for_url_match "BOINC exporter MariaDB connection" "http://127.0.0.1:9101/metrics" '^boinc_db_up 1(\.0)?$' 30 2 || failed=1
   wait_for_url_match "Loki API" "http://127.0.0.1:3100/loki/api/v1/labels" '"status":"success"' || failed=1
   wait_for_url_match "Grafana Prometheus datasource" \
     "http://admin:admin@127.0.0.1:3000/api/datasources/uid/prometheus" \

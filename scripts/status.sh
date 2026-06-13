@@ -302,6 +302,39 @@ if command -v curl >/dev/null 2>&1; then
     else
       echo "Exporter metrics: no boinc_db_up metric"
     fi
+
+    if curl_status "http://$MONITORING_HOST:9101/metrics" 2>/dev/null | grep -q '^boinc_db_up 0'; then
+      echo "Exporter MariaDB connection: failed"
+      echo "Exporter connection env:"
+      docker exec boinc-exporter sh -lc '
+        env | grep -E "^(PROJECT_NAME|MARIADB_HOST|MARIADB_PORT|MARIADB_USER|MARIADB_DATABASE)=" | sort
+        printf "MARIADB_PASSWORD=%s\n" "${MARIADB_PASSWORD:+set}"
+      ' 2>/dev/null || true
+      echo "Exporter DNS/network check:"
+      docker exec boinc-exporter sh -lc '
+        getent hosts "${MARIADB_HOST:-boinc-mariadb}" || true
+        python - <<PY
+import os
+import socket
+
+host = os.environ.get("MARIADB_HOST", "boinc-mariadb")
+port = int(os.environ.get("MARIADB_PORT", "3306"))
+try:
+    with socket.create_connection((host, port), timeout=3):
+        print(f"tcp {host}:{port}: OK")
+except Exception as exc:
+    print(f"tcp {host}:{port}: failed: {exc}")
+PY
+      ' 2>/dev/null || true
+      echo "Exporter networks:"
+      docker inspect boinc-exporter \
+        --format '{{range $name, $_ := .NetworkSettings.Networks}}{{println $name}}{{end}}' 2>/dev/null \
+        | sed 's/^/  /' || true
+      echo "Recent exporter logs:"
+      docker logs --tail 80 boinc-exporter 2>&1 | tail -80 || true
+    else
+      echo "Exporter MariaDB connection: OK"
+    fi
   fi
 
   if docker ps --format '{{.Names}}' | grep -qx 'boinc-prometheus'; then
@@ -420,18 +453,19 @@ for target in payload.get("data", {}).get("activeTargets", []):
 
     if curl_status -u admin:admin "http://$MONITORING_HOST:3000/api/dashboards/uid/boinc-cluster" | grep -q '"uid":"boinc-cluster"'; then
       echo "Grafana dashboard boinc-cluster: OK"
-      curl_status -u admin:admin "http://$MONITORING_HOST:3000/api/dashboards/uid/boinc-cluster" 2>/dev/null \
-        | python3 -c '
+      dashboard_response="$(curl_status -u admin:admin "http://$MONITORING_HOST:3000/api/dashboards/uid/boinc-cluster" 2>/dev/null || true)"
+      GRAFANA_DASHBOARD_RESPONSE="$dashboard_response" python3 <<'PY' || true
 import json
+import os
 import sys
 
 try:
-    payload = json.load(sys.stdin)
+    payload = json.loads(os.environ.get("GRAFANA_DASHBOARD_RESPONSE", ""))
     dash = payload.get("dashboard") or {}
     print(f"Grafana dashboard boinc-cluster version: {dash.get('version', '?')}, panels: {len(dash.get('panels') or [])}")
 except Exception:
     pass
-' || true
+PY
     else
       echo "Grafana dashboard boinc-cluster: missing"
     fi
