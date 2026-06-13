@@ -163,7 +163,7 @@ if docker ps --format '{{.Names}}' | grep -qx 'boinc-mariadb'; then
         hostid,
         LEFT(REPLACE(REPLACE(COALESCE(stderr_out, ''), '\n', ' '), '\r', ' '), 500) AS stderr_preview
       FROM result
-      WHERE outcome IN (2, 3, 4, 6) OR LENGTH(COALESCE(stderr_out, '')) > 0
+      WHERE outcome IN (2, 3, 4, 6)
       ORDER BY id DESC
       LIMIT 10;
     " || true
@@ -303,10 +303,10 @@ for target in payload.get("data", {}).get("activeTargets", []):
   fi
 
   if docker ps --format '{{.Names}}' | grep -qx 'boinc-loki'; then
-    if curl_status "http://$MONITORING_HOST:3100/ready" | grep -qi 'ready'; then
+    if curl_status "http://$MONITORING_HOST:3100/ready" 2>/dev/null | grep -qi 'ready'; then
       echo "Loki ready: OK"
-    elif curl_status "http://$MONITORING_HOST:3100/loki/api/v1/status/buildinfo" >/dev/null \
-      && curl_status "http://$MONITORING_HOST:3100/loki/api/v1/labels" | grep -q '"status":"success"'; then
+    elif curl_status "http://$MONITORING_HOST:3100/loki/api/v1/status/buildinfo" >/dev/null 2>&1 \
+      && curl_status "http://$MONITORING_HOST:3100/loki/api/v1/labels" 2>/dev/null | grep -q '"status":"success"'; then
       echo "Loki ready: warming up, API is reachable"
     else
       echo "Loki ready: failed"
