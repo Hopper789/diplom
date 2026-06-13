@@ -73,8 +73,14 @@ boinc_results_error_percent = Gauge(
     "Percent of finished BOINC results with error outcomes",
 )
 boinc_queue_remaining_total = Gauge("boinc_queue_remaining_total", "Unfinished BOINC results")
-boinc_completed_workunits_total = Gauge("boinc_completed_workunits_total", "Workunits with a confirmed canonical result")
-boinc_remaining_workunits_total = Gauge("boinc_remaining_workunits_total", "Workunits without a confirmed canonical result yet")
+boinc_completed_workunits_total = Gauge(
+    "boinc_completed_workunits_total",
+    "Workunits with a canonical result or enough successful quorum results",
+)
+boinc_remaining_workunits_total = Gauge(
+    "boinc_remaining_workunits_total",
+    "Workunits without a canonical result or enough successful quorum results yet",
+)
 boinc_error_workunits_total = Gauge("boinc_error_workunits_total", "Distinct workunits with at least one error result")
 boinc_workunits_error_percent = Gauge("boinc_workunits_error_percent", "Percent of workunits with at least one error result")
 boinc_effective_completion_ratio = Gauge("boinc_effective_completion_ratio", "completed_workunits / workunits_total")
@@ -108,7 +114,7 @@ boinc_experiment_throughput_workunits_per_second = Gauge(
 )
 boinc_completion_percent = Gauge(
     "boinc_completion_percent",
-    "Percent of workunits with a confirmed canonical result",
+    "Percent of workunits with a canonical result or enough successful quorum results",
 )
 boinc_estimated_remaining_seconds = Gauge(
     "boinc_estimated_remaining_seconds",
@@ -116,7 +122,7 @@ boinc_estimated_remaining_seconds = Gauge(
 )
 boinc_useful_compute_percent = Gauge(
     "boinc_useful_compute_percent",
-    "Percent of finished attempt lifecycle spent on canonical useful computation",
+    "Percent of finished attempt lifecycle spent on first-quorum useful computation",
 )
 
 # Distributed-computing configuration loaded from config/distributed.env through monitoring/.env.
@@ -191,6 +197,43 @@ def set_ratio(metric: Gauge, numerator: float, denominator: float) -> None:
     metric.set(float(numerator) / float(denominator) if denominator else 0)
 
 
+def completed_workunits_sql(has_canonical_resultid: bool) -> str:
+    canonical_condition = "COALESCE(w.canonical_resultid, 0) > 0 OR" if has_canonical_resultid else ""
+    return f"""
+        SELECT COUNT(*)
+        FROM (
+            SELECT w.id
+            FROM workunit w
+            LEFT JOIN result r
+              ON r.workunitid = w.id
+             AND r.outcome = 1
+            GROUP BY w.id, w.min_quorum{", w.canonical_resultid" if has_canonical_resultid else ""}
+            HAVING {canonical_condition}
+                   COUNT(r.id) >= GREATEST(COALESCE(NULLIF(w.min_quorum, 0), 1), 1)
+        ) completed
+    """
+
+
+def useful_success_query(metric_expr: str) -> str:
+    return f"""
+        SELECT {metric_expr}
+        FROM (
+            SELECT
+                r.*,
+                w.min_quorum,
+                ROW_NUMBER() OVER (
+                    PARTITION BY r.workunitid
+                    ORDER BY r.received_time, r.id
+                ) AS success_rank
+            FROM workunit w
+            JOIN result r
+              ON r.workunitid = w.id
+             AND r.outcome = 1
+        ) useful
+        WHERE useful.success_rank <= GREATEST(COALESCE(NULLIF(useful.min_quorum, 0), 1), 1)
+    """
+
+
 def table_has_column(cur, table: str, column: str) -> bool:
     cur.execute(
         """
@@ -217,10 +260,7 @@ def update_db_metrics() -> None:
             workunits = safe_fetch_one(cur, "SELECT COUNT(*) FROM workunit")
             results = safe_fetch_one(cur, "SELECT COUNT(*) FROM result")
             has_canonical_resultid = table_has_column(cur, "workunit", "canonical_resultid")
-            if has_canonical_resultid:
-                completed_wu_sql = "SELECT COUNT(*) FROM workunit WHERE canonical_resultid > 0"
-            else:
-                completed_wu_sql = "SELECT COUNT(DISTINCT workunitid) FROM result WHERE outcome = 1"
+            completed_wu_sql = completed_workunits_sql(has_canonical_resultid)
             active_hosts = safe_fetch_one(
                 cur,
                 """
@@ -308,64 +348,31 @@ def update_db_metrics() -> None:
             boinc_completion_percent.set((float(completed_wu) / float(workunits) * 100.0) if workunits else 0)
             boinc_estimated_remaining_seconds.set(estimated_remaining_seconds)
 
-            if has_canonical_resultid:
-                useful_compute_sql = """
-                    SELECT COALESCE(SUM(r.elapsed_time), 0) AS compute_seconds
-                    FROM workunit w
-                    JOIN result r ON r.id = w.canonical_resultid
-                    WHERE w.canonical_resultid > 0
-                      AND r.outcome = 1
-                      AND r.elapsed_time > 0
+            useful_compute_sql = useful_success_query(
+                "COALESCE(SUM(CASE WHEN elapsed_time > 0 THEN elapsed_time ELSE 0 END), 0) AS compute_seconds"
+            )
+            avg_compute_sql = useful_success_query(
+                "COALESCE(AVG(CASE WHEN elapsed_time > 0 THEN elapsed_time END), 0)"
+            )
+            avg_turnaround_sql = useful_success_query(
                 """
-                avg_compute_sql = """
-                    SELECT COALESCE(AVG(r.elapsed_time), 0)
-                    FROM workunit w
-                    JOIN result r ON r.id = w.canonical_resultid
-                    WHERE w.canonical_resultid > 0
-                      AND r.outcome = 1
-                      AND r.elapsed_time > 0
+                COALESCE(AVG(
+                    CASE
+                      WHEN received_time > 0 AND sent_time > 0
+                        THEN received_time - sent_time
+                    END
+                ), 0)
                 """
-                avg_turnaround_sql = """
-                    SELECT COALESCE(AVG(r.received_time - r.sent_time), 0)
-                    FROM workunit w
-                    JOIN result r ON r.id = w.canonical_resultid
-                    WHERE w.canonical_resultid > 0
-                      AND r.outcome = 1
-                      AND r.received_time > 0
-                      AND r.sent_time > 0
+            )
+            p95_turnaround_sql = useful_success_query(
                 """
-                p95_turnaround_sql = """
-                    SELECT r.received_time - r.sent_time AS turnaround
-                    FROM workunit w
-                    JOIN result r ON r.id = w.canonical_resultid
-                    WHERE w.canonical_resultid > 0
-                      AND r.outcome = 1
-                      AND r.received_time > 0
-                      AND r.sent_time > 0
-                    ORDER BY turnaround
+                CASE
+                  WHEN received_time > 0 AND sent_time > 0
+                    THEN received_time - sent_time
+                  ELSE NULL
+                END AS turnaround
                 """
-            else:
-                useful_compute_sql = """
-                    SELECT COALESCE(SUM(elapsed_time), 0) AS compute_seconds
-                    FROM result
-                    WHERE outcome = 1 AND elapsed_time > 0
-                """
-                avg_compute_sql = """
-                    SELECT COALESCE(AVG(elapsed_time), 0)
-                    FROM result
-                    WHERE outcome = 1 AND elapsed_time > 0
-                """
-                avg_turnaround_sql = """
-                    SELECT COALESCE(AVG(received_time - sent_time), 0)
-                    FROM result
-                    WHERE outcome = 1 AND received_time > 0 AND sent_time > 0
-                """
-                p95_turnaround_sql = """
-                    SELECT received_time - sent_time AS turnaround
-                    FROM result
-                    WHERE outcome = 1 AND received_time > 0 AND sent_time > 0
-                    ORDER BY turnaround
-                """
+            ) + "\nAND received_time > 0 AND sent_time > 0 ORDER BY turnaround"
 
             try:
                 cur.execute(useful_compute_sql)

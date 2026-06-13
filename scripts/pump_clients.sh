@@ -113,14 +113,28 @@ read_progress() {
   local row
   row="$(sql_tsv "
     SELECT
-      COUNT(DISTINCT w.id),
-      COUNT(DISTINCT CASE WHEN w.canonical_resultid > 0 THEN w.id END),
-      COALESCE(SUM(CASE WHEN r.outcome = 0 THEN 1 ELSE 0 END), 0),
-      COALESCE(SUM(CASE WHEN r.outcome IN (2, 3, 4, 6) THEN 1 ELSE 0 END), 0),
-      COALESCE(SUM(CASE WHEN r.outcome = 5 THEN 1 ELSE 0 END), 0),
-      COUNT(DISTINCT CASE WHEN r.hostid != 0 AND r.outcome = 0 THEN r.hostid END)
-    FROM workunit w
-    LEFT JOIN result r ON r.workunitid = w.id;
+      COUNT(*),
+      COALESCE(SUM(CASE WHEN completed = 1 THEN 1 ELSE 0 END), 0),
+      COALESCE(SUM(unfinished), 0),
+      COALESCE(SUM(client_errors), 0),
+      COALESCE(SUM(redundant), 0),
+      (SELECT COUNT(DISTINCT hostid) FROM result WHERE hostid != 0 AND outcome = 0)
+    FROM (
+      SELECT
+        w.id,
+        CASE
+          WHEN COALESCE(w.canonical_resultid, 0) > 0
+            OR COALESCE(SUM(CASE WHEN r.outcome = 1 THEN 1 ELSE 0 END), 0)
+               >= GREATEST(COALESCE(NULLIF(w.min_quorum, 0), 1), 1)
+          THEN 1 ELSE 0
+        END AS completed,
+        COALESCE(SUM(CASE WHEN r.outcome = 0 THEN 1 ELSE 0 END), 0) AS unfinished,
+        COALESCE(SUM(CASE WHEN r.outcome IN (2, 3, 4, 6) THEN 1 ELSE 0 END), 0) AS client_errors,
+        COALESCE(SUM(CASE WHEN r.outcome = 5 THEN 1 ELSE 0 END), 0) AS redundant
+      FROM workunit w
+      LEFT JOIN result r ON r.workunitid = w.id
+      GROUP BY w.id, w.min_quorum, w.canonical_resultid
+    ) q;
   ")"
 
   IFS=$'\t' read -r WORKUNITS COMPLETED UNFINISHED CLIENT_ERRORS REDUNDANT ACTIVE_HOSTS <<< "$row"
@@ -260,9 +274,20 @@ while true; do
     echo "workunits=$WORKUNITS completed=$COMPLETED unfinished=$UNFINISHED client_errors=$CLIENT_ERRORS redundant=$REDUNDANT active_hosts=$ACTIVE_HOSTS"
   fi
 
-  if [[ "$WORKUNITS" -gt 0 && "$UNFINISHED" -eq 0 ]]; then
-    [[ "$QUIET" == "1" ]] || echo "Все текущие result-записи завершены."
+  if [[ "$WORKUNITS" -gt 0 && "$UNFINISHED" -eq 0 && "$COMPLETED" -ge "$WORKUNITS" ]]; then
+    [[ "$QUIET" == "1" ]] || echo "Все workunit'ы достигли кворума."
     exit 0
+  fi
+
+  if [[ "$WORKUNITS" -gt 0 && "$UNFINISHED" -eq 0 ]]; then
+    echo "BOINC result-записи завершены, но кворум набран не для всех workunit'ов." >&2
+    echo "workunits=$WORKUNITS completed=$COMPLETED unfinished=$UNFINISHED client_errors=$CLIENT_ERRORS redundant=$REDUNDANT active_hosts=$ACTIVE_HOSTS" >&2
+    if debug_enabled; then
+      print_diagnostics
+    else
+      echo "Run with --debug for diagnostics." >&2
+    fi
+    exit 1
   fi
 
   if [[ "$WORKUNITS" -eq 0 ]]; then
