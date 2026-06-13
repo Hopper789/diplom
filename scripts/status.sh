@@ -43,6 +43,12 @@ source "$ENV_FILE"
 set +a
 
 MONITORING_HOST="${SERVER_IP:-localhost}"
+STATUS_REMOTE_TIMEOUT_SECONDS="${STATUS_REMOTE_TIMEOUT_SECONDS:-15}"
+STATUS_HTTP_TIMEOUT_SECONDS="${STATUS_HTTP_TIMEOUT_SECONDS:-5}"
+
+curl_status() {
+  curl --connect-timeout 2 --max-time "$STATUS_HTTP_TIMEOUT_SECONDS" -fsS "$@"
+}
 
 json_has_loki_result() {
   python3 -c '
@@ -75,7 +81,8 @@ if ! debug_enabled; then
 
   if [[ "$SERVER_ONLY" != "1" && -f "$ROOT_DIR/ansible/inventory.ini" ]] && command -v ansible >/dev/null 2>&1; then
     step "Establishing SSH connection..."
-    if ANSIBLE_HOST_KEY_CHECKING=False quiet_run_all \
+    if ANSIBLE_TIMEOUT="${ANSIBLE_TIMEOUT:-$STATUS_REMOTE_TIMEOUT_SECONDS}" \
+      ANSIBLE_HOST_KEY_CHECKING=False quiet_run_all \
       ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients "${ANSIBLE_ARGS[@]}" -m ping; then
       echo "BOINC clients: reachable"
     else
@@ -175,6 +182,7 @@ fi
 if [[ -f "$ROOT_DIR/ansible/inventory.ini" ]]; then
   if command -v ansible >/dev/null 2>&1; then
     echo "== Ansible ping boinc_clients =="
+    ANSIBLE_TIMEOUT="${ANSIBLE_TIMEOUT:-$STATUS_REMOTE_TIMEOUT_SECONDS}" \
     ANSIBLE_HOST_KEY_CHECKING=False \
     ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients "${ANSIBLE_ARGS[@]}" -m ping || true
     echo
@@ -182,14 +190,14 @@ if [[ -f "$ROOT_DIR/ansible/inventory.ini" ]]; then
     echo "== Docker BOINC clients on remote nodes =="
     ANSIBLE_HOST_KEY_CHECKING=False \
     ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b "${ANSIBLE_ARGS[@]}" -m shell -a "
-      docker ps --filter name=boinc-client
+      timeout ${STATUS_REMOTE_TIMEOUT_SECONDS}s docker ps --filter name=boinc-client
     " || true
     echo
 
     echo "== Remote BOINC client project status =="
     ANSIBLE_HOST_KEY_CHECKING=False \
     ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b "${ANSIBLE_ARGS[@]}" -m shell -a "
-      docker exec boinc-client \
+      timeout ${STATUS_REMOTE_TIMEOUT_SECONDS}s docker exec boinc-client \
         boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' \
         --get_project_status
     " || true
@@ -198,7 +206,7 @@ if [[ -f "$ROOT_DIR/ansible/inventory.ini" ]]; then
     echo "== Remote BOINC client task summary =="
     ANSIBLE_HOST_KEY_CHECKING=False \
     ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b "${ANSIBLE_ARGS[@]}" -m shell -a "
-      docker exec boinc-client \
+      timeout ${STATUS_REMOTE_TIMEOUT_SECONDS}s docker exec boinc-client \
         boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' \
         --get_task_summary
     " || true
@@ -207,7 +215,7 @@ if [[ -f "$ROOT_DIR/ansible/inventory.ini" ]]; then
     echo "== Remote monitoring agents =="
     ANSIBLE_HOST_KEY_CHECKING=False \
     ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b "${ANSIBLE_ARGS[@]}" -m shell -a "
-      docker ps --filter name=boinc-node-exporter --filter name=boinc-client-promtail
+      timeout ${STATUS_REMOTE_TIMEOUT_SECONDS}s docker ps --filter name=boinc-node-exporter --filter name=boinc-client-promtail
     " || true
     echo
   else
@@ -257,7 +265,7 @@ if command -v curl >/dev/null 2>&1; then
   echo
   echo "== Monitoring data checks =="
   if docker ps --format '{{.Names}}' | grep -qx 'boinc-exporter'; then
-    if curl -fsS "http://$MONITORING_HOST:9101/metrics" | grep -q '^boinc_db_up'; then
+    if curl_status "http://$MONITORING_HOST:9101/metrics" | grep -q '^boinc_db_up'; then
       echo "Exporter metrics: OK"
     else
       echo "Exporter metrics: no boinc_db_up metric"
@@ -265,14 +273,14 @@ if command -v curl >/dev/null 2>&1; then
   fi
 
   if docker ps --format '{{.Names}}' | grep -qx 'boinc-prometheus'; then
-    if curl -fsS "http://$MONITORING_HOST:9090/api/v1/query?query=boinc_db_up" | grep -q '"status":"success"'; then
+    if curl_status "http://$MONITORING_HOST:9090/api/v1/query?query=boinc_db_up" | grep -q '"status":"success"'; then
       echo "Prometheus query boinc_db_up: OK"
     else
       echo "Prometheus query boinc_db_up: failed"
     fi
 
     echo "Prometheus targets:"
-    curl -fsS "http://$MONITORING_HOST:9090/api/v1/targets?state=active" \
+    curl_status "http://$MONITORING_HOST:9090/api/v1/targets?state=active" \
       | python3 -c '
 import json
 import sys
@@ -295,35 +303,35 @@ for target in payload.get("data", {}).get("activeTargets", []):
   fi
 
   if docker ps --format '{{.Names}}' | grep -qx 'boinc-loki'; then
-    if curl -fsS "http://$MONITORING_HOST:3100/ready" | grep -qi 'ready'; then
+    if curl_status "http://$MONITORING_HOST:3100/ready" | grep -qi 'ready'; then
       echo "Loki ready: OK"
-    elif curl -fsS "http://$MONITORING_HOST:3100/loki/api/v1/status/buildinfo" >/dev/null \
-      && curl -fsS "http://$MONITORING_HOST:3100/loki/api/v1/labels" | grep -q '"status":"success"'; then
+    elif curl_status "http://$MONITORING_HOST:3100/loki/api/v1/status/buildinfo" >/dev/null \
+      && curl_status "http://$MONITORING_HOST:3100/loki/api/v1/labels" | grep -q '"status":"success"'; then
       echo "Loki ready: warming up, API is reachable"
     else
       echo "Loki ready: failed"
     fi
 
-    if curl -fsS "http://$MONITORING_HOST:3100/loki/api/v1/status/buildinfo" | grep -q '"version"'; then
+    if curl_status "http://$MONITORING_HOST:3100/loki/api/v1/status/buildinfo" | grep -q '"version"'; then
       echo "Loki buildinfo: OK"
     else
       echo "Loki buildinfo: failed"
     fi
 
-    if curl -fsS "http://$MONITORING_HOST:3100/loki/api/v1/labels" | grep -q '"status":"success"'; then
+    if curl_status "http://$MONITORING_HOST:3100/loki/api/v1/labels" | grep -q '"status":"success"'; then
       echo "Loki labels: OK"
     else
       echo "Loki labels: failed"
     fi
 
-    if curl -fsS -G "http://$MONITORING_HOST:3100/loki/api/v1/query" \
+    if curl_status -G "http://$MONITORING_HOST:3100/loki/api/v1/query" \
       --data-urlencode 'query={job="docker"}' | json_has_loki_result; then
       echo "Loki docker logs: OK"
     else
       echo "Loki docker logs: no data"
     fi
 
-    if curl -fsS -G "http://$MONITORING_HOST:3100/loki/api/v1/query" \
+    if curl_status -G "http://$MONITORING_HOST:3100/loki/api/v1/query" \
       --data-urlencode 'query={job="boinc-project-logs"}' | json_has_loki_result; then
       echo "Loki BOINC project logs: OK"
     else
@@ -348,37 +356,37 @@ for target in payload.get("data", {}).get("activeTargets", []):
   fi
 
   if docker ps --format '{{.Names}}' | grep -qx 'boinc-grafana'; then
-    if curl -fsS "http://$MONITORING_HOST:3000/api/health" | grep -q '"database":'; then
+    if curl_status "http://$MONITORING_HOST:3000/api/health" | grep -q '"database":'; then
       echo "Grafana health: OK"
     else
       echo "Grafana health: failed"
     fi
 
-    if curl -fsS -u admin:admin "http://$MONITORING_HOST:3000/api/datasources/uid/prometheus" | grep -q '"uid":"prometheus"'; then
+    if curl_status -u admin:admin "http://$MONITORING_HOST:3000/api/datasources/uid/prometheus" | grep -q '"uid":"prometheus"'; then
       echo "Grafana datasource prometheus: OK"
     else
       echo "Grafana datasource prometheus: missing"
     fi
 
-    if curl -fsS -u admin:admin "http://$MONITORING_HOST:3000/api/datasources/uid/loki" | grep -q '"uid":"loki"'; then
+    if curl_status -u admin:admin "http://$MONITORING_HOST:3000/api/datasources/uid/loki" | grep -q '"uid":"loki"'; then
       echo "Grafana datasource loki: OK"
     else
       echo "Grafana datasource loki: missing"
     fi
 
-    if curl -fsS -u admin:admin "http://$MONITORING_HOST:3000/api/dashboards/uid/boinc-cluster" | grep -q '"uid":"boinc-cluster"'; then
+    if curl_status -u admin:admin "http://$MONITORING_HOST:3000/api/dashboards/uid/boinc-cluster" | grep -q '"uid":"boinc-cluster"'; then
       echo "Grafana dashboard boinc-cluster: OK"
     else
       echo "Grafana dashboard boinc-cluster: missing"
     fi
 
-    if curl -fsS -u admin:admin "http://$MONITORING_HOST:3000/api/dashboards/uid/boinc-errors" | grep -q '"uid":"boinc-errors"'; then
+    if curl_status -u admin:admin "http://$MONITORING_HOST:3000/api/dashboards/uid/boinc-errors" | grep -q '"uid":"boinc-errors"'; then
       echo "Grafana dashboard boinc-errors: OK"
     else
       echo "Grafana dashboard boinc-errors: missing"
     fi
 
-    if curl -fsS -u admin:admin \
+    if curl_status -u admin:admin \
       "http://$MONITORING_HOST:3000/api/datasources/proxy/uid/prometheus/api/v1/query?query=boinc_db_up" \
       | grep -q '"status":"success"'; then
       echo "Grafana datasource query boinc_db_up: OK"
@@ -386,7 +394,7 @@ for target in payload.get("data", {}).get("activeTargets", []):
       echo "Grafana datasource query boinc_db_up: failed"
     fi
 
-    if curl -fsS -u admin:admin \
+    if curl_status -u admin:admin \
       "http://$MONITORING_HOST:3000/api/datasources/proxy/uid/loki/loki/api/v1/labels" \
       | grep -q '"status":"success"'; then
       echo "Grafana datasource query loki labels: OK"
@@ -394,7 +402,7 @@ for target in payload.get("data", {}).get("activeTargets", []):
       echo "Grafana datasource query loki labels: failed"
     fi
 
-    if docker exec boinc-grafana sh -lc \
+    if timeout "${STATUS_REMOTE_TIMEOUT_SECONDS}s" docker exec boinc-grafana sh -lc \
       'wget -qO- "http://prometheus:9090/api/v1/query?query=boinc_db_up" | grep -q "\"status\":\"success\""' \
       >/dev/null 2>&1; then
       echo "Grafana container -> Prometheus: OK"
@@ -402,11 +410,11 @@ for target in payload.get("data", {}).get("activeTargets", []):
       echo "Grafana container -> Prometheus: failed"
     fi
 
-    if docker exec boinc-grafana sh -lc \
+    if timeout "${STATUS_REMOTE_TIMEOUT_SECONDS}s" docker exec boinc-grafana sh -lc \
       'wget -qO- "http://loki:3100/ready" | grep -qi "ready"' \
       >/dev/null 2>&1; then
       echo "Grafana container -> Loki ready: OK"
-    elif docker exec boinc-grafana sh -lc \
+    elif timeout "${STATUS_REMOTE_TIMEOUT_SECONDS}s" docker exec boinc-grafana sh -lc \
       'wget -qO- "http://loki:3100/loki/api/v1/labels" | grep -q "\"status\":\"success\""' \
       >/dev/null 2>&1; then
       echo "Grafana container -> Loki ready: warming up, API is reachable"
@@ -414,7 +422,7 @@ for target in payload.get("data", {}).get("activeTargets", []):
       echo "Grafana container -> Loki ready: failed"
     fi
 
-    if docker exec boinc-grafana sh -lc \
+    if timeout "${STATUS_REMOTE_TIMEOUT_SECONDS}s" docker exec boinc-grafana sh -lc \
       'wget -qO- "http://loki:3100/loki/api/v1/labels" | grep -q "\"status\":\"success\""' \
       >/dev/null 2>&1; then
       echo "Grafana container -> Loki labels: OK"

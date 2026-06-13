@@ -13,6 +13,7 @@ SERVER_ONLY=0
 CLIENTS_ONLY=0
 SKIP_STATUS=0
 EXPERIMENT_ARGS=()
+STATUS_TIMEOUT_SECONDS="${STATUS_TIMEOUT_SECONDS:-90}"
 
 usage() {
   cat <<'USAGE'
@@ -210,9 +211,15 @@ fi
 if [[ "$SKIP_STATUS" != "1" ]]; then
   step "Checking cluster status..."
   if [[ "$SERVER_ONLY" == "1" ]]; then
-    quiet_run_all ./scripts/status.sh --server-only "${ANSIBLE_ARGS[@]}"
+    if ! quiet_run_all timeout "${STATUS_TIMEOUT_SECONDS}s" ./scripts/status.sh --server-only "${ANSIBLE_ARGS[@]}"; then
+      echo "WARNING: status check failed or timed out. Run manually:"
+      echo "  ./scripts/status.sh --server-only --debug"
+    fi
   else
-    quiet_run_all ./scripts/status.sh "${ANSIBLE_ARGS[@]}"
+    if ! quiet_run_all timeout "${STATUS_TIMEOUT_SECONDS}s" ./scripts/status.sh "${ANSIBLE_ARGS[@]}"; then
+      echo "WARNING: status check failed or timed out. Run manually:"
+      echo "  ./scripts/status.sh --debug"
+    fi
   fi
 fi
 
