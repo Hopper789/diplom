@@ -3,7 +3,7 @@
   "title": "BOINC Errors",
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 2,
+  "version": 41,
   "refresh": "10s",
   "tags": [
     "boinc",
@@ -13,7 +13,7 @@
   "panels": [
     {
       "type": "stat",
-      "title": "Errors in last 5m",
+      "title": "Ошибки за 5 мин",
       "gridPos": {
         "x": 0,
         "y": 0,
@@ -22,7 +22,7 @@
       },
       "targets": [
         {
-          "expr": "sum(count_over_time({cluster=\"boinc\"} |~ \"(?i)(error|failed|exception|traceback|fatal|panic|timeout|denied|refused|critical|bad WU template|no <file_info>|no <workunit>|output file.*absent|platform.*not found)\"[5m]))",
+          "expr": "(sum(count_over_time({cluster=\"boinc\", stream=\"stderr\"} |~ \"(?i)(level=error|\\\\[critical\\\\]|fatal|panic|traceback|exception|access denied|permission denied|failed to connect|host key verification|unreachable|output file.*absent|bad WU template|no <file_info>|no <workunit>|platform.*not found|doesn.t support computers)\" !~ \"(?i)(io_uring|create_uring|falling back to libaio|global timeout not configured|error sending batch.*loki/api/v1/push|Aborted connection.*Got an error reading communication packets|/run/udev/data)\"[5m]))) + (sum(count_over_time({cluster=\"boinc\", job=\"boinc-project-logs\"} |~ \"(?i)(\\\\[CRITICAL\\\\]|bad WU template|no <file_info>|no <workunit>|output file.*absent|platform.*not found|doesn.t support computers|validate error|client error)\"[5m])))",
           "refId": "A",
           "datasource": {
             "type": "loki",
@@ -50,7 +50,7 @@
     },
     {
       "type": "timeseries",
-      "title": "Error categories",
+      "title": "Категории ошибок",
       "gridPos": {
         "x": 6,
         "y": 0,
@@ -59,8 +59,8 @@
       },
       "targets": [
         {
-          "expr": "sum(count_over_time({cluster=\"boinc\"} |~ \"(?i)(bad WU template|no <file_info>|no <workunit>|create_work|xadd|update_versions|template)\"[5m]))",
-          "legendFormat": "templates/workunits",
+          "expr": "sum(count_over_time({cluster=\"boinc\", job=\"boinc-project-logs\"} |~ \"(?i)(\\\\[CRITICAL\\\\]|bad WU template|no <file_info>|no <workunit>|output file.*absent|platform.*not found|doesn.t support computers|validate error|client error)\"[5m]))",
+          "legendFormat": "boinc/server",
           "refId": "A",
           "datasource": {
             "type": "loki",
@@ -68,7 +68,7 @@
           }
         },
         {
-          "expr": "sum(count_over_time({cluster=\"boinc\"} |~ \"(?i)(boinccmd|project attach|project_attach|scheduler request failed|client.*error|gui_rpc_auth|output file.*absent)\"[5m]))",
+          "expr": "sum(count_over_time({cluster=\"boinc\", stream=\"stderr\"} |~ \"(?i)(output file.*absent|boinccmd|gui_rpc_auth|scheduler request failed)\"[5m]))",
           "legendFormat": "client/rpc",
           "refId": "B",
           "datasource": {
@@ -77,8 +77,8 @@
           }
         },
         {
-          "expr": "sum(count_over_time({cluster=\"boinc\"} |~ \"(?i)(mariadb|database|db.*error|connection refused|can't connect)\"[5m]))",
-          "legendFormat": "database",
+          "expr": "sum(count_over_time({cluster=\"boinc\", stream=\"stderr\"} |~ \"(?i)(access denied|can.t connect|failed to connect|connection refused)\" !~ \"(?i)(loki/api/v1/push|Aborted connection.*Got an error reading communication packets)\"[5m]))",
+          "legendFormat": "access/network",
           "refId": "C",
           "datasource": {
             "type": "loki",
@@ -86,27 +86,9 @@
           }
         },
         {
-          "expr": "sum(count_over_time({cluster=\"boinc\"} |~ \"(?i)(docker.*error|no such container|cannot connect to docker|permission denied|denied|pull access denied)\"[5m]))",
-          "legendFormat": "docker/permissions",
+          "expr": "sum(count_over_time({cluster=\"boinc\", stream=\"stderr\"} |~ \"(?i)(permission denied|host key verification|unreachable|pull access denied)\"[5m]))",
+          "legendFormat": "permissions/ssh/docker",
           "refId": "D",
-          "datasource": {
-            "type": "loki",
-            "uid": "loki"
-          }
-        },
-        {
-          "expr": "sum(count_over_time({cluster=\"boinc\"} |~ \"(?i)(ansible|ssh|unreachable|host key verification|permission denied|failed to connect)\"[5m]))",
-          "legendFormat": "ansible/ssh",
-          "refId": "E",
-          "datasource": {
-            "type": "loki",
-            "uid": "loki"
-          }
-        },
-        {
-          "expr": "sum(count_over_time({cluster=\"boinc\"} |~ \"(?i)(platform.*not found|doesn't support computers|no tasks available|Sending reply.*0 results)\"[5m]))",
-          "legendFormat": "scheduler/platform",
-          "refId": "F",
           "datasource": {
             "type": "loki",
             "uid": "loki"
@@ -133,7 +115,7 @@
     },
     {
       "type": "logs",
-      "title": "Recent error logs",
+      "title": "Последние ошибки",
       "gridPos": {
         "x": 0,
         "y": 8,
@@ -142,8 +124,16 @@
       },
       "targets": [
         {
-          "expr": "{cluster=\"boinc\"} |~ \"(?i)(error|failed|exception|traceback|fatal|panic|timeout|denied|refused|critical|bad WU template|no <file_info>|no <workunit>|boinccmd|output file.*absent|platform.*not found|no tasks available)\"",
+          "expr": "{cluster=\"boinc\", stream=\"stderr\"} |~ \"(?i)(level=error|\\\\[critical\\\\]|fatal|panic|traceback|exception|access denied|permission denied|failed to connect|host key verification|unreachable|output file.*absent|bad WU template|no <file_info>|no <workunit>|platform.*not found|doesn.t support computers)\" !~ \"(?i)(io_uring|create_uring|falling back to libaio|global timeout not configured|error sending batch.*loki/api/v1/push|Aborted connection.*Got an error reading communication packets|/run/udev/data)\"",
           "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        },
+        {
+          "expr": "{cluster=\"boinc\", job=\"boinc-project-logs\"} |~ \"(?i)(\\\\[CRITICAL\\\\]|bad WU template|no <file_info>|no <workunit>|output file.*absent|platform.*not found|doesn.t support computers|validate error|client error)\"",
+          "refId": "B",
           "datasource": {
             "type": "loki",
             "uid": "loki"
@@ -163,7 +153,7 @@
     },
     {
       "type": "logs",
-      "title": "BOINC server and scheduler logs",
+      "title": "Логи BOINC-сервера",
       "gridPos": {
         "x": 0,
         "y": 20,
@@ -193,7 +183,7 @@
     },
     {
       "type": "logs",
-      "title": "Remote client logs",
+      "title": "Логи клиентов",
       "gridPos": {
         "x": 12,
         "y": 20,

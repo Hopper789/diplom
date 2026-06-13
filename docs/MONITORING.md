@@ -86,7 +86,7 @@ Loki собирает Docker JSON logs:
 - с управляющей машины через `monitoring/promtail.yml`;
 - с клиентов через promtail, установленный Ansible.
 
-В окне ошибок используются только записи с `stream="stderr"`. Служебные строки Grafana/Loki с текстом самих LogQL-запросов отфильтрованы, чтобы dashboard не считал собственные запросы ошибками.
+В окне ошибок Docker-логи берутся только из `stream="stderr"`. Логи BOINC project files не имеют поля `stream`, поэтому для них используется отдельный строгий фильтр по `[CRITICAL]`, ошибкам шаблонов, platform/app version и отсутствующим output-файлам. Штатный шум запуска Grafana/Loki/MariaDB и сообщение `Project has no tasks available` не считаются ошибками.
 
 Пример LogQL:
 
