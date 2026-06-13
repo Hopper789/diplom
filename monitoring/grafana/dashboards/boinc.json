@@ -3,7 +3,7 @@
   "title": "BOINC",
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 3,
+  "version": 31,
   "refresh": "10s",
   "tags": [
     "boinc"
@@ -40,7 +40,9 @@
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
-          }
+          },
+          "instant": true,
+          "range": false
         },
         {
           "expr": "boinc_hosts_total",
@@ -49,7 +51,9 @@
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
-          }
+          },
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
@@ -105,7 +109,9 @@
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
-          }
+          },
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
@@ -161,7 +167,9 @@
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
-          }
+          },
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
@@ -219,7 +227,9 @@
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
-          }
+          },
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
@@ -279,7 +289,9 @@
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
-          }
+          },
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
@@ -337,7 +349,9 @@
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
-          }
+          },
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
@@ -395,7 +409,9 @@
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
-          }
+          },
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
@@ -453,7 +469,9 @@
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
-          }
+          },
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {

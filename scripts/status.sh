@@ -65,6 +65,38 @@ raise SystemExit(0 if result else 1)
 '
 }
 
+print_prometheus_value() {
+  local label="$1"
+  local query="$2"
+  local response
+
+  if ! response="$(curl_status -G "http://$MONITORING_HOST:9090/api/v1/query" --data-urlencode "query=$query" 2>/dev/null)"; then
+    printf '  %-24s failed\n' "$label"
+    return 0
+  fi
+
+  PROMETHEUS_RESPONSE="$response" python3 - "$label" <<'PY'
+import json
+import os
+import sys
+
+label = sys.argv[1]
+try:
+    payload = json.loads(os.environ.get("PROMETHEUS_RESPONSE", ""))
+except Exception:
+    print(f"  {label:<24} invalid response")
+    raise SystemExit(0)
+
+result = payload.get("data", {}).get("result") or []
+if not result:
+    print(f"  {label:<24} no data")
+    raise SystemExit(0)
+
+value = result[0].get("value", [])
+print(f"  {label:<24} {value[1] if len(value) > 1 else 'no value'}")
+PY
+}
+
 if ! debug_enabled; then
   step "Checking server containers..."
   if docker ps --format '{{.Names}}' | grep -qx 'boinc-server'; then
@@ -300,6 +332,18 @@ for target in payload.get("data", {}).get("activeTargets", []):
     suffix = f" - {error}" if error else ""
     print(f"  {job} {instance}: {health}{suffix}")
 ' || true
+
+    echo "Dashboard metric values:"
+    print_prometheus_value "boinc_db_up" "boinc_db_up"
+    print_prometheus_value "Готово" "boinc_completion_percent"
+    print_prometheus_value "Хосты всего" "boinc_hosts_total"
+    print_prometheus_value "Хосты активные" "boinc_hosts_active_recent_total"
+    print_prometheus_value "Ошибки %" "boinc_workunits_error_percent"
+    print_prometheus_value "Время на задачу" "boinc_avg_compute_time_per_workunit_seconds"
+    print_prometheus_value "Полезная нагрузка" "boinc_useful_compute_percent"
+    print_prometheus_value "Скорость" "boinc_experiment_throughput_workunits_per_second"
+    print_prometheus_value "Репликация" "boinc_actual_results_per_workunit"
+    print_prometheus_value "node targets" 'count(up{job=~"node_exporter_(clients|server)"})'
   fi
 
   if docker ps --format '{{.Names}}' | grep -qx 'boinc-loki'; then
@@ -376,6 +420,18 @@ for target in payload.get("data", {}).get("activeTargets", []):
 
     if curl_status -u admin:admin "http://$MONITORING_HOST:3000/api/dashboards/uid/boinc-cluster" | grep -q '"uid":"boinc-cluster"'; then
       echo "Grafana dashboard boinc-cluster: OK"
+      curl_status -u admin:admin "http://$MONITORING_HOST:3000/api/dashboards/uid/boinc-cluster" 2>/dev/null \
+        | python3 -c '
+import json
+import sys
+
+try:
+    payload = json.load(sys.stdin)
+    dash = payload.get("dashboard") or {}
+    print(f"Grafana dashboard boinc-cluster version: {dash.get('version', '?')}, panels: {len(dash.get('panels') or [])}")
+except Exception:
+    pass
+' || true
     else
       echo "Grafana dashboard boinc-cluster: missing"
     fi
