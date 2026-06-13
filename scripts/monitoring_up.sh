@@ -219,6 +219,90 @@ optional_compose_up() {
   return 0
 }
 
+print_monitoring_diagnostics() {
+  local container
+
+  echo >&2
+  echo "Monitoring containers:" >&2
+  docker ps -a --filter name=boinc >&2 || true
+
+  for container in boinc-grafana boinc-prometheus boinc-exporter boinc-loki; do
+    if docker ps -a --format '{{.Names}}' | grep -qx "$container"; then
+      echo >&2
+      echo "Logs from $container, last 80 lines:" >&2
+      docker logs --tail 80 "$container" 2>&1 >&2 || true
+    fi
+  done
+}
+
+wait_for_http() {
+  local label="$1"
+  local url="$2"
+  local attempts="${3:-30}"
+  local delay_seconds="${4:-2}"
+  local attempt
+
+  for attempt in $(seq 1 "$attempts"); do
+    if curl -fsS "$url" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep "$delay_seconds"
+  done
+
+  echo "ERROR: $label did not become ready: $url" >&2
+  return 1
+}
+
+wait_for_url_match() {
+  local label="$1"
+  local url="$2"
+  local pattern="$3"
+  local attempts="${4:-30}"
+  local delay_seconds="${5:-2}"
+  local attempt
+
+  for attempt in $(seq 1 "$attempts"); do
+    if curl -fsS "$url" 2>/dev/null | grep -q "$pattern"; then
+      return 0
+    fi
+    sleep "$delay_seconds"
+  done
+
+  echo "ERROR: $label did not become ready: $url" >&2
+  return 1
+}
+
+check_monitoring_ready() {
+  local failed=0
+
+  if ! command -v curl >/dev/null 2>&1; then
+    echo "ERROR: curl is required to check monitoring readiness." >&2
+    exit 1
+  fi
+
+  step "Checking monitoring readiness..."
+
+  wait_for_url_match "Grafana" "http://127.0.0.1:3000/api/health" '"database":' || failed=1
+  wait_for_http "Prometheus" "http://127.0.0.1:9090/-/ready" || failed=1
+  wait_for_url_match "BOINC exporter metrics" "http://127.0.0.1:9101/metrics" '^boinc_db_up' || failed=1
+  wait_for_url_match "Loki API" "http://127.0.0.1:3100/loki/api/v1/labels" '"status":"success"' || failed=1
+  wait_for_url_match "Grafana Prometheus datasource" \
+    "http://admin:admin@127.0.0.1:3000/api/datasources/uid/prometheus" \
+    '"uid":"prometheus"' || failed=1
+  wait_for_url_match "Grafana Loki datasource" \
+    "http://admin:admin@127.0.0.1:3000/api/datasources/uid/loki" \
+    '"uid":"loki"' || failed=1
+
+  if [[ "$failed" == "1" ]]; then
+    print_monitoring_diagnostics
+    echo >&2
+    echo "Monitoring did not become ready." >&2
+    echo "Retry with full output:" >&2
+    echo "  ./scripts/monitoring_up.sh --debug" >&2
+    exit 1
+  fi
+}
+
 step "Generating monitoring configuration..."
 python3 - "$ROOT_DIR" "$MONITORING_DIR/prometheus.yml" <<'PY' | quiet_output
 import sys
@@ -330,6 +414,8 @@ step "Starting monitoring stack..."
   fi
 )
 
+check_monitoring_ready
+
 step "Monitoring is running:"
 echo "  Prometheus: http://$SERVER_IP:9090"
 echo "  Grafana:    http://$SERVER_IP:3000"
@@ -350,3 +436,5 @@ echo "Grafana:"
 echo "  Для просмотра dashboard логин не требуется."
 echo "  Для администрирования: admin / admin"
 echo "  Ошибки и логи: http://$SERVER_IP:3000/d/boinc-errors/boinc-errors"
+echo
+echo "If Grafana works on the server but not from your browser, check firewall/security-group access to TCP 3000."

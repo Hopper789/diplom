@@ -161,13 +161,6 @@
       failed_when: false
       changed_when: false
 
-    - name: Print BOINC project status before attach
-      ansible.builtin.debug:
-        msg:
-          rc: "{{ boinc_project_status.rc | default('n/a') }}"
-          stdout: "{{ boinc_project_status.stdout_lines | default([]) }}"
-          stderr: "{{ boinc_project_status.stderr_lines | default([]) }}"
-
     - name: Attach BOINC Docker client to project
       ansible.builtin.shell: |
         docker exec boinc-client \
@@ -176,16 +169,10 @@
       when:
         - boinc_project_url not in boinc_project_status.stdout
       register: attach_result
-      failed_when: false
+      failed_when:
+        - attach_result.rc != 0
+        - "'already attached' not in ((attach_result.stdout | default('')) ~ (attach_result.stderr | default('')))"
       changed_when: "'already attached' not in (attach_result.stdout | default(''))"
-
-    - name: Print attach result
-      ansible.builtin.debug:
-        msg:
-          rc: "{{ attach_result.rc | default('n/a') }}"
-          stdout: "{{ attach_result.stdout_lines | default([]) }}"
-          stderr: "{{ attach_result.stderr_lines | default([]) }}"
-      when: attach_result is defined
 
     - name: Wait after project attach
       ansible.builtin.pause:
@@ -199,19 +186,3 @@
           --project "{{ boinc_project_url }}" update
       failed_when: false
       changed_when: false
-
-    - name: Show final BOINC project status
-      ansible.builtin.shell: |
-        docker exec boinc-client \
-          boinccmd --passwd "{{ boinc_client_rpc_password }}" \
-          --get_project_status
-      register: final_status
-      failed_when: false
-      changed_when: false
-
-    - name: Print final BOINC project status
-      ansible.builtin.debug:
-        msg:
-          rc: "{{ final_status.rc | default('n/a') }}"
-          stdout: "{{ final_status.stdout_lines | default([]) }}"
-          stderr: "{{ final_status.stderr_lines | default([]) }}"
