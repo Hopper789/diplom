@@ -46,6 +46,20 @@ if [[ ! -f "$ROOT_DIR/config/generated.env" ]]; then
   exit 1
 fi
 
+# shellcheck disable=SC1091
+source "$ROOT_DIR/config/generated.env"
+
+if [[ -z "${BOINC_ACCOUNT_KEY:-}" ]]; then
+  echo "ERROR: BOINC_ACCOUNT_KEY is missing."
+  echo
+  echo "Run the server bootstrap first:"
+  echo "  ./scripts/bootstrap_server.sh"
+  echo
+  echo "Or run the full cluster launch:"
+  echo "  ./scripts/launch_cluster.sh --with-monitoring"
+  exit 1
+fi
+
 if [[ ! -f "$ROOT_DIR/ansible/inventory.ini" ]]; then
   echo "ERROR: ansible/inventory.ini not found."
   echo "Run first:"

@@ -65,6 +65,30 @@ check_prepared() {
   fi
 }
 
+check_boinc_account_ready() {
+  local account_key=""
+
+  if [[ -f "$ROOT_DIR/config/generated.env" ]]; then
+    # shellcheck disable=SC1091
+    source "$ROOT_DIR/config/generated.env"
+    account_key="${BOINC_ACCOUNT_KEY:-}"
+  fi
+
+  if [[ -z "$account_key" ]]; then
+    echo "BOINC account key is missing."
+    echo
+    echo "Run the server stage first:"
+    echo "  ./scripts/launch_cluster.sh --server-only"
+    echo
+    echo "Then run clients:"
+    echo "  ./scripts/launch_cluster.sh --clients-only"
+    echo
+    echo "Or run the full launch:"
+    echo "  ./scripts/launch_cluster.sh --with-monitoring"
+    exit 1
+  fi
+}
+
 cd "$ROOT_DIR"
 
 build_ansible_args "$@"
@@ -159,6 +183,7 @@ if [[ "$CLIENTS_ONLY" != "1" ]]; then
 fi
 
 if [[ "$SERVER_ONLY" != "1" ]]; then
+  check_boinc_account_ready
   step "Starting BOINC clients..."
   quiet_run_all ./scripts/bootstrap_clients.sh --skip-status --skip-runtime-check "${ANSIBLE_ARGS[@]}"
 fi
