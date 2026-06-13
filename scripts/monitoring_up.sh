@@ -6,6 +6,7 @@ ENV_FILE="$ROOT_DIR/config/generated.env"
 DISTRIBUTED_ENV_FILE="$ROOT_DIR/config/distributed.env"
 MONITORING_DIR="$ROOT_DIR/monitoring"
 BOINC_EXPORTER_BASE_IMAGE="${BOINC_EXPORTER_BASE_IMAGE:-python:3.12-slim}"
+MONITORING_OPTIONAL_PULL_TIMEOUT="${MONITORING_OPTIONAL_PULL_TIMEOUT:-30}"
 
 if [[ -z "${BOINC_EXPORTER_IMAGE:-}" ]]; then
   if command -v sha256sum >/dev/null 2>&1; then
@@ -32,6 +33,8 @@ cd "$ROOT_DIR"
 
 DEPLOY_CLIENT_AGENTS=1
 FORCE_RECREATE=0
+START_PROMTAIL=1
+START_RENDERER=1
 
 usage() {
   cat <<'USAGE'
@@ -40,6 +43,8 @@ Usage:
 
 Options:
   --skip-client-agents       do not deploy node-exporter/promtail on BOINC clients
+  --skip-promtail            do not start local Promtail log collector
+  --skip-renderer            do not start Grafana image renderer
   --force-recreate           force Docker Compose to recreate monitoring containers
   --ask-vault-pass, --vault  ask Vault password manually
   --vault-password-file F    use custom Vault password file
@@ -56,6 +61,14 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --skip-client-agents)
       DEPLOY_CLIENT_AGENTS=0
+      shift
+      ;;
+    --skip-promtail)
+      START_PROMTAIL=0
+      shift
+      ;;
+    --skip-renderer)
+      START_RENDERER=0
       shift
       ;;
     --force-recreate)
@@ -89,6 +102,11 @@ if [[ -f "$DISTRIBUTED_ENV_FILE" ]]; then
 fi
 set +a
 
+if ! docker image inspect "$BOINC_EXPORTER_IMAGE" >/dev/null 2>&1 \
+  && docker image inspect monitoring-boinc-exporter:latest >/dev/null 2>&1; then
+  BOINC_EXPORTER_IMAGE="monitoring-boinc-exporter:latest"
+fi
+
 if ! docker network inspect server_default >/dev/null 2>&1; then
   echo "ERROR: Docker network server_default not found."
   echo "Run server first:"
@@ -102,7 +120,7 @@ cat > "$MONITORING_DIR/.env" <<ENVEOF
 SERVER_IP=$SERVER_IP
 BOINC_EXPORTER_IMAGE=$BOINC_EXPORTER_IMAGE
 PROJECT_NAME=$PROJECT_NAME
-PROJECT_URL=$BOINC_PROJECT_URL
+PROJECT_URL=http://boinc-server/$PROJECT_NAME/
 MARIADB_HOST=boinc-mariadb
 MARIADB_PORT=3306
 MARIADB_USER=root
@@ -172,6 +190,33 @@ ensure_boinc_exporter_image() {
         -t "$BOINC_EXPORTER_IMAGE" \
         "$MONITORING_DIR" >/dev/null 2>&1
   fi
+}
+
+optional_compose_up() {
+  local service="$1"
+  local label="$2"
+
+  if [[ "$MONITORING_OPTIONAL_PULL_TIMEOUT" -lt 1 ]]; then
+    MONITORING_OPTIONAL_PULL_TIMEOUT=1
+  fi
+
+  step "Starting $label..."
+  if debug_enabled; then
+    if timeout "$MONITORING_OPTIONAL_PULL_TIMEOUT" \
+      env COMPOSE_BAKE=false docker compose up -d "$service"; then
+      return 0
+    fi
+  else
+    if timeout "$MONITORING_OPTIONAL_PULL_TIMEOUT" \
+      env COMPOSE_BAKE=false COMPOSE_PROGRESS=quiet docker compose up -d "$service" >/dev/null 2>&1; then
+      return 0
+    fi
+  fi
+
+  echo "WARNING: $label was not started within ${MONITORING_OPTIONAL_PULL_TIMEOUT}s." >&2
+  echo "Monitoring core is still available. To retry with full output:" >&2
+  echo "  ./scripts/monitoring_up.sh --debug" >&2
+  return 0
 }
 
 step "Generating monitoring configuration..."
@@ -273,7 +318,16 @@ step "Starting monitoring stack..."
   if [[ "$FORCE_RECREATE" == "1" ]]; then
     compose_args+=(--force-recreate)
   fi
+  compose_args+=(boinc-exporter node-exporter prometheus loki grafana)
   compose_run "${compose_args[@]}"
+
+  if [[ "$START_PROMTAIL" == "1" ]]; then
+    optional_compose_up promtail "Promtail log collector"
+  fi
+
+  if [[ "$START_RENDERER" == "1" ]]; then
+    optional_compose_up grafana-renderer "Grafana image renderer"
+  fi
 )
 
 step "Monitoring is running:"
@@ -281,7 +335,11 @@ echo "  Prometheus: http://$SERVER_IP:9090"
 echo "  Grafana:    http://$SERVER_IP:3000"
 echo "  Exporter:   http://$SERVER_IP:9101/metrics"
 echo "  Loki:       http://$SERVER_IP:3100"
-echo "  Renderer:   boinc-grafana-renderer"
+if docker ps --format '{{.Names}}' | grep -qx 'boinc-grafana-renderer'; then
+  echo "  Renderer:   boinc-grafana-renderer"
+else
+  echo "  Renderer:   not running; PNG panel dumps are unavailable until it starts"
+fi
 echo "  Server node-exporter: boinc-node-exporter:9100"
 echo
 echo "Client agent endpoints are scraped from ansible/inventory.ini:"

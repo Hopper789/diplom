@@ -33,6 +33,11 @@ mkdir -p "$ROOT_DIR/server/project" "$ROOT_DIR/server/mariadb-data"
   fi
 )
 
+if docker ps --format '{{.Names}}' | grep -qx 'boinc-server'; then
+  quiet_run docker cp "$ROOT_DIR/server/entrypoint.sh" boinc-server:/entrypoint.sh
+  quiet_run docker exec boinc-server chmod +x /entrypoint.sh
+fi
+
 step "Waiting for MariaDB..."
 attempts=30
 for ((i=1; i<=attempts; i++)); do

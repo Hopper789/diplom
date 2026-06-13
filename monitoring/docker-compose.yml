@@ -18,7 +18,7 @@ services:
       - "--path.rootfs=/host"
     pid: host
     volumes:
-      - "/:/host:ro,rslave"
+      - "/:/host:ro"
     networks:
       - monitoring
     restart: unless-stopped
@@ -96,7 +96,6 @@ services:
     depends_on:
       - prometheus
       - loki
-      - grafana-renderer
     restart: unless-stopped
 
   grafana-renderer:

@@ -1,4 +1,5 @@
 import os
+import traceback
 import time
 from typing import Any
 
@@ -475,6 +476,7 @@ def update_db_metrics() -> None:
 
         conn.close()
     except Exception:
+        traceback.print_exc()
         boinc_db_up.set(0)
         boinc_exporter_scrape_errors_total.inc()
 
@@ -490,6 +492,7 @@ def update_http_metrics() -> None:
         boinc_project_http_status_code.set(response.status_code)
         boinc_project_http_up.set(1 if response.status_code < 500 else 0)
     except Exception:
+        traceback.print_exc()
         boinc_project_http_status_code.set(0)
         boinc_project_http_up.set(0)
         boinc_exporter_scrape_errors_total.inc()

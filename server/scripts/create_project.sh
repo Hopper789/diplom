@@ -26,9 +26,27 @@ if ! docker ps --format '{{.Names}}' | grep -qx 'boinc-server'; then
   exit 1
 fi
 
-if docker exec boinc-server bash -lc "test -d \"/project/$PROJECT_NAME\""; then
+project_dir_exists() {
+  docker exec boinc-server bash -lc "test -d \"/project/$PROJECT_NAME\""
+}
+
+project_db_exists() {
+  docker exec boinc-mariadb \
+    mariadb -u root -proot -N -B \
+    -e "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME='${PROJECT_NAME}'" \
+    2>/dev/null | grep -qx "$PROJECT_NAME"
+}
+
+if project_dir_exists && project_db_exists; then
   echo "BOINC project already exists: /project/$PROJECT_NAME"
   exit 0
+fi
+
+if project_dir_exists && ! project_db_exists; then
+  backup_dir="/project/${PROJECT_NAME}.stale.$(date +%Y%m%d_%H%M%S)"
+  echo "WARNING: BOINC project directory exists, but database '$PROJECT_NAME' is missing."
+  echo "Moving stale project directory to: $backup_dir"
+  docker exec boinc-server bash -lc "mv \"/project/$PROJECT_NAME\" \"$backup_dir\""
 fi
 
 echo "Creating BOINC project: $PROJECT_NAME"

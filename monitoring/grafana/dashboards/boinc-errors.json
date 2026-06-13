@@ -22,7 +22,7 @@
       },
       "targets": [
         {
-          "expr": "sum(count_over_time({cluster=\"boinc\", stream=\"stderr\"} !~ \"caller=(metrics\\.go|engine\\.go|roundtrip\\.go):[0-9]+ .* query=\" !~ \"logger=tsdb\\.loki .* query=\" |~ \"(?i)(error|failed|exception|traceback|fatal|panic|timeout|denied|refused|bad WU template|no <file_info>|no <workunit>)\"[5m]))",
+          "expr": "sum(count_over_time({cluster=\"boinc\"} |~ \"(?i)(error|failed|exception|traceback|fatal|panic|timeout|denied|refused|critical|bad WU template|no <file_info>|no <workunit>|output file.*absent|platform.*not found)\"[5m]))",
           "refId": "A",
           "datasource": {
             "type": "loki",
@@ -59,7 +59,7 @@
       },
       "targets": [
         {
-          "expr": "sum(count_over_time({cluster=\"boinc\", stream=\"stderr\"} !~ \"caller=(metrics\\.go|engine\\.go|roundtrip\\.go):[0-9]+ .* query=\" !~ \"logger=tsdb\\.loki .* query=\" |~ \"(?i)(bad WU template|no <file_info>|no <workunit>|create_work|xadd|update_versions|template)\"[5m]))",
+          "expr": "sum(count_over_time({cluster=\"boinc\"} |~ \"(?i)(bad WU template|no <file_info>|no <workunit>|create_work|xadd|update_versions|template)\"[5m]))",
           "legendFormat": "templates/workunits",
           "refId": "A",
           "datasource": {
@@ -68,7 +68,7 @@
           }
         },
         {
-          "expr": "sum(count_over_time({cluster=\"boinc\", stream=\"stderr\"} !~ \"caller=(metrics\\.go|engine\\.go|roundtrip\\.go):[0-9]+ .* query=\" !~ \"logger=tsdb\\.loki .* query=\" |~ \"(?i)(boinccmd|project attach|project_attach|scheduler request failed|client.*error|gui_rpc_auth)\"[5m]))",
+          "expr": "sum(count_over_time({cluster=\"boinc\"} |~ \"(?i)(boinccmd|project attach|project_attach|scheduler request failed|client.*error|gui_rpc_auth|output file.*absent)\"[5m]))",
           "legendFormat": "client/rpc",
           "refId": "B",
           "datasource": {
@@ -77,7 +77,7 @@
           }
         },
         {
-          "expr": "sum(count_over_time({cluster=\"boinc\", stream=\"stderr\"} !~ \"caller=(metrics\\.go|engine\\.go|roundtrip\\.go):[0-9]+ .* query=\" !~ \"logger=tsdb\\.loki .* query=\" |~ \"(?i)(mariadb|database|db.*error|connection refused|can't connect)\"[5m]))",
+          "expr": "sum(count_over_time({cluster=\"boinc\"} |~ \"(?i)(mariadb|database|db.*error|connection refused|can't connect)\"[5m]))",
           "legendFormat": "database",
           "refId": "C",
           "datasource": {
@@ -86,7 +86,7 @@
           }
         },
         {
-          "expr": "sum(count_over_time({cluster=\"boinc\", stream=\"stderr\"} !~ \"caller=(metrics\\.go|engine\\.go|roundtrip\\.go):[0-9]+ .* query=\" !~ \"logger=tsdb\\.loki .* query=\" |~ \"(?i)(docker.*error|no such container|cannot connect to docker|permission denied|denied|pull access denied)\"[5m]))",
+          "expr": "sum(count_over_time({cluster=\"boinc\"} |~ \"(?i)(docker.*error|no such container|cannot connect to docker|permission denied|denied|pull access denied)\"[5m]))",
           "legendFormat": "docker/permissions",
           "refId": "D",
           "datasource": {
@@ -95,9 +95,18 @@
           }
         },
         {
-          "expr": "sum(count_over_time({cluster=\"boinc\", stream=\"stderr\"} !~ \"caller=(metrics\\.go|engine\\.go|roundtrip\\.go):[0-9]+ .* query=\" !~ \"logger=tsdb\\.loki .* query=\" |~ \"(?i)(ansible|ssh|unreachable|host key verification|permission denied|failed to connect)\"[5m]))",
+          "expr": "sum(count_over_time({cluster=\"boinc\"} |~ \"(?i)(ansible|ssh|unreachable|host key verification|permission denied|failed to connect)\"[5m]))",
           "legendFormat": "ansible/ssh",
           "refId": "E",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        },
+        {
+          "expr": "sum(count_over_time({cluster=\"boinc\"} |~ \"(?i)(platform.*not found|doesn't support computers|no tasks available|Sending reply.*0 results)\"[5m]))",
+          "legendFormat": "scheduler/platform",
+          "refId": "F",
           "datasource": {
             "type": "loki",
             "uid": "loki"
@@ -133,7 +142,7 @@
       },
       "targets": [
         {
-          "expr": "{cluster=\"boinc\", stream=\"stderr\"} !~ \"caller=(metrics\\.go|engine\\.go|roundtrip\\.go):[0-9]+ .* query=\" !~ \"logger=tsdb\\.loki .* query=\" |~ \"(?i)(error|failed|exception|traceback|fatal|panic|timeout|denied|refused|bad WU template|no <file_info>|no <workunit>|boinccmd)\"",
+          "expr": "{cluster=\"boinc\"} |~ \"(?i)(error|failed|exception|traceback|fatal|panic|timeout|denied|refused|critical|bad WU template|no <file_info>|no <workunit>|boinccmd|output file.*absent|platform.*not found|no tasks available)\"",
           "refId": "A",
           "datasource": {
             "type": "loki",
@@ -193,7 +202,7 @@
       },
       "targets": [
         {
-          "expr": "{cluster=\"boinc\", node_role=\"client\", stream=\"stderr\"} !~ \"caller=(metrics\\.go|engine\\.go|roundtrip\\.go):[0-9]+ .* query=\" !~ \"logger=tsdb\\.loki .* query=\"",
+          "expr": "{cluster=\"boinc\", node_role=\"client\"}",
           "refId": "A",
           "datasource": {
             "type": "loki",

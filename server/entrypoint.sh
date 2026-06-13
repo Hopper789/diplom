@@ -9,7 +9,13 @@ a2enconf servername >/dev/null 2>&1 || true
 a2enmod cgi >/dev/null 2>&1 || true
 a2enmod headers >/dev/null 2>&1 || true
 
-HTTPD_CONF="$(find /project -maxdepth 2 -type f -name '*.httpd.conf' 2>/dev/null | head -n1 || true)"
+rm -f /etc/apache2/sites-enabled/*.stale.*.conf || true
+
+HTTPD_CONF="$(
+    find /project -maxdepth 2 -type f -name '*.httpd.conf' ! -path '*/*.stale.*/*' 2>/dev/null \
+        | sort \
+        | head -n1 || true
+)"
 
 if [[ -n "$HTTPD_CONF" && -f "$HTTPD_CONF" ]]; then
     PROJECT_DIR="$(dirname "$HTTPD_CONF")"
