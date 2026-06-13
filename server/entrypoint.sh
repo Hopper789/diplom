@@ -44,6 +44,31 @@ if [[ -n "$HTTPD_CONF" && -f "$HTTPD_CONF" ]]; then
     echo "Fixing BOINC config hostname..."
     if [[ -f "$PROJECT_DIR/config.xml" ]]; then
         sed -i "s/<host>.*<\\/host>/<host>$(hostname)<\\/host>/g" "$PROJECT_DIR/config.xml"
+        python3 - "$PROJECT_DIR/config.xml" <<'PY'
+from pathlib import Path
+import re
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+
+def set_tag(body: str, tag: str, value: str) -> str:
+    pattern = rf"<{tag}>.*?</{tag}>"
+    replacement = f"<{tag}>{value}</{tag}>"
+    if re.search(pattern, body, flags=re.S):
+        return re.sub(pattern, replacement, body, flags=re.S)
+    return body.replace("</config>", f"        {replacement}\n    </config>")
+
+def ensure_empty_tag(body: str, tag: str) -> str:
+    if re.search(rf"<{tag}\s*/>|<{tag}>.*?</{tag}>", body, flags=re.S):
+        return body
+    return body.replace("</config>", f"        <{tag}/>\n    </config>")
+
+text = set_tag(text, "max_wus_to_send", "1")
+text = set_tag(text, "min_sendwork_interval", "1")
+text = ensure_empty_tag(text, "one_result_per_host_per_wu")
+path.write_text(text, encoding="utf-8")
+PY
     fi
 
     echo "Starting BOINC project daemons..."

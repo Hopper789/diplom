@@ -157,9 +157,22 @@ request_update() {
   output="$(
     ANSIBLE_HOST_KEY_CHECKING=False \
     ansible -i "$ROOT_DIR/ansible/inventory.ini" boinc_clients -b "${ANSIBLE_ARGS[@]}" -m shell -a "
-      docker exec boinc-client \
-        boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' \
-        --project '$BOINC_PROJECT_URL' update
+      docker exec boinc-client sh -lc \"
+        cat > /var/lib/boinc/global_prefs_override.xml <<'EOF'
+<global_preferences>
+  <run_on_batteries>1</run_on_batteries>
+  <run_if_user_active>1</run_if_user_active>
+  <run_gpu_if_user_active>0</run_gpu_if_user_active>
+  <suspend_cpu_usage>0.000000</suspend_cpu_usage>
+  <work_buf_min_days>0.000000</work_buf_min_days>
+  <work_buf_additional_days>0.000000</work_buf_additional_days>
+  <max_ncpus_pct>100.000000</max_ncpus_pct>
+  <cpu_usage_limit>100.000000</cpu_usage_limit>
+</global_preferences>
+EOF
+        boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' --read_global_prefs_override >/dev/null 2>&1 || true
+        boinccmd --passwd '$BOINC_CLIENT_RPC_PASSWORD' --project '$BOINC_PROJECT_URL' update
+      \"
     " 2>&1
   )"
   rc=$?
