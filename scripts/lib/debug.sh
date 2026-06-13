@@ -24,6 +24,12 @@ debug_enabled() {
   [[ "${DEBUG:-0}" == "1" ]]
 }
 
+debug_log() {
+  if debug_enabled; then
+    echo "$@"
+  fi
+}
+
 run_quietly() {
   local output_file rc had_errexit=0
   output_file="$(mktemp -t diplom-command-output.XXXXXX)"

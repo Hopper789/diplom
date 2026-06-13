@@ -64,7 +64,7 @@ run_boinc() {
     export PYTHON_TASK_APP_VERSION="$APP_VERSION"
   else
     if [[ "${APP_VERSION:-}" == "1.04" ]]; then
-      debug_enabled && echo "Legacy APP_VERSION=1.04 detected; Python runner will auto-select the next BOINC app version."
+      debug_log "Legacy APP_VERSION=1.04 detected; Python runner will auto-select the next BOINC app version."
     fi
     export PYTHON_TASK_APP_VERSION=""
   fi
@@ -102,7 +102,9 @@ run_local() {
   done
 
   step "Local grid-search run completed."
-  debug_enabled && echo "Local outputs: $output_dir"
+  if debug_enabled; then
+    echo "Local outputs: $output_dir"
+  fi
 }
 
 case "$MODE" in

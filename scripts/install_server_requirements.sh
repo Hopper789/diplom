@@ -68,7 +68,7 @@ step "Checking installed tools..."
 
 check_cmd() {
   if command -v "$1" >/dev/null 2>&1; then
-    debug_enabled && echo "OK: $1 -> $($1 --version 2>/dev/null | head -n 1 || true)"
+    debug_log "OK: $1 -> $($1 --version 2>/dev/null | head -n 1 || true)"
   else
     echo "MISSING: $1"
   fi
@@ -85,6 +85,8 @@ step "Checking Docker Compose..."
 quiet_run_all docker compose version || true
 
 step "Server requirements installation completed."
-debug_enabled && echo "If Docker requires sudo, either run Docker commands with sudo or add current user to the docker group:"
-debug_enabled && echo "  sudo usermod -aG docker \$USER"
-debug_enabled && echo "Then log out and log in again."
+if debug_enabled; then
+  echo "If Docker requires sudo, either run Docker commands with sudo or add current user to the docker group:"
+  echo "  sudo usermod -aG docker \$USER"
+  echo "Then log out and log in again."
+fi

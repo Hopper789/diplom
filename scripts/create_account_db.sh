@@ -44,7 +44,7 @@ import secrets
 print(secrets.token_urlsafe(18))
 PY
 )"
-  debug_enabled && echo "Generated account password: $PASSWORD"
+  debug_log "Generated account password: $PASSWORD"
 fi
 
 if ! docker ps --format '{{.Names}}' | grep -qx 'boinc-mariadb'; then
@@ -67,9 +67,9 @@ EMAIL_SQL="$(sql_escape "$EMAIL")"
 USERNAME_SQL="$(sql_escape "$USERNAME")"
 
 step "Creating or looking up BOINC account..."
-debug_enabled && echo "Project:  $PROJECT_NAME"
-debug_enabled && echo "Email:    $EMAIL"
-debug_enabled && echo "Username: $USERNAME"
+debug_log "Project:  $PROJECT_NAME"
+debug_log "Email:    $EMAIL"
+debug_log "Username: $USERNAME"
 
 EXISTING_ROW="$(
   docker exec boinc-mariadb \
@@ -85,9 +85,9 @@ if [[ -n "$EXISTING_ROW" ]]; then
   ACCOUNT_KEY="$(echo "$EXISTING_ROW" | awk -F '\t' '{print $4}')"
 
   step "BOINC account exists."
-  debug_enabled && echo "User ID: $USER_ID"
-  debug_enabled && echo "Email:   $FOUND_EMAIL"
-  debug_enabled && echo "Name:    $FOUND_NAME"
+  debug_log "User ID: $USER_ID"
+  debug_log "Email:   $FOUND_EMAIL"
+  debug_log "Name:    $FOUND_NAME"
 else
   step "Creating BOINC account..."
 
@@ -199,12 +199,12 @@ VALUES (
   ACCOUNT_KEY="$AUTHENTICATOR"
 
   step "BOINC account created."
-  debug_enabled && echo "User ID: $USER_ID"
+  debug_log "User ID: $USER_ID"
 fi
 
-debug_enabled && echo
-debug_enabled && echo "BOINC_ACCOUNT_KEY:"
-debug_enabled && echo "$ACCOUNT_KEY"
+debug_log
+debug_log "BOINC_ACCOUNT_KEY:"
+debug_log "$ACCOUNT_KEY"
 
 step "Writing BOINC account configuration..."
 quiet_run_all python3 - "$ENV_FILE" "$ANSIBLE_GROUP_VARS" "$ACCOUNT_KEY" "$PASSWORD" <<'PY'

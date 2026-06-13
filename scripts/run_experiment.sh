@@ -132,9 +132,9 @@ run_selected_experiment() {
   local task="$EXPERIMENT_TASK"
   case "$task" in
     user|python|python_task|python-task)
-      debug_enabled && echo "Experiment task: user"
-      debug_enabled && echo "Task file: $USER_TASK_FILE"
-      debug_enabled && echo "Params:    $USER_TASK_PARAMS"
+      debug_log "Experiment task: user"
+      debug_log "Task file: $USER_TASK_FILE"
+      debug_log "Params:    $USER_TASK_PARAMS"
       export PYTHON_TASK_APP_NAME="${PYTHON_TASK_APP_NAME:-user_python_task}"
       export PYTHON_TASK_APP_FRIENDLY_NAME="${PYTHON_TASK_APP_FRIENDLY_NAME:-User Python task}"
       quiet_run_all apps/python_task_runner/run_task.sh \
@@ -143,11 +143,11 @@ run_selected_experiment() {
         --device cpu
       ;;
     grid-search|grid_search|ml-grid-search|ml_grid_search)
-      debug_enabled && echo "Experiment task: grid-search"
+      debug_log "Experiment task: grid-search"
       quiet_run_all apps/ml_grid_search/run_task.sh boinc
       ;;
     determinant|big-det|big_det|big-determinant|big_determinant)
-      debug_enabled && echo "Experiment task: determinant"
+      debug_log "Experiment task: determinant"
       local args=(apps/big_determinant/run_task.sh boinc)
       quiet_run_all "${args[@]}"
       ;;
@@ -206,7 +206,7 @@ fi
 
 if [[ "$SUBMIT_ONLY" == "1" ]]; then
   step "Experiment submitted."
-  debug_enabled && echo "Auto-update, Grafana dump, and status check were skipped."
+  debug_log "Auto-update, Grafana dump, and status check were skipped."
   exit 0
 fi
 
@@ -222,7 +222,7 @@ if [[ "$AUTO_DUMP_RESULTS" == "1" ]]; then
     read_progress
     if [[ "$CLIENT_ERRORS" -gt 0 || "$WORKUNITS" -eq 0 || "$COMPLETED" -lt "$WORKUNITS" ]]; then
       step "Skipping Grafana dump because computations are not complete."
-      debug_enabled && echo "  workunits=$WORKUNITS completed=$COMPLETED unfinished=$UNFINISHED client_errors=$CLIENT_ERRORS redundant=$REDUNDANT"
+      debug_log "  workunits=$WORKUNITS completed=$COMPLETED unfinished=$UNFINISHED client_errors=$CLIENT_ERRORS redundant=$REDUNDANT"
       echo "Check the reason with:"
       echo "  ./scripts/diagnose_compute.sh --debug"
       echo "  ./scripts/status.sh --debug"
@@ -249,6 +249,8 @@ if [[ "$AUTO_DUMP_RESULTS" == "1" ]]; then
 fi
 
 step "Experiment submitted."
-debug_enabled && echo "Use monitoring or status command to watch progress:"
-debug_enabled && echo "  ./scripts/status.sh --debug"
-debug_enabled && echo "  http://$MONITORING_HOST:3000"
+if debug_enabled; then
+  echo "Use monitoring or status command to watch progress:"
+  echo "  ./scripts/status.sh --debug"
+  echo "  http://$MONITORING_HOST:3000"
+fi

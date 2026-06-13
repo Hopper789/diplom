@@ -733,7 +733,7 @@ restart_project_daemons() {
 
 update_clients() {
   if [[ ! -f "$ROOT_DIR/ansible/inventory.ini" ]] || ! command -v ansible >/dev/null 2>&1; then
-    debug_enabled && echo "Ansible недоступен или нет inventory; обновление клиентов пропущено."
+    debug_log "Ansible недоступен или нет inventory; обновление клиентов пропущено."
     return 0
   fi
 

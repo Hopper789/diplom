@@ -146,7 +146,7 @@ retry_command() {
     fi
 
     if [[ "$attempt" -lt "$attempts" ]]; then
-      debug_enabled && echo "Command failed, retrying in ${delay_seconds}s ($attempt/$attempts): $*" >&2
+      debug_log "Command failed, retrying in ${delay_seconds}s ($attempt/$attempts): $*" >&2
       sleep "$delay_seconds"
     fi
   done

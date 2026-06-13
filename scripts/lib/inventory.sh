@@ -50,10 +50,10 @@ refresh_client_known_hosts() {
     [[ -z "$host" ]] && continue
 
     if [[ -n "$port" ]]; then
-      debug_enabled && echo "  removing old SSH host key for $host:$port"
+      debug_log "  removing old SSH host key for $host:$port"
       ssh-keygen -R "[$host]:$port" >/dev/null 2>&1 || true
     else
-      debug_enabled && echo "  removing old SSH host key for $host"
+      debug_log "  removing old SSH host key for $host"
       ssh-keygen -R "$host" >/dev/null 2>&1 || true
     fi
   done < <(inventory_client_hosts "$inventory")

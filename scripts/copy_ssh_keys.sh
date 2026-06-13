@@ -132,7 +132,7 @@ while IFS="|" read -r NAME USER IP PORT; do
   fi
 
   step "Establishing SSH connection..."
-  debug_enabled && echo "==> $LABEL as $USER"
+  debug_log "==> $LABEL as $USER"
 
   SSH_COPY_ID_ARGS=(
     -i "$PUB_KEY"

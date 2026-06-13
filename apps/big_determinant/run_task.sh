@@ -113,7 +113,9 @@ run_local() {
   done
 
   step "Local determinant run completed."
-  debug_enabled && echo "Local outputs: $output_dir"
+  if debug_enabled; then
+    echo "Local outputs: $output_dir"
+  fi
 }
 
 case "$MODE" in

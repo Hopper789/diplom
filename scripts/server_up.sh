@@ -60,4 +60,6 @@ quiet_run_all "$ROOT_DIR/server/scripts/fix_project_url.sh"
 quiet_run docker restart boinc-server
 
 step "BOINC server is ready."
-debug_enabled && echo "$BOINC_PROJECT_URL"
+if debug_enabled; then
+  echo "$BOINC_PROJECT_URL"
+fi
