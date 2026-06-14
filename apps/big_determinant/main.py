@@ -33,7 +33,7 @@ except ModuleNotFoundError as exc:  # pragma: no cover - validated on client ima
     ) from exc
 
 
-MATRIX_SIZE = 8000
+MATRIX_SIZE = 18000
 DIAGONAL_BOOST = max(1.0, MATRIX_SIZE * 0.01)
 WORKUNITS = 20
 
@@ -53,7 +53,8 @@ def _scientific_from_log(sign: float, log_abs_det: float) -> dict[str, Any]:
 
 def _build_matrix(size: int, seed: int) -> np.ndarray:
     rng = np.random.default_rng(seed)
-    matrix = rng.standard_normal((size, size)).astype(np.float64, copy=False)
+    matrix = np.empty((size, size), dtype=np.float64, order="F")
+    rng.standard_normal(out=matrix)
     diagonal = np.diag_indices_from(matrix)
     matrix[diagonal] += DIAGONAL_BOOST
     return matrix

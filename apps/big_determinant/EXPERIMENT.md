@@ -17,6 +17,13 @@ CPU-задача для BOINC Python runner: вычисление определ
 `apps/big_determinant/main.py`. Для плотной матрицы время растёт примерно как
 `MATRIX_SIZE^3`, память — как `MATRIX_SIZE^2`.
 
+Если текущий размер `N` даёт время `T`, то новый размер для целевого времени
+`T_target` можно оценить так:
+
+```text
+N_new = N * (T_target / T)^(1/3)
+```
+
 Ручной запуск через BOINC:
 
 ```bash
@@ -34,7 +41,7 @@ apps/big_determinant/run_task.sh boinc
 
 Текущая стратегия:
 
-- `MATRIX_SIZE = 8000`;
+- `MATRIX_SIZE = 18000`;
 - `WORKUNITS = 20`.
 
 Будет создано 20 workunit независимо от числа клиентов. BOINC раздаёт их
