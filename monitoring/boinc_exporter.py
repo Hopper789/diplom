@@ -125,7 +125,7 @@ boinc_estimated_remaining_seconds = Gauge(
 )
 boinc_useful_compute_percent = Gauge(
     "boinc_useful_compute_percent",
-    "Percent of finished attempt lifecycle spent on first-quorum useful computation",
+    "Percent of first-quorum successful attempt lifecycle spent on computation",
 )
 
 # Distributed-computing configuration loaded from config/distributed.env through monitoring/.env.
@@ -192,7 +192,7 @@ boinc_current_avg_compute_time_per_workunit_seconds = Gauge(
 )
 boinc_current_useful_compute_percent = Gauge(
     "boinc_current_useful_compute_percent",
-    "Percent of latest-experiment finished attempt lifecycle spent on first-quorum useful computation",
+    "Percent of latest-experiment first-quorum successful attempt lifecycle spent on computation",
 )
 boinc_current_issued_results_percent = Gauge(
     "boinc_current_issued_results_percent",
@@ -327,6 +327,26 @@ def useful_success_query(metric_expr: str, where_clause: str = "1 = 1") -> str:
     """
 
 
+def useful_lifecycle_query(where_clause: str = "1 = 1") -> str:
+    return useful_success_query(
+        """
+        COALESCE(SUM(
+          GREATEST(
+            COALESCE(elapsed_time, 0),
+            CASE
+              WHEN received_time > 0 AND sent_time > 0
+                THEN received_time - sent_time
+              WHEN received_time > 0 AND create_time > 0
+                THEN received_time - create_time
+              ELSE COALESCE(elapsed_time, 0)
+            END
+          )
+        ), 0) AS lifecycle_seconds
+        """,
+        where_clause,
+    )
+
+
 def latest_experiment_scope(cur) -> tuple[str, str, tuple[Any, ...]] | None:
     cur.execute("SELECT name FROM workunit ORDER BY create_time DESC, id DESC LIMIT 1")
     row = cur.fetchone() or {}
@@ -446,6 +466,7 @@ def update_current_experiment_metrics(cur, has_canonical_resultid: bool) -> None
         "COALESCE(SUM(CASE WHEN elapsed_time > 0 THEN elapsed_time ELSE 0 END), 0) AS compute_seconds",
         workunit_where,
     )
+    useful_lifecycle_sql = useful_lifecycle_query(workunit_where)
     avg_compute_sql = useful_success_query(
         "COALESCE(AVG(CASE WHEN elapsed_time > 0 THEN elapsed_time END), 0)",
         workunit_where,
@@ -455,30 +476,9 @@ def update_current_experiment_metrics(cur, has_canonical_resultid: bool) -> None
         cur.execute(useful_compute_sql, workunit_params)
         useful_row = cur.fetchone() or {}
         useful_compute_seconds = float(useful_row.get("compute_seconds") or 0)
-        useful_total_seconds = float(
-            safe_fetch_one(
-                cur,
-                f"""
-                SELECT COALESCE(SUM(
-                  GREATEST(
-                    COALESCE(r.elapsed_time, 0),
-                    CASE
-                      WHEN r.received_time > 0 AND r.sent_time > 0
-                        THEN r.received_time - r.sent_time
-                      WHEN r.received_time > 0 AND r.create_time > 0
-                        THEN r.received_time - r.create_time
-                      ELSE COALESCE(r.elapsed_time, 0)
-                    END
-                  )
-                ), 0)
-                {result_from}
-                  AND r.outcome != 0
-                  AND r.hostid != 0
-                """,
-                workunit_params,
-            )
-            or 0
-        )
+        cur.execute(useful_lifecycle_sql, workunit_params)
+        useful_lifecycle_row = cur.fetchone() or {}
+        useful_total_seconds = float(useful_lifecycle_row.get("lifecycle_seconds") or 0)
     except Exception:
         useful_compute_seconds = 0.0
         useful_total_seconds = 0.0
@@ -624,6 +624,7 @@ def update_db_metrics() -> None:
             useful_compute_sql = useful_success_query(
                 "COALESCE(SUM(CASE WHEN elapsed_time > 0 THEN elapsed_time ELSE 0 END), 0) AS compute_seconds"
             )
+            useful_lifecycle_sql = useful_lifecycle_query()
             avg_compute_sql = useful_success_query(
                 "COALESCE(AVG(CASE WHEN elapsed_time > 0 THEN elapsed_time END), 0)"
             )
@@ -651,29 +652,9 @@ def update_db_metrics() -> None:
                 cur.execute(useful_compute_sql)
                 useful_row = cur.fetchone() or {}
                 useful_compute_seconds = float(useful_row.get("compute_seconds") or 0)
-                useful_total_seconds = float(
-                    safe_fetch_one(
-                        cur,
-                        """
-                        SELECT COALESCE(SUM(
-                          GREATEST(
-                            COALESCE(elapsed_time, 0),
-                            CASE
-                              WHEN received_time > 0 AND sent_time > 0
-                                THEN received_time - sent_time
-                              WHEN received_time > 0 AND create_time > 0
-                                THEN received_time - create_time
-                              ELSE COALESCE(elapsed_time, 0)
-                            END
-                          )
-                        ), 0)
-                        FROM result
-                        WHERE outcome != 0
-                          AND hostid != 0
-                        """,
-                    )
-                    or 0
-                )
+                cur.execute(useful_lifecycle_sql)
+                useful_lifecycle_row = cur.fetchone() or {}
+                useful_total_seconds = float(useful_lifecycle_row.get("lifecycle_seconds") or 0)
             except Exception:
                 useful_compute_seconds = 0.0
                 useful_total_seconds = 0.0
