@@ -13,6 +13,7 @@ from typing import Any
 DEFAULTS: dict[str, Any] = {
     "WORKUNITS": 1,
     "DATASET_SIZE": 500,
+    "REPEAT_COUNT": 1,
     "SEED_BASE": 1000,
     "LAMBDA_GRID": [0.0, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0],
 }
@@ -45,6 +46,7 @@ def read_task_config(path: Path) -> dict[str, Any]:
 
     config["WORKUNITS"] = int(config["WORKUNITS"])
     config["DATASET_SIZE"] = int(config["DATASET_SIZE"])
+    config["REPEAT_COUNT"] = int(config["REPEAT_COUNT"])
     config["SEED_BASE"] = int(config["SEED_BASE"])
     config["LAMBDA_GRID"] = [float(value) for value in config["LAMBDA_GRID"]]
 
@@ -52,6 +54,8 @@ def read_task_config(path: Path) -> dict[str, Any]:
         raise ValueError("WORKUNITS must be >= 1")
     if config["DATASET_SIZE"] < 2:
         raise ValueError("DATASET_SIZE must be >= 2")
+    if config["REPEAT_COUNT"] < 1:
+        raise ValueError("REPEAT_COUNT must be >= 1")
     if not config["LAMBDA_GRID"]:
         raise ValueError("LAMBDA_GRID must contain at least one value")
 
@@ -61,6 +65,7 @@ def read_task_config(path: Path) -> dict[str, Any]:
 def write_params(config: dict[str, Any], output_path: Path) -> int:
     task_count = int(config["WORKUNITS"])
     dataset_size = int(config["DATASET_SIZE"])
+    repeat_count = int(config["REPEAT_COUNT"])
     seed_base = int(config["SEED_BASE"])
     lambda_grid = list(config["LAMBDA_GRID"])
 
@@ -72,6 +77,7 @@ def write_params(config: dict[str, Any], output_path: Path) -> int:
                 "lambda": lambda_grid[(task_id - 1) % len(lambda_grid)],
                 "seed": seed_base + task_id,
                 "n": dataset_size,
+                "repeats": repeat_count,
             }
             json.dump(payload, handle, ensure_ascii=False, sort_keys=True)
             handle.write("\n")
@@ -90,6 +96,7 @@ def main() -> int:
     print(f"Prepared ml_grid_search main: {main_path}")
     print(f"Generated ml_grid_search workunits: {task_count}")
     print(f"Dataset size: {config['DATASET_SIZE']}")
+    print(f"Repeats per workunit: {config['REPEAT_COUNT']}")
     print(f"Lambda grid size: {len(config['LAMBDA_GRID'])}")
     print(f"Output: {output_path}")
     return 0

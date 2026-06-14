@@ -20,6 +20,7 @@ except ModuleNotFoundError as exc:  # pragma: no cover - validated on client ima
 
 WORKUNITS = 20
 DATASET_SIZE = 50_000
+REPEAT_COUNT = 60
 SEED_BASE = 1000
 LAMBDA_GRID = [0.0, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0]
 
@@ -99,13 +100,21 @@ def run(params: dict[str, Any]) -> dict[str, Any]:
     regularization = float(params.get("lambda", params.get("regularization", 0.0)))
     seed = _as_int(params, "seed", SEED_BASE + task_id)
     dataset_size = max(2, _as_int(params, "n", DATASET_SIZE))
+    repeat_count = max(1, _as_int(params, "repeats", REPEAT_COUNT))
 
     _warm_up_numba()
 
     started = time.perf_counter()
-    xs, ys = _build_dataset(dataset_size, seed)
-    intercept, slope = _ridge_fit(xs, ys, regularization)
-    loss = _mean_squared_error(xs, ys, intercept, slope)
+    intercept = 0.0
+    slope = 0.0
+    loss_total = 0.0
+
+    for repeat_index in range(repeat_count):
+        xs, ys = _build_dataset(dataset_size, seed + repeat_index)
+        intercept, slope = _ridge_fit(xs, ys, regularization)
+        loss_total += _mean_squared_error(xs, ys, intercept, slope)
+
+    loss = loss_total / repeat_count
     elapsed = time.perf_counter() - started
 
     return {
@@ -113,6 +122,7 @@ def run(params: dict[str, Any]) -> dict[str, Any]:
         "lambda": regularization,
         "seed": seed,
         "n": dataset_size,
+        "repeats": repeat_count,
         "weights": {
             "intercept": intercept,
             "slope": slope,
