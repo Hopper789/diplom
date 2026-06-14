@@ -418,11 +418,6 @@ scrape_configs:
       - targets:
           - boinc-exporter:9101
 
-  - job_name: node_exporter_server
-    static_configs:
-      - targets:
-          - node-exporter:9100
-
 """
 
 content += "\n  - job_name: node_exporter_clients\n    static_configs:\n      - targets:\n"
@@ -437,7 +432,7 @@ if hosts:
     for host in hosts:
         print(f"  node-exporter: {host}:9100")
 else:
-    print("No boinc_clients found in ansible/inventory.ini; only server metrics will be scraped.")
+    print("No boinc_clients found in ansible/inventory.ini; node metrics will be empty.")
 PY
 
 if [[ "$DEPLOY_CLIENT_AGENTS" == "1" && -f "$ROOT_DIR/ansible/inventory.ini" ]]; then
@@ -459,7 +454,7 @@ step "Starting monitoring stack..."
   if [[ "$FORCE_RECREATE" == "1" ]]; then
     compose_args+=(--force-recreate)
   fi
-  compose_args+=(boinc-exporter node-exporter prometheus loki grafana)
+  compose_args+=(boinc-exporter prometheus loki grafana)
   compose_run "${compose_args[@]}"
 
   if [[ "$START_PROMTAIL" == "1" ]]; then
@@ -483,7 +478,6 @@ if docker ps --format '{{.Names}}' | grep -qx 'boinc-grafana-renderer'; then
 else
   echo "  Renderer:   not running; PNG panel dumps are unavailable until it starts"
 fi
-echo "  Server node-exporter: boinc-node-exporter:9100"
 echo
 echo "Client agent endpoints are scraped from ansible/inventory.ini:"
 echo "  node-exporter: http://CLIENT_IP:9100/metrics"

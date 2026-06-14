@@ -11,18 +11,6 @@ services:
       - monitoring
     restart: unless-stopped
 
-  node-exporter:
-    image: prom/node-exporter:v1.8.2
-    container_name: boinc-node-exporter
-    command:
-      - "--path.rootfs=/host"
-    pid: host
-    volumes:
-      - "/:/host:ro"
-    networks:
-      - monitoring
-    restart: unless-stopped
-
   prometheus:
     image: prom/prometheus:v2.55.1
     container_name: boinc-prometheus

@@ -376,7 +376,7 @@ for target in payload.get("data", {}).get("activeTargets", []):
     print_prometheus_value "Полезная нагрузка" "boinc_current_useful_compute_percent"
     print_prometheus_value "% выданных задач" "boinc_current_issued_results_percent"
     print_prometheus_value "Репликация" "boinc_current_actual_results_per_workunit"
-    print_prometheus_value "node targets" 'count(up{job=~"node_exporter_(clients|server)"})'
+    print_prometheus_value "client node targets" 'count(up{job="node_exporter_clients"})'
   fi
 
   if docker ps --format '{{.Names}}' | grep -qx 'boinc-loki'; then
