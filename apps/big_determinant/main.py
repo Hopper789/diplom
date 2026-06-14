@@ -33,7 +33,7 @@ except ModuleNotFoundError as exc:  # pragma: no cover - validated on client ima
     ) from exc
 
 
-MATRIX_SIZE = 18000
+MATRIX_SIZE = 12000
 DIAGONAL_BOOST = max(1.0, MATRIX_SIZE * 0.01)
 WORKUNITS = 20
 

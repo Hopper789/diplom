@@ -41,7 +41,7 @@ apps/big_determinant/run_task.sh boinc
 
 Текущая стратегия:
 
-- `MATRIX_SIZE = 18000`;
+- `MATRIX_SIZE = 12000`;
 - `WORKUNITS = 20`.
 
 Будет создано 20 workunit независимо от числа клиентов. BOINC раздаёт их

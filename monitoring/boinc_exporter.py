@@ -1,4 +1,5 @@
 import os
+import sys
 import traceback
 import time
 from typing import Any
@@ -21,6 +22,8 @@ CONFIG_MIN_QUORUM = float(os.getenv("DISTRIBUTED_MIN_QUORUM", "1"))
 CONFIG_MAX_SUCCESS_RESULTS = float(os.getenv("DISTRIBUTED_MAX_SUCCESS_RESULTS", "1"))
 CONFIG_MAX_ERROR_RESULTS = float(os.getenv("DISTRIBUTED_MAX_ERROR_RESULTS", "3"))
 CONFIG_MAX_TOTAL_RESULTS = float(os.getenv("DISTRIBUTED_MAX_TOTAL_RESULTS", "3"))
+LOG_BOINC_RESULT_ERRORS = os.getenv("LOG_BOINC_RESULT_ERRORS", "1") != "0"
+LOGGED_ERROR_RESULT_IDS: set[int] = set()
 
 # Availability
 boinc_db_up = Gauge("boinc_db_up", "MariaDB connection status: 1 if up, 0 if down")
@@ -232,6 +235,57 @@ def safe_fetch_one(cur, sql: str, params: tuple[Any, ...] | None = None, default
 
 def set_ratio(metric: Gauge, numerator: float, denominator: float) -> None:
     metric.set(float(numerator) / float(denominator) if denominator else 0)
+
+
+def log_new_result_errors(cur) -> None:
+    if not LOG_BOINC_RESULT_ERRORS:
+        return
+
+    cur.execute(
+        """
+        SELECT
+          r.id,
+          r.name,
+          r.workunitid,
+          r.hostid,
+          r.server_state,
+          r.outcome,
+          r.client_state,
+          LEFT(REPLACE(REPLACE(COALESCE(r.stderr_out, ''), '\n', ' '), '\r', ' '), 500) AS stderr_preview
+        FROM result r
+        WHERE r.outcome IN (2, 3, 4, 6)
+        ORDER BY r.id DESC
+        LIMIT 50
+        """
+    )
+
+    for row in reversed(cur.fetchall()):
+        result_id = int(row["id"])
+        if result_id in LOGGED_ERROR_RESULT_IDS:
+            continue
+
+        LOGGED_ERROR_RESULT_IDS.add(result_id)
+        if len(LOGGED_ERROR_RESULT_IDS) > 2000:
+            LOGGED_ERROR_RESULT_IDS.clear()
+            LOGGED_ERROR_RESULT_IDS.add(result_id)
+
+        preview = (row.get("stderr_preview") or "").strip()
+        if not preview:
+            preview = "no stderr_out in BOINC result table"
+
+        print(
+            "BOINC client error "
+            f"result_id={result_id} "
+            f"name={row.get('name') or ''} "
+            f"workunitid={row.get('workunitid') or 0} "
+            f"hostid={row.get('hostid') or 0} "
+            f"server_state={row.get('server_state') or 0} "
+            f"outcome={row.get('outcome') or 0} "
+            f"client_state={row.get('client_state') or 0} "
+            f"stderr={preview}",
+            file=sys.stderr,
+            flush=True,
+        )
 
 
 def completed_workunits_sql(has_canonical_resultid: bool, where_clause: str = "1 = 1") -> str:
@@ -510,6 +564,8 @@ def update_db_metrics() -> None:
             avg_max_success_results = safe_fetch_one(cur, "SELECT COALESCE(AVG(max_success_results), 0) FROM workunit")
             avg_max_error_results = safe_fetch_one(cur, "SELECT COALESCE(AVG(max_error_results), 0) FROM workunit")
             avg_max_total_results = safe_fetch_one(cur, "SELECT COALESCE(AVG(max_total_results), 0) FROM workunit")
+
+            log_new_result_errors(cur)
 
             boinc_results_success_total.set(success)
             boinc_results_error_total.set(errors)
