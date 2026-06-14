@@ -53,7 +53,7 @@ REGULARIZATION_LAMBDAS = (
     300.0,
     1000.0,
 )
-WORKUNITS = 20
+WORKUNITS = 4
 
 
 def _as_int(params: dict[str, Any], key: str, default: int) -> int:
