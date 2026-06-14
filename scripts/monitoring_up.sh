@@ -7,6 +7,8 @@ DISTRIBUTED_ENV_FILE="$ROOT_DIR/config/distributed.env"
 MONITORING_DIR="$ROOT_DIR/monitoring"
 BOINC_EXPORTER_BASE_IMAGE="${BOINC_EXPORTER_BASE_IMAGE:-python:3.12-slim}"
 MONITORING_OPTIONAL_PULL_TIMEOUT="${MONITORING_OPTIONAL_PULL_TIMEOUT:-30}"
+BOINC_EXPORTER_DB_READY_ATTEMPTS="${BOINC_EXPORTER_DB_READY_ATTEMPTS:-120}"
+BOINC_EXPORTER_DB_READY_DELAY_SECONDS="${BOINC_EXPORTER_DB_READY_DELAY_SECONDS:-2}"
 BOINC_EXPORTER_IMAGE_AUTO=0
 
 if [[ -z "${BOINC_EXPORTER_IMAGE:-}" ]]; then
@@ -228,26 +230,23 @@ optional_compose_up() {
   return 0
 }
 
-print_monitoring_diagnostics() {
-  local container
+print_boinc_exporter_diagnostics() {
+  if ! docker ps -a --format '{{.Names}}' | grep -qx 'boinc-exporter'; then
+    return 0
+  fi
 
   echo >&2
-  echo "Monitoring containers:" >&2
-  docker ps -a --filter name=boinc >&2 || true
-
-  if docker ps -a --format '{{.Names}}' | grep -qx 'boinc-exporter'; then
-    echo >&2
-    echo "BOINC exporter diagnostics:" >&2
-    echo "  configured image: $BOINC_EXPORTER_IMAGE" >&2
-    docker inspect boinc-exporter \
-      --format '  running image: {{.Config.Image}}' >&2 2>/dev/null || true
-    docker exec boinc-exporter sh -lc '
-      env | grep -E "^(PROJECT_NAME|MARIADB_HOST|MARIADB_PORT|MARIADB_USER|MARIADB_DATABASE)=" | sort
-      printf "MARIADB_PASSWORD=%s\n" "${MARIADB_PASSWORD:+set}"
-    ' >&2 2>/dev/null || true
-    docker exec boinc-exporter sh -lc '
-      getent hosts "${MARIADB_HOST:-boinc-mariadb}" || true
-      python - <<PY
+  echo "BOINC exporter diagnostics:" >&2
+  echo "  configured image: $BOINC_EXPORTER_IMAGE" >&2
+  docker inspect boinc-exporter \
+    --format '  running image: {{.Config.Image}}' >&2 2>/dev/null || true
+  docker exec boinc-exporter sh -lc '
+    env | grep -E "^(PROJECT_NAME|MARIADB_HOST|MARIADB_PORT|MARIADB_USER|MARIADB_DATABASE)=" | sort
+    printf "MARIADB_PASSWORD=%s\n" "${MARIADB_PASSWORD:+set}"
+  ' >&2 2>/dev/null || true
+  docker exec boinc-exporter sh -lc '
+    getent hosts "${MARIADB_HOST:-boinc-mariadb}" || true
+    python - <<PY
 import os
 import socket
 
@@ -259,15 +258,22 @@ try:
 except Exception as exc:
     print(f"tcp {host}:{port}: failed: {exc}")
 PY
-    ' >&2 2>/dev/null || true
-    docker inspect boinc-exporter \
-      --format '{{range $name, $_ := .NetworkSettings.Networks}}{{println $name}}{{end}}' 2>/dev/null \
-      | sed 's/^/  network: /' >&2 || true
-    if command -v curl >/dev/null 2>&1; then
-      curl -fsS http://127.0.0.1:9101/metrics 2>/dev/null \
-        | grep -E '^(boinc_db_up|boinc_exporter_scrape_errors_total)' >&2 || true
-    fi
+  ' >&2 2>/dev/null || true
+  docker inspect boinc-exporter \
+    --format '{{range $name, $_ := .NetworkSettings.Networks}}{{println $name}}{{end}}' 2>/dev/null \
+    | sed 's/^/  network: /' >&2 || true
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsS http://127.0.0.1:9101/metrics 2>/dev/null \
+      | grep -E '^(boinc_db_up|boinc_exporter_scrape_errors_total)' >&2 || true
   fi
+}
+
+print_monitoring_diagnostics() {
+  local container
+
+  echo >&2
+  echo "Monitoring containers:" >&2
+  docker ps -a --filter name=boinc >&2 || true
 
   for container in boinc-grafana boinc-prometheus boinc-exporter boinc-loki; do
     if docker ps -a --format '{{.Names}}' | grep -qx "$container"; then
@@ -276,6 +282,8 @@ PY
       docker logs --tail 80 "$container" 2>&1 >&2 || true
     fi
   done
+
+  print_boinc_exporter_diagnostics
 }
 
 wait_for_http() {
@@ -305,7 +313,7 @@ wait_for_url_match() {
   local attempt
 
   for attempt in $(seq 1 "$attempts"); do
-    if curl -fsS "$url" 2>/dev/null | grep -q "$pattern"; then
+    if curl -fsS "$url" 2>/dev/null | grep -Eq "$pattern"; then
       return 0
     fi
     sleep "$delay_seconds"
@@ -328,7 +336,12 @@ check_monitoring_ready() {
   wait_for_url_match "Grafana" "http://127.0.0.1:3000/api/health" '"database":' || failed=1
   wait_for_http "Prometheus" "http://127.0.0.1:9090/-/ready" || failed=1
   wait_for_url_match "BOINC exporter metrics" "http://127.0.0.1:9101/metrics" '^boinc_db_up' || failed=1
-  wait_for_url_match "BOINC exporter MariaDB connection" "http://127.0.0.1:9101/metrics" '^boinc_db_up 1(\.0)?$' 30 2 || failed=1
+  wait_for_url_match \
+    "BOINC exporter MariaDB connection" \
+    "http://127.0.0.1:9101/metrics" \
+    '^boinc_db_up 1(\.0)?$' \
+    "$BOINC_EXPORTER_DB_READY_ATTEMPTS" \
+    "$BOINC_EXPORTER_DB_READY_DELAY_SECONDS" || failed=1
   wait_for_url_match "Loki API" "http://127.0.0.1:3100/loki/api/v1/labels" '"status":"success"' || failed=1
   wait_for_url_match "Grafana Prometheus datasource" \
     "http://admin:admin@127.0.0.1:3000/api/datasources/uid/prometheus" \
