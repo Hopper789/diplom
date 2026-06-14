@@ -40,6 +40,7 @@ Grafana открывается без логина. Админский вход:
 ./scripts/run_experiment.sh
 ./scripts/run_experiment.sh --task determinant
 ./scripts/run_experiment.sh --task grid-search
+./scripts/add_nodes.sh
 ./scripts/status.sh
 ./scripts/clean_runtime.sh
 ```
