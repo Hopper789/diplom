@@ -407,7 +407,7 @@ def extract_hosts_value(payload):
     return f"{active}/{total}"
 
 def query_hosts_pair():
-    active_payload = query_prometheus("boinc_hosts_active_recent_total")
+    active_payload = query_prometheus("boinc_current_hosts_active_recent_total")
     total_payload = query_prometheus("boinc_hosts_total")
     active = extract_value(active_payload)
     total = extract_value(total_payload)

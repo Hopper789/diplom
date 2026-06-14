@@ -3,7 +3,7 @@
   "title": "BOINC",
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 32,
+  "version": 33,
   "refresh": "10s",
   "tags": [
     "boinc"
@@ -34,7 +34,7 @@
       },
       "targets": [
         {
-          "expr": "boinc_hosts_active_recent_total",
+          "expr": "boinc_current_hosts_active_recent_total",
           "refId": "A",
           "legendFormat": "активные",
           "datasource": {
@@ -104,7 +104,7 @@
       },
       "targets": [
         {
-          "expr": "boinc_completion_percent",
+          "expr": "boinc_current_completion_percent",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
@@ -162,7 +162,7 @@
       },
       "targets": [
         {
-          "expr": "boinc_estimated_remaining_seconds",
+          "expr": "boinc_current_estimated_remaining_seconds",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
@@ -222,7 +222,7 @@
       },
       "targets": [
         {
-          "expr": "boinc_workunits_error_percent",
+          "expr": "boinc_current_workunits_error_percent",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
@@ -284,7 +284,7 @@
       },
       "targets": [
         {
-          "expr": "boinc_avg_compute_time_per_workunit_seconds",
+          "expr": "boinc_current_avg_compute_time_per_workunit_seconds",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
@@ -344,7 +344,7 @@
       },
       "targets": [
         {
-          "expr": "boinc_useful_compute_percent",
+          "expr": "boinc_current_useful_compute_percent",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
@@ -404,7 +404,7 @@
       },
       "targets": [
         {
-          "expr": "boinc_issued_results_percent",
+          "expr": "boinc_current_issued_results_percent",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
@@ -464,7 +464,7 @@
       },
       "targets": [
         {
-          "expr": "boinc_actual_results_per_workunit",
+          "expr": "boinc_current_actual_results_per_workunit",
           "refId": "A",
           "datasource": {
             "type": "prometheus",

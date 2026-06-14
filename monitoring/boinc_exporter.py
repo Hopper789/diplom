@@ -163,6 +163,43 @@ boinc_avg_overhead_time_per_workunit_seconds = Gauge(
     "Average non-compute overhead per successful result/workunit: turnaround - compute_time",
 )
 
+# Summary panels use only the latest experiment batch. Long-running graphs keep using the
+# aggregate metrics above so history remains visible.
+boinc_current_hosts_active_recent_total = Gauge(
+    "boinc_current_hosts_active_recent_total",
+    "Hosts with unfinished results assigned in the latest experiment batch",
+)
+boinc_current_workunits_total = Gauge("boinc_current_workunits_total", "Workunits in the latest experiment batch")
+boinc_current_results_total = Gauge("boinc_current_results_total", "Result records in the latest experiment batch")
+boinc_current_completion_percent = Gauge(
+    "boinc_current_completion_percent",
+    "Percent of latest-experiment workunits with a canonical result or enough successful quorum results",
+)
+boinc_current_estimated_remaining_seconds = Gauge(
+    "boinc_current_estimated_remaining_seconds",
+    "Estimated seconds remaining for latest-experiment unfinished unique workunits",
+)
+boinc_current_workunits_error_percent = Gauge(
+    "boinc_current_workunits_error_percent",
+    "Percent of latest-experiment workunits with at least one error result",
+)
+boinc_current_avg_compute_time_per_workunit_seconds = Gauge(
+    "boinc_current_avg_compute_time_per_workunit_seconds",
+    "Average compute time for latest-experiment first-quorum successful results",
+)
+boinc_current_useful_compute_percent = Gauge(
+    "boinc_current_useful_compute_percent",
+    "Percent of latest-experiment finished attempt lifecycle spent on first-quorum useful computation",
+)
+boinc_current_issued_results_percent = Gauge(
+    "boinc_current_issued_results_percent",
+    "Percent of latest-experiment result records that have been issued to a host",
+)
+boinc_current_actual_results_per_workunit = Gauge(
+    "boinc_current_actual_results_per_workunit",
+    "Latest-experiment executed success/error results per workunit",
+)
+
 
 def connect():
     return pymysql.connect(
@@ -178,17 +215,17 @@ def connect():
     )
 
 
-def fetch_one(cur, sql: str) -> Any:
-    cur.execute(sql)
+def fetch_one(cur, sql: str, params: tuple[Any, ...] | None = None) -> Any:
+    cur.execute(sql, params)
     row = cur.fetchone()
     if not row:
         return 0
     return list(row.values())[0] or 0
 
 
-def safe_fetch_one(cur, sql: str, default: Any = 0) -> Any:
+def safe_fetch_one(cur, sql: str, params: tuple[Any, ...] | None = None, default: Any = 0) -> Any:
     try:
-        return fetch_one(cur, sql)
+        return fetch_one(cur, sql, params)
     except Exception:
         return default
 
@@ -197,7 +234,7 @@ def set_ratio(metric: Gauge, numerator: float, denominator: float) -> None:
     metric.set(float(numerator) / float(denominator) if denominator else 0)
 
 
-def completed_workunits_sql(has_canonical_resultid: bool) -> str:
+def completed_workunits_sql(has_canonical_resultid: bool, where_clause: str = "1 = 1") -> str:
     canonical_condition = "COALESCE(w.canonical_resultid, 0) > 0 OR" if has_canonical_resultid else ""
     return f"""
         SELECT COUNT(*)
@@ -207,6 +244,7 @@ def completed_workunits_sql(has_canonical_resultid: bool) -> str:
             LEFT JOIN result r
               ON r.workunitid = w.id
              AND r.outcome = 1
+            WHERE {where_clause}
             GROUP BY w.id, w.min_quorum{", w.canonical_resultid" if has_canonical_resultid else ""}
             HAVING {canonical_condition}
                    COUNT(r.id) >= GREATEST(COALESCE(NULLIF(w.min_quorum, 0), 1), 1)
@@ -214,7 +252,7 @@ def completed_workunits_sql(has_canonical_resultid: bool) -> str:
     """
 
 
-def useful_success_query(metric_expr: str) -> str:
+def useful_success_query(metric_expr: str, where_clause: str = "1 = 1") -> str:
     return f"""
         SELECT {metric_expr}
         FROM (
@@ -229,9 +267,37 @@ def useful_success_query(metric_expr: str) -> str:
             JOIN result r
               ON r.workunitid = w.id
              AND r.outcome = 1
+            WHERE {where_clause}
         ) useful
         WHERE useful.success_rank <= GREATEST(COALESCE(NULLIF(useful.min_quorum, 0), 1), 1)
     """
+
+
+def latest_experiment_scope(cur) -> tuple[str, str, tuple[Any, ...]] | None:
+    cur.execute("SELECT name FROM workunit ORDER BY create_time DESC, id DESC LIMIT 1")
+    row = cur.fetchone() or {}
+    latest_name = str(row.get("name") or "")
+    if not latest_name:
+        return None
+
+    prefix = latest_name.rsplit("_", 1)[0] if "_" in latest_name else latest_name
+    if not prefix:
+        return None
+
+    return prefix, "w.name LIKE %s", (prefix + "_%",)
+
+
+def reset_current_experiment_metrics() -> None:
+    boinc_current_hosts_active_recent_total.set(0)
+    boinc_current_workunits_total.set(0)
+    boinc_current_results_total.set(0)
+    boinc_current_completion_percent.set(0)
+    boinc_current_estimated_remaining_seconds.set(0)
+    boinc_current_workunits_error_percent.set(0)
+    boinc_current_avg_compute_time_per_workunit_seconds.set(0)
+    boinc_current_useful_compute_percent.set(0)
+    boinc_current_issued_results_percent.set(0)
+    boinc_current_actual_results_per_workunit.set(0)
 
 
 def table_has_column(cur, table: str, column: str) -> bool:
@@ -247,6 +313,148 @@ def table_has_column(cur, table: str, column: str) -> bool:
     )
     row = cur.fetchone() or {}
     return bool(row.get("cnt"))
+
+
+def update_current_experiment_metrics(cur, has_canonical_resultid: bool) -> None:
+    scope = latest_experiment_scope(cur)
+    if scope is None:
+        reset_current_experiment_metrics()
+        return
+
+    _, workunit_where, workunit_params = scope
+    result_from = f"FROM result r JOIN workunit w ON w.id = r.workunitid WHERE {workunit_where}"
+
+    def current_result_count(condition: str = "1 = 1") -> float:
+        return safe_fetch_one(cur, f"SELECT COUNT(*) {result_from} AND {condition}", workunit_params)
+
+    current_workunits = safe_fetch_one(cur, f"SELECT COUNT(*) FROM workunit w WHERE {workunit_where}", workunit_params)
+    current_results = current_result_count()
+    current_success = current_result_count("r.outcome = 1")
+    current_errors = current_result_count("r.outcome IN (2, 3, 4, 6)")
+    current_executed = current_success + current_errors
+    current_finished = current_result_count("r.outcome != 0")
+    current_unfinished = current_result_count("r.outcome = 0")
+    current_assigned = current_result_count("r.hostid != 0")
+    current_in_progress = current_result_count("r.hostid != 0 AND r.outcome = 0")
+    current_active_hosts = safe_fetch_one(
+        cur,
+        f"SELECT COUNT(DISTINCT r.hostid) {result_from} AND r.hostid != 0 AND r.outcome = 0",
+        workunit_params,
+    )
+    current_completed_wu = safe_fetch_one(
+        cur,
+        completed_workunits_sql(has_canonical_resultid, workunit_where),
+        workunit_params,
+    )
+    current_remaining_wu = max(0, current_workunits - current_completed_wu)
+    current_error_wu = safe_fetch_one(
+        cur,
+        f"SELECT COUNT(DISTINCT r.workunitid) {result_from} AND r.outcome IN (2, 3, 4, 6)",
+        workunit_params,
+    )
+    current_avg_min_quorum = safe_fetch_one(
+        cur,
+        f"SELECT COALESCE(AVG(w.min_quorum), 0) FROM workunit w WHERE {workunit_where}",
+        workunit_params,
+    )
+
+    latest_result_received_time = float(
+        safe_fetch_one(cur, f"SELECT COALESCE(MAX(r.received_time), 0) {result_from}", workunit_params)
+    )
+    first_workunit_create_time = float(
+        safe_fetch_one(cur, f"SELECT COALESCE(MIN(w.create_time), 0) FROM workunit w WHERE {workunit_where}", workunit_params)
+    )
+    current_db_time = float(safe_fetch_one(cur, "SELECT UNIX_TIMESTAMP()"))
+    experiment_total_seconds = 0.0
+    if first_workunit_create_time > 0:
+        if current_unfinished:
+            experiment_total_seconds = max(0.0, current_db_time - first_workunit_create_time)
+        elif latest_result_received_time > first_workunit_create_time:
+            experiment_total_seconds = latest_result_received_time - first_workunit_create_time
+
+    completion_rate = (
+        float(current_completed_wu) / experiment_total_seconds
+        if experiment_total_seconds and current_completed_wu
+        else 0
+    )
+    active_capacity = max(float(current_active_hosts or 0), float(current_in_progress or 0))
+    estimated_remaining_seconds = 0.0
+    if current_remaining_wu > 0:
+        if completion_rate > 0:
+            estimated_remaining_seconds = float(current_remaining_wu) / completion_rate
+        elif active_capacity > 0:
+            quorum_attempts = max(float(current_avg_min_quorum or 0), 1.0)
+            estimated_remaining_seconds = (
+                float(current_remaining_wu) * quorum_attempts * max(CONFIG_TASK_SECONDS, 1.0) / active_capacity
+            )
+
+    useful_compute_sql = useful_success_query(
+        "COALESCE(SUM(CASE WHEN elapsed_time > 0 THEN elapsed_time ELSE 0 END), 0) AS compute_seconds",
+        workunit_where,
+    )
+    avg_compute_sql = useful_success_query(
+        "COALESCE(AVG(CASE WHEN elapsed_time > 0 THEN elapsed_time END), 0)",
+        workunit_where,
+    )
+
+    try:
+        cur.execute(useful_compute_sql, workunit_params)
+        useful_row = cur.fetchone() or {}
+        useful_compute_seconds = float(useful_row.get("compute_seconds") or 0)
+        useful_total_seconds = float(
+            safe_fetch_one(
+                cur,
+                f"""
+                SELECT COALESCE(SUM(
+                  GREATEST(
+                    COALESCE(r.elapsed_time, 0),
+                    CASE
+                      WHEN r.received_time > 0 AND r.sent_time > 0
+                        THEN r.received_time - r.sent_time
+                      WHEN r.received_time > 0 AND r.create_time > 0
+                        THEN r.received_time - r.create_time
+                      ELSE COALESCE(r.elapsed_time, 0)
+                    END
+                  )
+                ), 0)
+                {result_from}
+                  AND r.outcome != 0
+                  AND r.hostid != 0
+                """,
+                workunit_params,
+            )
+            or 0
+        )
+    except Exception:
+        useful_compute_seconds = 0.0
+        useful_total_seconds = 0.0
+
+    useful_percent = 0.0
+    if useful_total_seconds > 0:
+        useful_percent = max(0.0, min(100.0, useful_compute_seconds / useful_total_seconds * 100.0))
+
+    avg_compute_time = float(safe_fetch_one(cur, avg_compute_sql, workunit_params, default=0))
+    if avg_compute_time <= 0:
+        avg_compute_time = CONFIG_TASK_SECONDS if current_success else 0
+
+    boinc_current_hosts_active_recent_total.set(current_active_hosts)
+    boinc_current_workunits_total.set(current_workunits)
+    boinc_current_results_total.set(current_results)
+    boinc_current_completion_percent.set(
+        (float(current_completed_wu) / float(current_workunits) * 100.0) if current_workunits else 0
+    )
+    boinc_current_estimated_remaining_seconds.set(estimated_remaining_seconds)
+    boinc_current_workunits_error_percent.set(
+        (float(current_error_wu) / float(current_workunits) * 100.0) if current_workunits else 0
+    )
+    boinc_current_avg_compute_time_per_workunit_seconds.set(avg_compute_time)
+    boinc_current_useful_compute_percent.set(useful_percent)
+    boinc_current_issued_results_percent.set(
+        (float(current_assigned) / float(current_results) * 100.0) if current_results else 0
+    )
+    boinc_current_actual_results_per_workunit.set(
+        (float(current_executed) / float(current_workunits)) if current_workunits else 0
+    )
 
 
 def update_db_metrics() -> None:
@@ -283,6 +491,7 @@ def update_db_metrics() -> None:
             boinc_config_max_error_results.set(CONFIG_MAX_ERROR_RESULTS)
             boinc_config_max_total_results.set(CONFIG_MAX_TOTAL_RESULTS)
             boinc_config_task_seconds.set(CONFIG_TASK_SECONDS)
+            update_current_experiment_metrics(cur, has_canonical_resultid)
 
             success = safe_fetch_one(cur, "SELECT COUNT(*) FROM result WHERE outcome = 1")
             unfinished = safe_fetch_one(cur, "SELECT COUNT(*) FROM result WHERE outcome = 0")

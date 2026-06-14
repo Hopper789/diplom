@@ -368,14 +368,14 @@ for target in payload.get("data", {}).get("activeTargets", []):
 
     echo "Dashboard metric values:"
     print_prometheus_value "boinc_db_up" "boinc_db_up"
-    print_prometheus_value "Готово" "boinc_completion_percent"
+    print_prometheus_value "Готово" "boinc_current_completion_percent"
     print_prometheus_value "Хосты всего" "boinc_hosts_total"
-    print_prometheus_value "Хосты активные" "boinc_hosts_active_recent_total"
-    print_prometheus_value "Ошибки %" "boinc_workunits_error_percent"
-    print_prometheus_value "Время на задачу" "boinc_avg_compute_time_per_workunit_seconds"
-    print_prometheus_value "Полезная нагрузка" "boinc_useful_compute_percent"
-    print_prometheus_value "% выданных задач" "boinc_issued_results_percent"
-    print_prometheus_value "Репликация" "boinc_actual_results_per_workunit"
+    print_prometheus_value "Хосты активные" "boinc_current_hosts_active_recent_total"
+    print_prometheus_value "Ошибки %" "boinc_current_workunits_error_percent"
+    print_prometheus_value "Время на задачу" "boinc_current_avg_compute_time_per_workunit_seconds"
+    print_prometheus_value "Полезная нагрузка" "boinc_current_useful_compute_percent"
+    print_prometheus_value "% выданных задач" "boinc_current_issued_results_percent"
+    print_prometheus_value "Репликация" "boinc_current_actual_results_per_workunit"
     print_prometheus_value "node targets" 'count(up{job=~"node_exporter_(clients|server)"})'
   fi
 
