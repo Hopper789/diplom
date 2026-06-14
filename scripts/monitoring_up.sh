@@ -7,12 +7,15 @@ DISTRIBUTED_ENV_FILE="$ROOT_DIR/config/distributed.env"
 MONITORING_DIR="$ROOT_DIR/monitoring"
 BOINC_EXPORTER_BASE_IMAGE="${BOINC_EXPORTER_BASE_IMAGE:-python:3.12-slim}"
 MONITORING_OPTIONAL_PULL_TIMEOUT="${MONITORING_OPTIONAL_PULL_TIMEOUT:-30}"
+BOINC_EXPORTER_IMAGE_AUTO=0
 
 if [[ -z "${BOINC_EXPORTER_IMAGE:-}" ]]; then
+  BOINC_EXPORTER_IMAGE_AUTO=1
   if command -v sha256sum >/dev/null 2>&1; then
     exporter_hash="$(
       (
         cd "$MONITORING_DIR"
+        printf '%s\n' "$BOINC_EXPORTER_BASE_IMAGE"
         sha256sum Dockerfile requirements.txt boinc_exporter.py
       ) \
         | sha256sum \
@@ -102,7 +105,9 @@ if [[ -f "$DISTRIBUTED_ENV_FILE" ]]; then
 fi
 set +a
 
-if ! docker image inspect "$BOINC_EXPORTER_IMAGE" >/dev/null 2>&1 \
+if [[ "$BOINC_EXPORTER_IMAGE_AUTO" != "1" ]] \
+  && ! docker image inspect "$BOINC_EXPORTER_IMAGE" >/dev/null 2>&1 \
+  && [[ "$BOINC_EXPORTER_IMAGE" != "monitoring-boinc-exporter:latest" ]] \
   && docker image inspect monitoring-boinc-exporter:latest >/dev/null 2>&1; then
   BOINC_EXPORTER_IMAGE="monitoring-boinc-exporter:latest"
 fi
@@ -162,19 +167,23 @@ ensure_boinc_exporter_image() {
 
   step "Building BOINC exporter image..."
 
-  pull_cmd=(docker pull "$BOINC_EXPORTER_BASE_IMAGE")
-  if ! debug_enabled; then
-    pull_cmd=(quiet_run_all docker pull "$BOINC_EXPORTER_BASE_IMAGE")
-  fi
+  if docker image inspect "$BOINC_EXPORTER_BASE_IMAGE" >/dev/null 2>&1; then
+    debug_log "Using cached BOINC exporter base image: $BOINC_EXPORTER_BASE_IMAGE"
+  else
+    pull_cmd=(docker pull "$BOINC_EXPORTER_BASE_IMAGE")
+    if ! debug_enabled; then
+      pull_cmd=(quiet_run_all docker pull "$BOINC_EXPORTER_BASE_IMAGE")
+    fi
 
-  if ! retry_command 5 20 "${pull_cmd[@]}"; then
-    echo
-    echo "ERROR: failed to pull BOINC exporter base image: $BOINC_EXPORTER_BASE_IMAGE" >&2
-    echo "This is usually a network/DNS/proxy problem reaching Docker Hub from the server, not a BOINC code error." >&2
-    echo "Retry later, pre-pull the image, or use a cached tag/local registry, for example:" >&2
-    echo "  BOINC_EXPORTER_BASE_IMAGE=python:3 ./scripts/monitoring_up.sh" >&2
-    echo "  BOINC_EXPORTER_BASE_IMAGE=registry.local/library/python:3.12-slim ./scripts/monitoring_up.sh" >&2
-    exit 1
+    if ! retry_command 5 20 "${pull_cmd[@]}"; then
+      echo
+      echo "ERROR: failed to pull BOINC exporter base image: $BOINC_EXPORTER_BASE_IMAGE" >&2
+      echo "This is usually a network/DNS/proxy problem reaching Docker Hub from the server, not a BOINC code error." >&2
+      echo "Retry later, pre-pull the image, or use a cached tag/local registry, for example:" >&2
+      echo "  BOINC_EXPORTER_BASE_IMAGE=python:3 ./scripts/monitoring_up.sh" >&2
+      echo "  BOINC_EXPORTER_BASE_IMAGE=registry.local/library/python:3.12-slim ./scripts/monitoring_up.sh" >&2
+      exit 1
+    fi
   fi
 
   if debug_enabled; then
@@ -225,6 +234,40 @@ print_monitoring_diagnostics() {
   echo >&2
   echo "Monitoring containers:" >&2
   docker ps -a --filter name=boinc >&2 || true
+
+  if docker ps -a --format '{{.Names}}' | grep -qx 'boinc-exporter'; then
+    echo >&2
+    echo "BOINC exporter diagnostics:" >&2
+    echo "  configured image: $BOINC_EXPORTER_IMAGE" >&2
+    docker inspect boinc-exporter \
+      --format '  running image: {{.Config.Image}}' >&2 2>/dev/null || true
+    docker exec boinc-exporter sh -lc '
+      env | grep -E "^(PROJECT_NAME|MARIADB_HOST|MARIADB_PORT|MARIADB_USER|MARIADB_DATABASE)=" | sort
+      printf "MARIADB_PASSWORD=%s\n" "${MARIADB_PASSWORD:+set}"
+    ' >&2 2>/dev/null || true
+    docker exec boinc-exporter sh -lc '
+      getent hosts "${MARIADB_HOST:-boinc-mariadb}" || true
+      python - <<PY
+import os
+import socket
+
+host = os.environ.get("MARIADB_HOST", "boinc-mariadb")
+port = int(os.environ.get("MARIADB_PORT", "3306"))
+try:
+    with socket.create_connection((host, port), timeout=3):
+        print(f"tcp {host}:{port}: OK")
+except Exception as exc:
+    print(f"tcp {host}:{port}: failed: {exc}")
+PY
+    ' >&2 2>/dev/null || true
+    docker inspect boinc-exporter \
+      --format '{{range $name, $_ := .NetworkSettings.Networks}}{{println $name}}{{end}}' 2>/dev/null \
+      | sed 's/^/  network: /' >&2 || true
+    if command -v curl >/dev/null 2>&1; then
+      curl -fsS http://127.0.0.1:9101/metrics 2>/dev/null \
+        | grep -E '^(boinc_db_up|boinc_exporter_scrape_errors_total)' >&2 || true
+    fi
+  fi
 
   for container in boinc-grafana boinc-prometheus boinc-exporter boinc-loki; do
     if docker ps -a --format '{{.Names}}' | grep -qx "$container"; then
