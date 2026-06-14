@@ -11,6 +11,7 @@ source "$ROOT_DIR/scripts/lib/inventory.sh"
 cd "$ROOT_DIR"
 SKIP_STATUS=0
 SKIP_RUNTIME_CHECK=0
+RESET_CLIENT_STATE=0
 
 step "Bootstrapping BOINC clients..."
 
@@ -27,13 +28,17 @@ while [[ $# -gt 0 ]]; do
       SKIP_RUNTIME_CHECK=1
       shift
       ;;
+    --reset-client-state)
+      RESET_CLIENT_STATE=1
+      shift
+      ;;
     --help|-h)
-      echo "Usage: ./scripts/bootstrap_clients.sh [--skip-status] [--skip-runtime-check] [--debug] [--ask-vault-pass|--vault] [--vault-password-file FILE] [--ask-become-pass|-K]"
+      echo "Usage: ./scripts/bootstrap_clients.sh [--skip-status] [--skip-runtime-check] [--reset-client-state] [--debug] [--ask-vault-pass|--vault] [--vault-password-file FILE] [--ask-become-pass|-K]"
       exit 0
       ;;
     *)
       echo "Unknown argument: $1"
-      echo "Usage: ./scripts/bootstrap_clients.sh [--skip-status] [--skip-runtime-check] [--debug] [--ask-vault-pass|--vault] [--vault-password-file FILE] [--ask-become-pass|-K]"
+      echo "Usage: ./scripts/bootstrap_clients.sh [--skip-status] [--skip-runtime-check] [--reset-client-state] [--debug] [--ask-vault-pass|--vault] [--vault-password-file FILE] [--ask-become-pass|-K]"
       exit 2
       ;;
   esac
@@ -87,7 +92,11 @@ if ! ANSIBLE_HOST_KEY_CHECKING=False \
 fi
 
 step "Deploying BOINC Docker clients..."
-quiet_run_all ./scripts/deploy_clients.sh "${ANSIBLE_ARGS[@]}"
+deploy_args=("${ANSIBLE_ARGS[@]}")
+if [[ "$RESET_CLIENT_STATE" == "1" ]]; then
+  deploy_args+=(--reset-client-state)
+fi
+quiet_run_all ./scripts/deploy_clients.sh "${deploy_args[@]}"
 
 if [[ "$SKIP_STATUS" != "1" ]]; then
   step "Checking client status..."

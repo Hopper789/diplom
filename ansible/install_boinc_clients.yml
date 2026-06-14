@@ -8,6 +8,7 @@
     boinc_client_data_dir: /opt/boinc-client
     boinc_client_image: local/boinc-client:ubuntu24
     boinc_client_base_image: ubuntu:24.04
+    boinc_client_reset_state: false
 
   pre_tasks:
     - name: Check required BOINC variables
@@ -90,12 +91,42 @@
         docker rm -f boinc-client 2>/dev/null || true
       changed_when: false
 
-    - name: Reset stale BOINC client project state
+    - name: Reset BOINC client project state
       ansible.builtin.file:
         path: "{{ boinc_client_data_dir }}/data"
         state: absent
+      when: boinc_client_reset_state | bool
 
-    - name: Recreate BOINC client data directory
+    - name: Reset BOINC client state if project account changed
+      ansible.builtin.shell: |
+        DATA_DIR="{{ boinc_client_data_dir }}/data" \
+        PROJECT_URL="{{ boinc_project_url }}" \
+        ACCOUNT_KEY="{{ boinc_account_key }}" \
+        python3 - <<'PY'
+        import os
+        import shutil
+        from pathlib import Path
+
+        data_dir = Path(os.environ["DATA_DIR"])
+        state_path = data_dir / "client_state.xml"
+        project_url = os.environ["PROJECT_URL"]
+        account_key = os.environ["ACCOUNT_KEY"]
+
+        if not state_path.exists():
+            raise SystemExit(0)
+
+        state_text = state_path.read_text(encoding="utf-8", errors="replace")
+        if project_url in state_text and account_key not in state_text:
+            shutil.rmtree(data_dir, ignore_errors=True)
+            print("removed stale BOINC client state for changed project account")
+            raise SystemExit(2)
+        PY
+      register: boinc_client_state_account_check
+      changed_when: boinc_client_state_account_check.rc == 2
+      failed_when: boinc_client_state_account_check.rc not in [0, 2]
+      when: not (boinc_client_reset_state | bool)
+
+    - name: Ensure BOINC client data directory exists
       ansible.builtin.file:
         path: "{{ boinc_client_data_dir }}/data"
         state: directory

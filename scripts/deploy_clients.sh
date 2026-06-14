@@ -9,9 +9,23 @@ source "$ROOT_DIR/scripts/lib/ansible_args.sh"
 cd "$ROOT_DIR"
 
 build_ansible_args "$@"
+RESET_CLIENT_STATE=0
+
+while [[ "${#ANSIBLE_REMAINING_ARGS[@]}" -gt 0 ]]; do
+  case "${ANSIBLE_REMAINING_ARGS[0]}" in
+    --reset-client-state)
+      RESET_CLIENT_STATE=1
+      ANSIBLE_REMAINING_ARGS=("${ANSIBLE_REMAINING_ARGS[@]:1}")
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
 if [[ "${#ANSIBLE_REMAINING_ARGS[@]}" -gt 0 ]]; then
   echo "Unknown argument: ${ANSIBLE_REMAINING_ARGS[0]}"
-  echo "Usage: ./scripts/deploy_clients.sh [--debug] [--ask-vault-pass|--vault] [--vault-password-file FILE] [--ask-become-pass|-K]"
+  echo "Usage: ./scripts/deploy_clients.sh [--reset-client-state] [--debug] [--ask-vault-pass|--vault] [--vault-password-file FILE] [--ask-become-pass|-K]"
   exit 2
 fi
 
@@ -38,4 +52,5 @@ ANSIBLE_HOST_KEY_CHECKING=False \
 quiet_run_all ansible-playbook \
   -i "$ROOT_DIR/ansible/inventory.ini" \
   "$ROOT_DIR/ansible/install_boinc_clients.yml" \
+  -e "boinc_client_reset_state=$RESET_CLIENT_STATE" \
   "${ANSIBLE_ARGS[@]}"
