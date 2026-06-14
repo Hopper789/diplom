@@ -14,6 +14,10 @@ CLIENTS_ONLY=0
 SKIP_STATUS=0
 EXPERIMENT_ARGS=()
 STATUS_TIMEOUT_SECONDS="${STATUS_TIMEOUT_SECONDS:-90}"
+AUTO_UPDATE_SECONDS="${BOINC_AUTO_UPDATE_SECONDS:-600}"
+AUTO_UPDATE_INTERVAL_SECONDS="${BOINC_AUTO_UPDATE_INTERVAL_SECONDS:-15}"
+AUTO_DUMP_RESULTS="${BOINC_AUTO_DUMP_RESULTS:-1}"
+EXPERIMENT_SUBMITTED_BEFORE_CLIENTS=0
 
 usage() {
   cat <<'USAGE'
@@ -183,6 +187,15 @@ if [[ "$CLIENTS_ONLY" != "1" ]]; then
   quiet_run_all ./scripts/bootstrap_server.sh --skip-status
 fi
 
+if [[ "$RUN_EXPERIMENT" == "1" && "$SERVER_ONLY" != "1" && "$CLIENTS_ONLY" != "1" ]]; then
+  experiment_args=("${ANSIBLE_ARGS[@]}")
+  experiment_args+=("${EXPERIMENT_ARGS[@]}")
+  experiment_args+=(--submit-only)
+  step "Preparing experiment work before clients start..."
+  quiet_run_all env BOINC_SKIP_CLIENT_UPDATE=1 ./scripts/run_experiment.sh "${experiment_args[@]}"
+  EXPERIMENT_SUBMITTED_BEFORE_CLIENTS=1
+fi
+
 if [[ "$SERVER_ONLY" != "1" ]]; then
   check_boinc_account_ready
   step "Starting BOINC clients..."
@@ -198,7 +211,7 @@ if [[ "$WITH_MONITORING" == "1" ]]; then
   quiet_run_all ./scripts/monitoring_up.sh "${monitoring_args[@]}"
 fi
 
-if [[ "$RUN_EXPERIMENT" == "1" ]]; then
+if [[ "$RUN_EXPERIMENT" == "1" && "$EXPERIMENT_SUBMITTED_BEFORE_CLIENTS" != "1" ]]; then
   experiment_args=("${ANSIBLE_ARGS[@]}")
   experiment_args+=("${EXPERIMENT_ARGS[@]}")
   if [[ "$SUBMIT_ONLY" == "1" ]]; then
@@ -206,6 +219,31 @@ if [[ "$RUN_EXPERIMENT" == "1" ]]; then
   fi
   step "Submitting experiment..."
   quiet_run_all ./scripts/run_experiment.sh "${experiment_args[@]}"
+elif [[ "$RUN_EXPERIMENT" == "1" && "$SUBMIT_ONLY" != "1" ]]; then
+  step "Requesting BOINC client updates..."
+  quiet_run_all ./scripts/pump_clients.sh \
+    --max-seconds "$AUTO_UPDATE_SECONDS" \
+    --interval-seconds "$AUTO_UPDATE_INTERVAL_SECONDS" \
+    --quiet \
+    "${ANSIBLE_ARGS[@]}"
+
+  if [[ "$AUTO_DUMP_RESULTS" == "1" ]]; then
+    if docker ps --format '{{.Names}}' | grep -qx 'boinc-grafana'; then
+      step "Dumping Grafana results..."
+      if quiet_run_all ./scripts/dump_grafana_results.sh \
+        --wait \
+        --max-seconds "${BOINC_DUMP_WAIT_SECONDS:-$AUTO_UPDATE_SECONDS}" \
+        --interval-seconds "${BOINC_DUMP_INTERVAL_SECONDS:-15}" \
+        --quiet; then
+        step "Grafana dump saved."
+      else
+        echo "WARNING: Grafana dump was skipped or failed. Check computations and monitoring, then run:"
+        echo "  ./scripts/dump_grafana_results.sh --wait --max-seconds 600"
+      fi
+    else
+      debug_log "Skipping Grafana dump: boinc-grafana is not running."
+    fi
+  fi
 fi
 
 if [[ "$SKIP_STATUS" != "1" ]]; then

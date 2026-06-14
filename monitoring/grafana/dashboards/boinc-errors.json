@@ -3,7 +3,7 @@
   "title": "BOINC Errors",
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 41,
+  "version": 42,
   "refresh": "10s",
   "tags": [
     "boinc",
@@ -22,7 +22,7 @@
       },
       "targets": [
         {
-          "expr": "(sum(count_over_time({cluster=\"boinc\", stream=\"stderr\"} |~ \"(?i)(level=error|\\\\[critical\\\\]|fatal|panic|traceback|exception|access denied|permission denied|failed to connect|host key verification|unreachable|output file.*absent|bad WU template|no <file_info>|no <workunit>|platform.*not found|doesn.t support computers)\" !~ \"(?i)(io_uring|create_uring|falling back to libaio|global timeout not configured|error sending batch.*loki/api/v1/push|Aborted connection.*Got an error reading communication packets|/run/udev/data)\"[5m]))) + (sum(count_over_time({cluster=\"boinc\", job=\"boinc-project-logs\"} |~ \"(?i)(\\\\[CRITICAL\\\\]|bad WU template|no <file_info>|no <workunit>|output file.*absent|platform.*not found|doesn.t support computers|validate error|client error)\"[5m])))",
+          "expr": "(sum(count_over_time({cluster=\"boinc\", stream=\"stderr\"} |~ \"(?i)(level=error|\\\\[critical\\\\]|fatal|panic|traceback|exception|access denied|permission denied|failed to connect|host key verification|unreachable|output file.*absent|bad WU template|no <file_info>|no <workunit>)\" !~ \"(?i)(io_uring|create_uring|falling back to libaio|global timeout not configured|error sending batch.*loki/api/v1/push|Aborted connection.*Got an error reading communication packets|Access denied for user 'root'@'localhost'|platform 'x86_64-pc-linux-gnu' not found|doesn.t support computers|/run/udev/data)\"[5m]))) + (sum(count_over_time({cluster=\"boinc\", job=\"boinc-project-logs\"} |~ \"(?i)(\\\\[CRITICAL\\\\]|bad WU template|no <file_info>|no <workunit>|output file.*absent|validate error|client error)\" !~ \"(?i)(platform 'x86_64-pc-linux-gnu' not found|doesn.t support computers)\"[5m])))",
           "refId": "A",
           "datasource": {
             "type": "loki",
@@ -59,7 +59,7 @@
       },
       "targets": [
         {
-          "expr": "sum(count_over_time({cluster=\"boinc\", job=\"boinc-project-logs\"} |~ \"(?i)(\\\\[CRITICAL\\\\]|bad WU template|no <file_info>|no <workunit>|output file.*absent|platform.*not found|doesn.t support computers|validate error|client error)\"[5m]))",
+          "expr": "sum(count_over_time({cluster=\"boinc\", job=\"boinc-project-logs\"} |~ \"(?i)(\\\\[CRITICAL\\\\]|bad WU template|no <file_info>|no <workunit>|output file.*absent|validate error|client error)\" !~ \"(?i)(platform 'x86_64-pc-linux-gnu' not found|doesn.t support computers)\"[5m]))",
           "legendFormat": "boinc/server",
           "refId": "A",
           "datasource": {
@@ -77,7 +77,7 @@
           }
         },
         {
-          "expr": "sum(count_over_time({cluster=\"boinc\", stream=\"stderr\"} |~ \"(?i)(access denied|can.t connect|failed to connect|connection refused)\" !~ \"(?i)(loki/api/v1/push|Aborted connection.*Got an error reading communication packets)\"[5m]))",
+          "expr": "sum(count_over_time({cluster=\"boinc\", stream=\"stderr\"} |~ \"(?i)(access denied|can.t connect|failed to connect|connection refused)\" !~ \"(?i)(loki/api/v1/push|Aborted connection.*Got an error reading communication packets|Access denied for user 'root'@'localhost')\"[5m]))",
           "legendFormat": "access/network",
           "refId": "C",
           "datasource": {
@@ -124,7 +124,7 @@
       },
       "targets": [
         {
-          "expr": "{cluster=\"boinc\", stream=\"stderr\"} |~ \"(?i)(level=error|\\\\[critical\\\\]|fatal|panic|traceback|exception|access denied|permission denied|failed to connect|host key verification|unreachable|output file.*absent|bad WU template|no <file_info>|no <workunit>|platform.*not found|doesn.t support computers)\" !~ \"(?i)(io_uring|create_uring|falling back to libaio|global timeout not configured|error sending batch.*loki/api/v1/push|Aborted connection.*Got an error reading communication packets|/run/udev/data)\"",
+          "expr": "{cluster=\"boinc\", stream=\"stderr\"} |~ \"(?i)(level=error|\\\\[critical\\\\]|fatal|panic|traceback|exception|access denied|permission denied|failed to connect|host key verification|unreachable|output file.*absent|bad WU template|no <file_info>|no <workunit>)\" !~ \"(?i)(io_uring|create_uring|falling back to libaio|global timeout not configured|error sending batch.*loki/api/v1/push|Aborted connection.*Got an error reading communication packets|Access denied for user 'root'@'localhost'|platform 'x86_64-pc-linux-gnu' not found|doesn.t support computers|/run/udev/data)\"",
           "refId": "A",
           "datasource": {
             "type": "loki",
@@ -132,7 +132,7 @@
           }
         },
         {
-          "expr": "{cluster=\"boinc\", job=\"boinc-project-logs\"} |~ \"(?i)(\\\\[CRITICAL\\\\]|bad WU template|no <file_info>|no <workunit>|output file.*absent|platform.*not found|doesn.t support computers|validate error|client error)\"",
+          "expr": "{cluster=\"boinc\", job=\"boinc-project-logs\"} |~ \"(?i)(\\\\[CRITICAL\\\\]|bad WU template|no <file_info>|no <workunit>|output file.*absent|validate error|client error)\" !~ \"(?i)(platform 'x86_64-pc-linux-gnu' not found|doesn.t support computers)\"",
           "refId": "B",
           "datasource": {
             "type": "loki",

@@ -731,7 +731,29 @@ restart_project_daemons() {
   "
 }
 
+wait_for_project_reread() {
+  step "Waiting for BOINC scheduler tables..."
+  quiet_run_all docker exec boinc-server bash -lc "
+    cd '/project/$PROJECT_NAME'
+    touch reread_db
+    for _ in \$(seq 1 60); do
+      if [ ! -e reread_db ]; then
+        exit 0
+      fi
+      sleep 1
+    done
+
+    echo 'BOINC daemons did not consume reread_db in time.' >&2
+    exit 1
+  "
+}
+
 update_clients() {
+  if [[ "${BOINC_SKIP_CLIENT_UPDATE:-0}" == "1" ]]; then
+    debug_log "BOINC client update skipped by BOINC_SKIP_CLIENT_UPDATE=1."
+    return 0
+  fi
+
   if [[ ! -f "$ROOT_DIR/ansible/inventory.ini" ]] || ! command -v ansible >/dev/null 2>&1; then
     debug_log "Ansible недоступен или нет inventory; обновление клиентов пропущено."
     return 0
@@ -764,6 +786,7 @@ deploy_app_to_server
 assert_app_version_registered
 create_workunits
 restart_project_daemons
+wait_for_project_reread
 update_clients
 sleep 10
 update_clients

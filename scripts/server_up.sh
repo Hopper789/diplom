@@ -41,12 +41,26 @@ fi
 step "Waiting for MariaDB..."
 attempts=30
 for ((i=1; i<=attempts; i++)); do
-  if docker exec boinc-mariadb mariadb -u root -proot -e "SELECT 1" >/dev/null 2>&1; then
-    step "MariaDB is ready."
+  if docker exec boinc-mariadb bash -lc '</dev/tcp/127.0.0.1/3306' >/dev/null 2>&1; then
     break
   fi
   if [[ "$i" -eq "$attempts" ]]; then
     echo "ERROR: MariaDB is not ready after $attempts attempts." >&2
+    exit 1
+  fi
+  sleep 2
+done
+
+sleep 2
+
+auth_attempts=30
+for ((i=1; i<=auth_attempts; i++)); do
+  if docker exec boinc-mariadb mariadb -u root -proot -e "SELECT 1" >/dev/null 2>&1; then
+    step "MariaDB is ready."
+    break
+  fi
+  if [[ "$i" -eq "$auth_attempts" ]]; then
+    echo "ERROR: MariaDB authentication is not ready after $auth_attempts attempts." >&2
     exit 1
   fi
   sleep 2
