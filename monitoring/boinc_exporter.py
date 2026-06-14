@@ -341,15 +341,81 @@ def compute_seconds_expr(has_cpu_time: bool, prefix: str = "") -> str:
     )
 
 
-def executed_compute_query(has_cpu_time: bool, where_clause: str = "1 = 1") -> str:
-    return f"""
-        SELECT COALESCE(SUM({compute_seconds_expr(has_cpu_time, "r.")}), 0) AS compute_seconds
+def useful_compute_percent_from_schedule(
+    cur,
+    has_cpu_time: bool,
+    where_clause: str = "1 = 1",
+    params: tuple[Any, ...] | None = None,
+) -> float:
+    """Estimate useful compute share while excluding local BOINC queue wait.
+
+    BOINC sets result.sent_time when work is issued to a client, not when the
+    client actually starts that task. If several results are prefetched, plain
+    received_time - sent_time treats local queue wait as overhead and makes the
+    useful-load panel look artificially low. This model reconstructs per-host
+    execution slots and only keeps compute time, wasted compute, and residual
+    non-queue overhead.
+    """
+
+    params = params or ()
+    cur.execute(useful_success_query("id AS result_id", where_clause), params)
+    useful_ids = {int(row["result_id"]) for row in cur.fetchall()}
+
+    cur.execute(
+        f"""
+        SELECT
+          r.id AS result_id,
+          r.hostid,
+          COALESCE(r.sent_time, 0) AS sent_time,
+          COALESCE(r.received_time, 0) AS received_time,
+          {compute_seconds_expr(has_cpu_time, "r.")} AS compute_seconds,
+          GREATEST(COALESCE(h.p_ncpus, 1), 1) AS host_cpus
         FROM result r
         JOIN workunit w ON w.id = r.workunitid
+        LEFT JOIN host h ON h.id = r.hostid
         WHERE {where_clause}
           AND r.hostid != 0
           AND r.outcome != 0
-    """
+        ORDER BY r.hostid, COALESCE(r.sent_time, 0), COALESCE(r.received_time, 0), r.id
+        """,
+        params,
+    )
+
+    host_slots: dict[int, list[float]] = {}
+    useful_compute = 0.0
+    wasted_compute = 0.0
+    residual_overhead = 0.0
+
+    for row in cur.fetchall():
+        result_id = int(row["result_id"])
+        host_id = int(row["hostid"] or 0)
+        sent_time = float(row["sent_time"] or 0)
+        received_time = float(row["received_time"] or 0)
+        compute_seconds = max(0.0, float(row["compute_seconds"] or 0))
+        host_cpus = max(1, min(256, int(row["host_cpus"] or 1)))
+
+        slots = host_slots.get(host_id)
+        if slots is None or len(slots) != host_cpus:
+            slots = [0.0] * host_cpus
+            host_slots[host_id] = slots
+
+        slot_index = min(range(len(slots)), key=slots.__getitem__)
+        estimated_start = max(sent_time, slots[slot_index])
+        estimated_finish = estimated_start + compute_seconds
+        slots[slot_index] = estimated_finish
+
+        if received_time > 0:
+            residual_overhead += max(0.0, received_time - estimated_finish)
+
+        if result_id in useful_ids:
+            useful_compute += compute_seconds
+        else:
+            wasted_compute += compute_seconds
+
+    denominator = useful_compute + wasted_compute + residual_overhead
+    if denominator <= 0:
+        return 0.0
+    return max(0.0, min(100.0, useful_compute / denominator * 100.0))
 
 
 def latest_experiment_scope(cur) -> tuple[str, str, tuple[Any, ...]] | None:
@@ -467,30 +533,20 @@ def update_current_experiment_metrics(cur, has_canonical_resultid: bool, has_cpu
                 float(current_remaining_wu) * quorum_attempts * max(CONFIG_TASK_SECONDS, 1.0) / active_capacity
             )
 
-    useful_compute_sql = useful_success_query(
-        f"COALESCE(SUM({compute_seconds_expr(has_cpu_time)}), 0) AS compute_seconds",
-        workunit_where,
-    )
-    all_compute_sql = executed_compute_query(has_cpu_time, workunit_where)
     avg_compute_sql = useful_success_query(
         "COALESCE(AVG(CASE WHEN elapsed_time > 0 THEN elapsed_time END), 0)",
         workunit_where,
     )
 
     try:
-        cur.execute(useful_compute_sql, workunit_params)
-        useful_row = cur.fetchone() or {}
-        useful_compute_seconds = float(useful_row.get("compute_seconds") or 0)
-        cur.execute(all_compute_sql, workunit_params)
-        all_compute_row = cur.fetchone() or {}
-        useful_total_seconds = float(all_compute_row.get("compute_seconds") or 0)
+        useful_percent = useful_compute_percent_from_schedule(
+            cur,
+            has_cpu_time,
+            workunit_where,
+            workunit_params,
+        )
     except Exception:
-        useful_compute_seconds = 0.0
-        useful_total_seconds = 0.0
-
-    useful_percent = 0.0
-    if useful_total_seconds > 0:
-        useful_percent = max(0.0, min(100.0, useful_compute_seconds / useful_total_seconds * 100.0))
+        useful_percent = 0.0
 
     avg_compute_time = float(safe_fetch_one(cur, avg_compute_sql, workunit_params, default=0))
     if avg_compute_time <= 0:
@@ -627,10 +683,6 @@ def update_db_metrics() -> None:
             boinc_completion_percent.set((float(completed_wu) / float(workunits) * 100.0) if workunits else 0)
             boinc_estimated_remaining_seconds.set(estimated_remaining_seconds)
 
-            useful_compute_sql = useful_success_query(
-                f"COALESCE(SUM({compute_seconds_expr(has_cpu_time)}), 0) AS compute_seconds"
-            )
-            all_compute_sql = executed_compute_query(has_cpu_time)
             avg_compute_sql = useful_success_query(
                 "COALESCE(AVG(CASE WHEN elapsed_time > 0 THEN elapsed_time END), 0)"
             )
@@ -655,19 +707,9 @@ def update_db_metrics() -> None:
             ) + "\nAND received_time > 0 AND sent_time > 0 ORDER BY turnaround"
 
             try:
-                cur.execute(useful_compute_sql)
-                useful_row = cur.fetchone() or {}
-                useful_compute_seconds = float(useful_row.get("compute_seconds") or 0)
-                cur.execute(all_compute_sql)
-                all_compute_row = cur.fetchone() or {}
-                useful_total_seconds = float(all_compute_row.get("compute_seconds") or 0)
+                useful_percent = useful_compute_percent_from_schedule(cur, has_cpu_time)
             except Exception:
-                useful_compute_seconds = 0.0
-                useful_total_seconds = 0.0
-
-            useful_percent = 0.0
-            if useful_total_seconds > 0:
-                useful_percent = max(0.0, min(100.0, useful_compute_seconds / useful_total_seconds * 100.0))
+                useful_percent = 0.0
             boinc_useful_compute_percent.set(useful_percent)
 
             avg_turnaround = float(
