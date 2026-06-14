@@ -3,9 +3,26 @@
 from __future__ import annotations
 
 import math
+import os
 import platform
 import time
 from typing import Any
+
+
+def _configure_numeric_threads() -> int:
+    threads = max(1, os.cpu_count() or 1)
+    for name in (
+        "OMP_NUM_THREADS",
+        "OPENBLAS_NUM_THREADS",
+        "MKL_NUM_THREADS",
+        "NUMEXPR_NUM_THREADS",
+        "VECLIB_MAXIMUM_THREADS",
+    ):
+        os.environ[name] = str(threads)
+    return threads
+
+
+NUMERIC_THREADS = _configure_numeric_threads()
 
 try:
     import numpy as np
@@ -16,7 +33,7 @@ except ModuleNotFoundError as exc:  # pragma: no cover - validated on client ima
     ) from exc
 
 
-MATRIX_SIZE = 1200
+MATRIX_SIZE = 8000
 DIAGONAL_BOOST = max(1.0, MATRIX_SIZE * 0.01)
 WORKUNITS = 20
 
@@ -75,5 +92,6 @@ def run(params: dict[str, Any]) -> dict[str, Any]:
             "python": platform.python_implementation(),
             "numpy": np.__version__,
             "linear_algebra": "numpy.linalg.slogdet",
+            "numeric_threads": NUMERIC_THREADS,
         },
     }

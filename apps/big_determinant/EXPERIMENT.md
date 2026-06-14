@@ -13,6 +13,10 @@ CPU-задача для BOINC Python runner: вычисление определ
 определителя. Максимальный срок возврата результата задаётся BOINC-параметром
 `DISTRIBUTED_DELAY_BOUND`; по умолчанию это `86400` секунд, то есть 1 день.
 
+Сложность регулируется только размером матрицы `MATRIX_SIZE` в
+`apps/big_determinant/main.py`. Для плотной матрицы время растёт примерно как
+`MATRIX_SIZE^3`, память — как `MATRIX_SIZE^2`.
+
 Ручной запуск через BOINC:
 
 ```bash
@@ -30,6 +34,7 @@ apps/big_determinant/run_task.sh boinc
 
 Текущая стратегия:
 
+- `MATRIX_SIZE = 8000`;
 - `WORKUNITS = 20`.
 
 Будет создано 20 workunit независимо от числа клиентов. BOINC раздаёт их
