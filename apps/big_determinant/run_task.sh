@@ -34,9 +34,10 @@ usage() {
 Usage:
   apps/big_determinant/run_task.sh [--debug] [boinc|local]
 
-The workload computes one real determinant per workunit. BOINC task return
-deadline is controlled by DISTRIBUTED_DELAY_BOUND; default is 86400 seconds.
-The number of workunits is defined by apps/big_determinant/main.py.
+The workload computes one regularized log-determinant path per workunit.
+BOINC task return deadline is controlled by DISTRIBUTED_DELAY_BOUND; default
+is 86400 seconds. The number of workunits is defined by
+apps/big_determinant/main.py.
 USAGE
 }
 
@@ -68,7 +69,7 @@ prepare_task() {
     --seed-base "$SEED_BASE"
   )
 
-  step "Preparing determinant workunits..."
+  step "Preparing regularized log-det workunits..."
   quiet_run_all python3 "${args[@]}"
 }
 
@@ -77,10 +78,10 @@ run_boinc() {
 
   export PYTHON_TASK_APP_NAME="${PYTHON_TASK_APP_NAME:-$APP_NAME}"
   export PYTHON_TASK_PLATFORM="${PYTHON_TASK_PLATFORM:-$PLATFORM}"
-  export PYTHON_TASK_APP_FRIENDLY_NAME="${PYTHON_TASK_APP_FRIENDLY_NAME:-Big determinant CPU}"
+  export PYTHON_TASK_APP_FRIENDLY_NAME="${PYTHON_TASK_APP_FRIENDLY_NAME:-Regularized log-det CPU}"
   export PYTHON_TASK_APP_VERSION="${DETERMINANT_APP_VERSION:-${PYTHON_TASK_APP_VERSION:-}}"
 
-  step "Submitting determinant workunits..."
+  step "Submitting regularized log-det workunits..."
   quiet_run_all "$PYTHON_RUNNER" --task "$MAIN_FILE" --params "$PARAMS_FILE" --device cpu --fail-on-error
 }
 
@@ -112,7 +113,7 @@ run_local() {
       --fail-on-error
   done
 
-  step "Local determinant run completed."
+  step "Local regularized log-det run completed."
   if debug_enabled; then
     echo "Local outputs: $output_dir"
   fi

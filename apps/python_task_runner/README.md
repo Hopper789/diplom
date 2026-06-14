@@ -127,4 +127,4 @@ apps/python_task_runner/run_task.sh \
 
 - `apps/user_task_template` — шаблон пользовательской задачи;
 - `apps/ml_grid_search` — grid search;
-- `apps/big_determinant` — determinant CPU-бенчмарк.
+- `apps/big_determinant` — regularized log-det CPU-бенчмарк.

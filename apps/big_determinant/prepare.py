@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare params.jsonl for the big determinant workload."""
+"""Prepare params.jsonl for the regularized log-det workload."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ DEFAULT_WORKUNITS = 1
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Prepare big determinant BOINC tasks")
+    parser = argparse.ArgumentParser(description="Prepare regularized log-det BOINC tasks")
     parser.add_argument("--main", required=True, help="Path to main.py with run(params)")
     parser.add_argument("--out", required=True, help="Output params.jsonl path")
     parser.add_argument("--seed-base", type=int, default=10_000)
@@ -64,8 +64,8 @@ def main() -> int:
     task_count = read_workunits(main_path)
     task_count = write_params(args, output_path, task_count)
 
-    print(f"Prepared big_det main: {main_path}")
-    print(f"Generated big_det workunits: {task_count}")
+    print(f"Prepared regularized log-det main: {main_path}")
+    print(f"Generated regularized log-det workunits: {task_count}")
     print(f"Output: {output_path}")
     return 0
 

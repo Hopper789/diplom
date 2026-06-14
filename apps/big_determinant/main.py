@@ -1,4 +1,4 @@
-"""Real determinant workload for the BOINC Python runner."""
+"""Regularized log-determinant benchmark for the BOINC Python runner."""
 
 from __future__ import annotations
 
@@ -28,13 +28,31 @@ try:
     import numpy as np
 except ModuleNotFoundError as exc:  # pragma: no cover - validated on client image
     raise RuntimeError(
-        "big_determinant requires numpy. "
+        "regularized_logdet requires numpy. "
         "Run ./scripts/prepare_system.sh --install-local and redeploy BOINC clients."
     ) from exc
 
 
-MATRIX_SIZE = 12000
+MATRIX_SIZE = 8000
 DIAGONAL_BOOST = max(1.0, MATRIX_SIZE * 0.01)
+REGULARIZATION_LAMBDAS = (
+    0.0,
+    1.0e-4,
+    3.0e-4,
+    1.0e-3,
+    3.0e-3,
+    1.0e-2,
+    3.0e-2,
+    1.0e-1,
+    3.0e-1,
+    1.0,
+    3.0,
+    10.0,
+    30.0,
+    100.0,
+    300.0,
+    1000.0,
+)
 WORKUNITS = 20
 
 
@@ -61,38 +79,63 @@ def _build_matrix(size: int, seed: int) -> np.ndarray:
 
 
 def run(params: dict[str, Any]) -> dict[str, Any]:
-    """Compute one determinant for one deterministic matrix."""
+    """Compute a regularized log-determinant path for one deterministic matrix."""
 
     task_id = _as_int(params, "task_id", 1)
     seed = _as_int(params, "seed", 10_000 + task_id)
 
     started = time.perf_counter()
     matrix = _build_matrix(MATRIX_SIZE, seed)
-    sign, log_abs_det = np.linalg.slogdet(matrix)
+    diagonal = np.diag_indices_from(matrix)
+    current_lambda = 0.0
+    path = []
+
+    for lambda_value in REGULARIZATION_LAMBDAS:
+        lambda_value = float(lambda_value)
+        matrix[diagonal] += lambda_value - current_lambda
+        current_lambda = lambda_value
+
+        lambda_started = time.perf_counter()
+        sign, log_abs_det = np.linalg.slogdet(matrix)
+        lambda_elapsed = time.perf_counter() - lambda_started
+
+        sign = float(sign)
+        log_abs_det = float(log_abs_det)
+        path.append(
+            {
+                "lambda": lambda_value,
+                "sign": sign,
+                "log_abs": log_abs_det,
+                "scientific": _scientific_from_log(sign, log_abs_det),
+                "elapsed_seconds": round(lambda_elapsed, 6),
+            }
+        )
+
     elapsed = time.perf_counter() - started
 
-    sign = float(sign)
-    log_abs_det = float(log_abs_det)
+    valid_path = [point for point in path if point["sign"] != 0.0 and math.isfinite(point["log_abs"])]
+    selected = min(valid_path, key=lambda point: point["lambda"]) if valid_path else path[-1]
 
     return {
         "task_id": task_id,
-        "workload": "big_determinant",
+        "workload": "regularized_logdet",
         "matrix": {
             "size": MATRIX_SIZE,
             "seed": seed,
             "diagonal_boost": DIAGONAL_BOOST,
             "dtype": "float64",
         },
-        "determinant": {
-            "sign": sign,
-            "log_abs": log_abs_det,
-            "scientific": _scientific_from_log(sign, log_abs_det),
+        "regularization": {
+            "lambdas": list(REGULARIZATION_LAMBDAS),
+            "selected_lambda": selected["lambda"],
+            "selected_rule": "smallest lambda with finite non-zero determinant",
+            "path": path,
         },
         "elapsed_seconds": round(elapsed, 6),
         "backend": {
             "python": platform.python_implementation(),
             "numpy": np.__version__,
-            "linear_algebra": "numpy.linalg.slogdet",
+            "linear_algebra": "numpy.linalg.slogdet over A + lambda I",
             "numeric_threads": NUMERIC_THREADS,
         },
     }

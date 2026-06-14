@@ -38,7 +38,7 @@ Grafana открывается без логина. Админский вход:
 ./scripts/prepare_system.sh --copy-ssh-keys
 ./scripts/launch_cluster.sh --with-monitoring
 ./scripts/run_experiment.sh
-./scripts/run_experiment.sh --task determinant --workunits 2
+./scripts/run_experiment.sh --task determinant
 ./scripts/run_experiment.sh --task grid-search
 ./scripts/status.sh
 ./scripts/clean_runtime.sh
@@ -50,7 +50,7 @@ Grafana открывается без логина. Админский вход:
 
 - `config/cluster.yml` — IP сервера, клиенты, SSH-порты, параметры BOINC.
 - `config/distributed.env` — репликация, quorum и ограничения BOINC result.
-- `apps/` — вычислительные задачи.
+- `apps/` — вычислительные задачи: пользовательский шаблон, grid search и regularized log-det.
 - `scripts/` — запуск, диагностика, очистка.
 - `monitoring/` — Prometheus, Grafana, Loki, exporter.
 - `server/` — BOINC server и MariaDB compose.

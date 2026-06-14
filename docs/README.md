@@ -25,7 +25,7 @@ BOINC server хранит workunit'ы, клиенты забирают их, с�
 ## Структура проекта
 
 - `apps/ml_grid_search` — задача grid search.
-- `apps/big_determinant` — CPU-бенчмарк determinant.
+- `apps/big_determinant` — CPU-бенчмарк regularized log-det.
 - `apps/user_task_template` — шаблон пользовательской Python-задачи.
 - `apps/python_task_runner` — общий BOINC runner для Python-задач.
 - `scripts/` — подготовка, запуск, диагностика и очистка.
