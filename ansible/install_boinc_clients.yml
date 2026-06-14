@@ -76,6 +76,7 @@
               build: .
               image: {{ boinc_client_image }}
               container_name: boinc-client
+              hostname: "boinc-{{ inventory_hostname | regex_replace('[^A-Za-z0-9-]', '-') }}"
               restart: unless-stopped
               volumes:
                 - ./data:/var/lib/boinc

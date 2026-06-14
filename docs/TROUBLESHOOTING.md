@@ -71,6 +71,17 @@ ansible -i ansible/inventory.ini boinc_clients -m ping
 ./scripts/bootstrap_clients.sh
 ```
 
+Если после повторного `quickstart` число host'ов в BOINC выросло, причина обычно
+в старых записях, которые уже были созданы до фикса стабильного hostname
+клиента. Новые клиенты запускаются с hostname вида `boinc-CLIENT-IP`, поэтому
+пересоздание контейнера больше не должно само по себе создавать новый host.
+Для полностью чистого прогона используй:
+
+```bash
+./scripts/clean_runtime.sh
+./scripts/quickstart.sh --with-monitoring --run-experiment
+```
+
 ## Задачи есть, но клиенты их не берут
 
 ```bash
