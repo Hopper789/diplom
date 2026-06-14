@@ -3,7 +3,7 @@
   "title": "BOINC",
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 31,
+  "version": 32,
   "refresh": "10s",
   "tags": [
     "boinc"
@@ -395,7 +395,7 @@
     {
       "id": 8,
       "type": "stat",
-      "title": "Скорость",
+      "title": "% выданных задач",
       "gridPos": {
         "x": 12,
         "y": 5,
@@ -404,7 +404,7 @@
       },
       "targets": [
         {
-          "expr": "boinc_experiment_throughput_workunits_per_second",
+          "expr": "boinc_issued_results_percent",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
@@ -416,10 +416,10 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "suffix: задач/с",
-          "decimals": 4,
+          "unit": "percent",
+          "decimals": 1,
           "noValue": "-",
-          "description": "Завершённых задач в секунду.",
+          "description": "Доля всех result-записей BOINC-очереди, которые уже выданы хостам. Учитывает репликацию и replacement-задачи после ошибок.",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -450,7 +450,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Завершённых задач в секунду."
+      "description": "Доля всех result-записей BOINC-очереди, которые уже выданы хостам. Учитывает репликацию и replacement-задачи после ошибок."
     },
     {
       "id": 9,

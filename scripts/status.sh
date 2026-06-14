@@ -374,7 +374,7 @@ for target in payload.get("data", {}).get("activeTargets", []):
     print_prometheus_value "Ошибки %" "boinc_workunits_error_percent"
     print_prometheus_value "Время на задачу" "boinc_avg_compute_time_per_workunit_seconds"
     print_prometheus_value "Полезная нагрузка" "boinc_useful_compute_percent"
-    print_prometheus_value "Скорость" "boinc_experiment_throughput_workunits_per_second"
+    print_prometheus_value "% выданных задач" "boinc_issued_results_percent"
     print_prometheus_value "Репликация" "boinc_actual_results_per_workunit"
     print_prometheus_value "node targets" 'count(up{job=~"node_exporter_(clients|server)"})'
   fi

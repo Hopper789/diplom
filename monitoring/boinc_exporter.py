@@ -63,6 +63,10 @@ boinc_results_executed_total = Gauge("boinc_results_executed_total", "BOINC resu
 boinc_results_unsent_total = Gauge("boinc_results_unsent_total", "BOINC results not assigned to any host yet")
 boinc_results_assigned_total = Gauge("boinc_results_assigned_total", "BOINC results assigned to a host")
 boinc_results_in_progress_total = Gauge("boinc_results_in_progress_total", "Assigned BOINC results not finished yet")
+boinc_issued_results_percent = Gauge(
+    "boinc_issued_results_percent",
+    "Percent of all current BOINC result records that have been issued to a host",
+)
 
 # Rates and efficiency are calculated by Prometheus from gauges/counters, but these point-in-time metrics
 # are useful for simple dashboards and diploma tables.
@@ -107,10 +111,6 @@ boinc_oldest_unfinished_result_age_seconds = Gauge(
 boinc_experiment_total_seconds = Gauge(
     "boinc_experiment_total_seconds",
     "Total experiment wall time from first workunit to latest received result",
-)
-boinc_experiment_throughput_workunits_per_second = Gauge(
-    "boinc_experiment_throughput_workunits_per_second",
-    "Completed workunits divided by experiment total seconds",
 )
 boinc_completion_percent = Gauge(
     "boinc_completion_percent",
@@ -296,6 +296,11 @@ def update_db_metrics() -> None:
             completed_wu = safe_fetch_one(cur, completed_wu_sql)
             remaining_wu = max(0, workunits - completed_wu)
             error_wu = safe_fetch_one(cur, "SELECT COUNT(DISTINCT workunitid) FROM result WHERE outcome IN (2, 3, 4, 6)")
+            avg_target_nresults = safe_fetch_one(cur, "SELECT COALESCE(AVG(target_nresults), 0) FROM workunit")
+            avg_min_quorum = safe_fetch_one(cur, "SELECT COALESCE(AVG(min_quorum), 0) FROM workunit")
+            avg_max_success_results = safe_fetch_one(cur, "SELECT COALESCE(AVG(max_success_results), 0) FROM workunit")
+            avg_max_error_results = safe_fetch_one(cur, "SELECT COALESCE(AVG(max_error_results), 0) FROM workunit")
+            avg_max_total_results = safe_fetch_one(cur, "SELECT COALESCE(AVG(max_total_results), 0) FROM workunit")
 
             boinc_results_success_total.set(success)
             boinc_results_error_total.set(errors)
@@ -306,6 +311,7 @@ def update_db_metrics() -> None:
             boinc_results_unsent_total.set(unsent)
             boinc_results_assigned_total.set(assigned)
             boinc_results_in_progress_total.set(in_progress)
+            boinc_issued_results_percent.set((float(assigned) / float(results) * 100.0) if results else 0)
             boinc_queue_remaining_total.set(unfinished)
             boinc_completed_workunits_total.set(completed_wu)
             boinc_remaining_workunits_total.set(remaining_wu)
@@ -335,16 +341,18 @@ def update_db_metrics() -> None:
 
             boinc_latest_result_received_time.set(latest_result_received_time)
             boinc_experiment_total_seconds.set(experiment_total_seconds)
-            throughput = (float(completed_wu) / experiment_total_seconds) if experiment_total_seconds else 0
+            completion_rate = (float(completed_wu) / experiment_total_seconds) if experiment_total_seconds else 0
             active_capacity = max(float(active_hosts or 0), float(in_progress or 0), float(hosts or 0))
             estimated_remaining_seconds = 0.0
             if remaining_wu > 0:
-                if throughput > 0:
-                    estimated_remaining_seconds = float(remaining_wu) / throughput
+                if completion_rate > 0:
+                    estimated_remaining_seconds = float(remaining_wu) / completion_rate
                 elif active_capacity > 0:
-                    estimated_remaining_seconds = float(remaining_wu) * max(CONFIG_TASK_SECONDS, 1.0) / active_capacity
+                    quorum_attempts = max(float(avg_min_quorum or 0), 1.0)
+                    estimated_remaining_seconds = (
+                        float(remaining_wu) * quorum_attempts * max(CONFIG_TASK_SECONDS, 1.0) / active_capacity
+                    )
 
-            boinc_experiment_throughput_workunits_per_second.set(throughput)
             boinc_completion_percent.set((float(completed_wu) / float(workunits) * 100.0) if workunits else 0)
             boinc_estimated_remaining_seconds.set(estimated_remaining_seconds)
 
@@ -455,11 +463,11 @@ def update_db_metrics() -> None:
 
             # Replication-related workunit configuration. Some BOINC schemas may miss a column,
             # so every metric is filled best-effort.
-            boinc_target_nresults_avg.set(safe_fetch_one(cur, "SELECT COALESCE(AVG(target_nresults), 0) FROM workunit"))
-            boinc_min_quorum_avg.set(safe_fetch_one(cur, "SELECT COALESCE(AVG(min_quorum), 0) FROM workunit"))
-            boinc_max_success_results_avg.set(safe_fetch_one(cur, "SELECT COALESCE(AVG(max_success_results), 0) FROM workunit"))
-            boinc_max_error_results_avg.set(safe_fetch_one(cur, "SELECT COALESCE(AVG(max_error_results), 0) FROM workunit"))
-            boinc_max_total_results_avg.set(safe_fetch_one(cur, "SELECT COALESCE(AVG(max_total_results), 0) FROM workunit"))
+            boinc_target_nresults_avg.set(avg_target_nresults)
+            boinc_min_quorum_avg.set(avg_min_quorum)
+            boinc_max_success_results_avg.set(avg_max_success_results)
+            boinc_max_error_results_avg.set(avg_max_error_results)
+            boinc_max_total_results_avg.set(avg_max_total_results)
 
             boinc_results_by_state_total.clear()
             cur.execute(
