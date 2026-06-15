@@ -10,6 +10,8 @@ SUBMIT_ONLY="${BOINC_SUBMIT_ONLY:-0}"
 EXPERIMENT_TASK="user"
 USER_TASK_FILE="$ROOT_DIR/apps/user_task_template/user_task.py"
 USER_TASK_PARAMS="$ROOT_DIR/apps/user_task_template/params.jsonl"
+SIMULATE_FAILURE_RATE="${BOINC_SIMULATE_FAILURE_RATE:-0}"
+SIMULATE_FAILURE_SEED="${BOINC_SIMULATE_FAILURE_SEED:-default}"
 
 # shellcheck source=scripts/lib/ansible_args.sh
 source "$ROOT_DIR/scripts/lib/ansible_args.sh"
@@ -63,6 +65,30 @@ while [[ $# -gt 0 ]]; do
       USER_TASK_PARAMS="$2"
       shift 2
       ;;
+    --simulate-failures)
+      if [[ $# -lt 2 ]]; then
+        echo "--simulate-failures requires a value from 0 to 1." >&2
+        exit 2
+      fi
+      SIMULATE_FAILURE_RATE="$2"
+      shift 2
+      ;;
+    --simulate-failures=*)
+      SIMULATE_FAILURE_RATE="${1#*=}"
+      shift
+      ;;
+    --simulate-failure-seed)
+      if [[ $# -lt 2 ]]; then
+        echo "--simulate-failure-seed requires a value." >&2
+        exit 2
+      fi
+      SIMULATE_FAILURE_SEED="$2"
+      shift 2
+      ;;
+    --simulate-failure-seed=*)
+      SIMULATE_FAILURE_SEED="${1#*=}"
+      shift
+      ;;
     --help|-h)
       cat <<'USAGE'
 Usage:
@@ -73,6 +99,9 @@ Options:
                            task to submit; default: user
   --user-task PATH          Python file for --task user
   --user-params PATH        params.jsonl for --task user
+  --simulate-failures RATE  make roughly RATE of BOINC attempts fail; 0..1
+  --simulate-failure-seed SEED
+                           deterministic seed for simulated failures
   --submit-only             submit work without client pumping/Grafana dump
   --debug                   show full command output
   --ask-vault-pass, --vault ask Vault password manually
@@ -100,6 +129,15 @@ if [[ -z "$EXPERIMENT_TASK" ]]; then
   exit 2
 fi
 
+python3 - <<PY
+try:
+    rate = float("$SIMULATE_FAILURE_RATE")
+except ValueError:
+    raise SystemExit("--simulate-failures должен быть числом от 0 до 1")
+if not 0 <= rate <= 1:
+    raise SystemExit("--simulate-failures должен быть числом от 0 до 1")
+PY
+
 if [[ ! -f "$ROOT_DIR/config/generated.env" ]]; then
   echo "ERROR: config/generated.env not found."
   echo "Run first:"
@@ -123,6 +161,9 @@ fi
 if [[ "${#ANSIBLE_ARGS[@]}" -gt 0 ]]; then
   export ANSIBLE_EXTRA_ARGS="${ANSIBLE_ARGS[*]}"
 fi
+
+export BOINC_SIMULATE_FAILURE_RATE="$SIMULATE_FAILURE_RATE"
+export BOINC_SIMULATE_FAILURE_SEED="$SIMULATE_FAILURE_SEED"
 
 sql_tsv() {
   docker exec boinc-mariadb mariadb -u root -proot -N -B -D "$PROJECT_NAME" -e "$1"
@@ -200,6 +241,9 @@ read_progress() {
 if debug_enabled; then
   echo "Experiment task:"
   echo "  $EXPERIMENT_TASK"
+  echo "Simulated failures:"
+  echo "  rate=$BOINC_SIMULATE_FAILURE_RATE"
+  echo "  seed=$BOINC_SIMULATE_FAILURE_SEED"
   echo
   echo "Distributed computing config:"
   if [[ -f "$ROOT_DIR/config/distributed.env" ]]; then

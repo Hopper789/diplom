@@ -31,6 +31,9 @@ Options:
                            task for --run-experiment; default: user
   --user-task PATH          Python file for --task user
   --user-params PATH        params.jsonl for --task user
+  --simulate-failures RATE  make roughly RATE of BOINC attempts fail; 0..1
+  --simulate-failure-seed SEED
+                            deterministic seed for simulated failures
   --submit-only             with --run-experiment, submit work without auto-update/status wait
   --server-only             launch only BOINC server
   --clients-only            launch only BOINC clients
@@ -144,6 +147,30 @@ while [[ $# -gt 0 ]]; do
       fi
       EXPERIMENT_ARGS+=(--user-params "$2")
       shift 2
+      ;;
+    --simulate-failures)
+      if [[ $# -lt 2 ]]; then
+        echo "--simulate-failures requires a value from 0 to 1." >&2
+        exit 2
+      fi
+      EXPERIMENT_ARGS+=(--simulate-failures "$2")
+      shift 2
+      ;;
+    --simulate-failures=*)
+      EXPERIMENT_ARGS+=("$1")
+      shift
+      ;;
+    --simulate-failure-seed)
+      if [[ $# -lt 2 ]]; then
+        echo "--simulate-failure-seed requires a value." >&2
+        exit 2
+      fi
+      EXPERIMENT_ARGS+=(--simulate-failure-seed "$2")
+      shift 2
+      ;;
+    --simulate-failure-seed=*)
+      EXPERIMENT_ARGS+=("$1")
+      shift
       ;;
     --submit-only)
       SUBMIT_ONLY=1

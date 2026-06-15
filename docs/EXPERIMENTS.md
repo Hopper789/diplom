@@ -128,6 +128,23 @@ BOINC_SIMULATE_FAILURE_SEED=replication-test \
 ./scripts/pump_clients.sh --debug
 ```
 
+То же самое через quickstart:
+
+```bash
+./scripts/quickstart.sh \
+  --with-monitoring \
+  --run-experiment \
+  --task determinant \
+  --simulate-failures 0.25 \
+  --simulate-failure-seed replication-test
+
+./scripts/pump_clients.sh --debug
+```
+
+Сам quickstart только отправляет workunit'ы. Ошибки появятся после того, как
+клиенты начнут забирать задачи, поэтому для проверки отказов запускай
+`pump_clients.sh`.
+
 Для режима “2 успешных из максимум 3 attempts”:
 
 ```bash
