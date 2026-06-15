@@ -8,6 +8,7 @@ import hashlib
 import os
 import re
 import socket
+import time
 import traceback
 from pathlib import Path
 
@@ -39,6 +40,18 @@ def parse_failure_rate() -> float:
     return rate
 
 
+def parse_failure_after_seconds() -> float:
+    value = os.getenv("BOINC_SIMULATE_FAILURE_AFTER_SECONDS", "0").strip() or "0"
+    try:
+        seconds = float(value)
+    except ValueError as exc:
+        raise ValueError("BOINC_SIMULATE_FAILURE_AFTER_SECONDS должен быть числом >= 0") from exc
+
+    if seconds < 0:
+        raise ValueError("BOINC_SIMULATE_FAILURE_AFTER_SECONDS должен быть >= 0")
+    return seconds
+
+
 def boinc_attempt_name() -> str:
     init_path = Path("init_data.xml")
     if not init_path.exists():
@@ -50,6 +63,14 @@ def boinc_attempt_name() -> str:
         if match:
             return match.group(1).strip()
     return ""
+
+
+def burn_cpu(seconds: float) -> None:
+    deadline = time.monotonic() + seconds
+    value = 0x12345678
+    while time.monotonic() < deadline:
+        for _ in range(10000):
+            value = ((value * 1664525) + 1013904223) & 0xFFFFFFFF
 
 
 def maybe_simulate_failure(task_id: object) -> None:
@@ -65,9 +86,13 @@ def maybe_simulate_failure(task_id: object) -> None:
     value = int(digest[:16], 16) / 0xFFFFFFFFFFFFFFFF
 
     if value < rate:
+        after_seconds = parse_failure_after_seconds()
+        if after_seconds > 0:
+            burn_cpu(after_seconds)
         raise RuntimeError(
             "simulated BOINC attempt failure "
-            f"(rate={rate:.3f}, seed={seed}, task_id={task_id}, host={host}, attempt={attempt or 'local'})"
+            f"(rate={rate:.3f}, seed={seed}, task_id={task_id}, host={host}, "
+            f"attempt={attempt or 'local'}, after_seconds={after_seconds:.3f})"
         )
 
 

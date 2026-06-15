@@ -12,6 +12,7 @@ USER_TASK_FILE="$ROOT_DIR/apps/user_task_template/user_task.py"
 USER_TASK_PARAMS="$ROOT_DIR/apps/user_task_template/params.jsonl"
 SIMULATE_FAILURE_RATE="${BOINC_SIMULATE_FAILURE_RATE:-0}"
 SIMULATE_FAILURE_SEED="${BOINC_SIMULATE_FAILURE_SEED:-default}"
+SIMULATE_FAILURE_AFTER_SECONDS="${BOINC_SIMULATE_FAILURE_AFTER_SECONDS:-0}"
 
 # shellcheck source=scripts/lib/ansible_args.sh
 source "$ROOT_DIR/scripts/lib/ansible_args.sh"
@@ -89,6 +90,18 @@ while [[ $# -gt 0 ]]; do
       SIMULATE_FAILURE_SEED="${1#*=}"
       shift
       ;;
+    --simulate-failure-after-seconds)
+      if [[ $# -lt 2 ]]; then
+        echo "--simulate-failure-after-seconds requires a value >= 0." >&2
+        exit 2
+      fi
+      SIMULATE_FAILURE_AFTER_SECONDS="$2"
+      shift 2
+      ;;
+    --simulate-failure-after-seconds=*)
+      SIMULATE_FAILURE_AFTER_SECONDS="${1#*=}"
+      shift
+      ;;
     --help|-h)
       cat <<'USAGE'
 Usage:
@@ -102,6 +115,8 @@ Options:
   --simulate-failures RATE  make roughly RATE of BOINC attempts fail; 0..1
   --simulate-failure-seed SEED
                            deterministic seed for simulated failures
+  --simulate-failure-after-seconds SECONDS
+                           burn CPU for SECONDS before simulated failure
   --submit-only             submit work without client pumping/Grafana dump
   --debug                   show full command output
   --ask-vault-pass, --vault ask Vault password manually
@@ -136,6 +151,12 @@ except ValueError:
     raise SystemExit("--simulate-failures должен быть числом от 0 до 1")
 if not 0 <= rate <= 1:
     raise SystemExit("--simulate-failures должен быть числом от 0 до 1")
+try:
+    after_seconds = float("$SIMULATE_FAILURE_AFTER_SECONDS")
+except ValueError:
+    raise SystemExit("--simulate-failure-after-seconds должен быть числом >= 0")
+if after_seconds < 0:
+    raise SystemExit("--simulate-failure-after-seconds должен быть числом >= 0")
 PY
 
 if [[ ! -f "$ROOT_DIR/config/generated.env" ]]; then
@@ -164,6 +185,7 @@ fi
 
 export BOINC_SIMULATE_FAILURE_RATE="$SIMULATE_FAILURE_RATE"
 export BOINC_SIMULATE_FAILURE_SEED="$SIMULATE_FAILURE_SEED"
+export BOINC_SIMULATE_FAILURE_AFTER_SECONDS="$SIMULATE_FAILURE_AFTER_SECONDS"
 
 sql_tsv() {
   docker exec boinc-mariadb mariadb -u root -proot -N -B -D "$PROJECT_NAME" -e "$1"
@@ -244,6 +266,7 @@ if debug_enabled; then
   echo "Simulated failures:"
   echo "  rate=$BOINC_SIMULATE_FAILURE_RATE"
   echo "  seed=$BOINC_SIMULATE_FAILURE_SEED"
+  echo "  after_seconds=$BOINC_SIMULATE_FAILURE_AFTER_SECONDS"
   echo
   echo "Distributed computing config:"
   if [[ -f "$ROOT_DIR/config/distributed.env" ]]; then

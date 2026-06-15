@@ -44,6 +44,7 @@ DISTRIBUTED_RSC_FPOPS_EST="${DISTRIBUTED_RSC_FPOPS_EST:-100000000000.0}"
 DISTRIBUTED_RSC_FPOPS_BOUND="${DISTRIBUTED_RSC_FPOPS_BOUND:-10000000000000.0}"
 BOINC_SIMULATE_FAILURE_RATE="${BOINC_SIMULATE_FAILURE_RATE:-0}"
 BOINC_SIMULATE_FAILURE_SEED="${BOINC_SIMULATE_FAILURE_SEED:-default}"
+BOINC_SIMULATE_FAILURE_AFTER_SECONDS="${BOINC_SIMULATE_FAILURE_AFTER_SECONDS:-0}"
 
 ANSIBLE_EXTRA_ARGS="${ANSIBLE_EXTRA_ARGS:-}"
 
@@ -172,6 +173,9 @@ for name, value in {
 failure_rate = float("$BOINC_SIMULATE_FAILURE_RATE")
 if not 0 <= failure_rate <= 1:
     raise SystemExit("BOINC_SIMULATE_FAILURE_RATE должен быть от 0 до 1")
+failure_after_seconds = float("$BOINC_SIMULATE_FAILURE_AFTER_SECONDS")
+if failure_after_seconds < 0:
+    raise SystemExit("BOINC_SIMULATE_FAILURE_AFTER_SECONDS должен быть >= 0")
 
 if int("$DISTRIBUTED_MIN_QUORUM") > int("$DISTRIBUTED_TARGET_NRESULTS"):
     raise SystemExit("DISTRIBUTED_MIN_QUORUM должен быть <= DISTRIBUTED_TARGET_NRESULTS")
@@ -292,6 +296,7 @@ write_launcher() {
   local fail_arg=""
   local simulate_failure_rate_quoted
   local simulate_failure_seed_quoted
+  local simulate_failure_after_seconds_quoted
 
   if [[ "$FAIL_ON_ERROR" == "1" ]]; then
     fail_arg=" --fail-on-error"
@@ -299,6 +304,7 @@ write_launcher() {
 
   printf -v simulate_failure_rate_quoted '%q' "$BOINC_SIMULATE_FAILURE_RATE"
   printf -v simulate_failure_seed_quoted '%q' "$BOINC_SIMULATE_FAILURE_SEED"
+  printf -v simulate_failure_after_seconds_quoted '%q' "$BOINC_SIMULATE_FAILURE_AFTER_SECONDS"
 
   cat > "$launcher" <<EOF
 #!/usr/bin/env bash
@@ -306,6 +312,7 @@ set -uo pipefail
 SCRIPT_DIR="\$(cd "\$(dirname "\$0")" && pwd)"
 export BOINC_SIMULATE_FAILURE_RATE=$simulate_failure_rate_quoted
 export BOINC_SIMULATE_FAILURE_SEED=$simulate_failure_seed_quoted
+export BOINC_SIMULATE_FAILURE_AFTER_SECONDS=$simulate_failure_after_seconds_quoted
 
 resolve_output_files() {
   python3 - <<'PY'

@@ -63,6 +63,7 @@ Runner превращает строки в файлы:
 ```bash
 BOINC_SIMULATE_FAILURE_RATE=0.25 \
 BOINC_SIMULATE_FAILURE_SEED=replication-test \
+BOINC_SIMULATE_FAILURE_AFTER_SECONDS=60 \
 apps/python_task_runner/run_task.sh \
   --task apps/user_task_template/user_task.py \
   --params apps/user_task_template/params.jsonl \
@@ -72,6 +73,8 @@ apps/python_task_runner/run_task.sh \
 `BOINC_SIMULATE_FAILURE_RATE` — доля attempts от `0` до `1`. Отказ зависит от
 `seed`, `task_id`, hostname клиента и имени BOINC result, поэтому replacement
 attempt может отличаться от первой попытки даже на том же узле.
+`BOINC_SIMULATE_FAILURE_AFTER_SECONDS` задаёт, сколько секунд выбранная attempt
+будет тратить CPU перед искусственной ошибкой.
 
 ## Локальный запуск
 

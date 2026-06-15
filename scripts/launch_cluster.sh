@@ -34,6 +34,8 @@ Options:
   --simulate-failures RATE  make roughly RATE of BOINC attempts fail; 0..1
   --simulate-failure-seed SEED
                             deterministic seed for simulated failures
+  --simulate-failure-after-seconds SECONDS
+                            burn CPU for SECONDS before simulated failure
   --submit-only             with --run-experiment, submit work without auto-update/status wait
   --server-only             launch only BOINC server
   --clients-only            launch only BOINC clients
@@ -169,6 +171,18 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --simulate-failure-seed=*)
+      EXPERIMENT_ARGS+=("$1")
+      shift
+      ;;
+    --simulate-failure-after-seconds)
+      if [[ $# -lt 2 ]]; then
+        echo "--simulate-failure-after-seconds requires a value >= 0." >&2
+        exit 2
+      fi
+      EXPERIMENT_ARGS+=(--simulate-failure-after-seconds "$2")
+      shift 2
+      ;;
+    --simulate-failure-after-seconds=*)
       EXPERIMENT_ARGS+=("$1")
       shift
       ;;

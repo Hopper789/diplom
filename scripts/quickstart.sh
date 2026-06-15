@@ -32,6 +32,8 @@ Options:
                        make roughly RATE of BOINC attempts fail; 0..1
   --simulate-failure-seed SEED
                        deterministic seed for simulated failures
+  --simulate-failure-after-seconds SECONDS
+                       burn CPU for SECONDS before simulated failure
   --install-local       install local control-machine dependencies during preparation
   --copy-ssh-keys       copy SSH keys to clients during preparation
   --skip-prepare        run only launch_cluster.sh
@@ -45,7 +47,7 @@ Examples:
   ./scripts/quickstart.sh
   ./scripts/quickstart.sh --with-monitoring
   ./scripts/quickstart.sh --with-monitoring --run-experiment --task determinant
-  ./scripts/quickstart.sh --with-monitoring --run-experiment --task determinant --simulate-failures 0.25
+  ./scripts/quickstart.sh --with-monitoring --run-experiment --task determinant --simulate-failures 0.25 --simulate-failure-after-seconds 60
   ./scripts/quickstart.sh --with-monitoring --run-experiment --task grid-search
 
 Default experiment task is the user task template in apps/user_task_template.
@@ -124,6 +126,18 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --simulate-failure-seed=*)
+      EXPERIMENT_ARGS+=("$1")
+      shift
+      ;;
+    --simulate-failure-after-seconds)
+      if [[ $# -lt 2 ]]; then
+        echo "--simulate-failure-after-seconds requires a value >= 0." >&2
+        exit 2
+      fi
+      EXPERIMENT_ARGS+=(--simulate-failure-after-seconds "$2")
+      shift 2
+      ;;
+    --simulate-failure-after-seconds=*)
       EXPERIMENT_ARGS+=("$1")
       shift
       ;;
