@@ -59,14 +59,8 @@ def set_tag(body: str, tag: str, value: str) -> str:
         return re.sub(pattern, replacement, body, flags=re.S)
     return body.replace("</config>", f"        {replacement}\n    </config>")
 
-def ensure_empty_tag(body: str, tag: str) -> str:
-    if re.search(rf"<{tag}\s*/>|<{tag}>.*?</{tag}>", body, flags=re.S):
-        return body
-    return body.replace("</config>", f"        <{tag}/>\n    </config>")
-
 text = set_tag(text, "max_wus_to_send", "1")
 text = set_tag(text, "min_sendwork_interval", "1")
-text = ensure_empty_tag(text, "one_result_per_host_per_wu")
 path.write_text(text, encoding="utf-8")
 PY
     fi

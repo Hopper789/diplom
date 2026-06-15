@@ -103,23 +103,21 @@ DISTRIBUTED_MAX_TOTAL_RESULTS=3
 
 BOINC может создать больше result-записей, чем уникальных workunit'ов. Это нормально: result — попытка выполнения, workunit — уникальная задача.
 
-Серверный `config.xml` автоматически поддерживается с опцией
-`one_result_per_host_per_wu`: BOINC не должен выдавать одному BOINC host больше
-одной attempt одного workunit. Для этого важно, чтобы клиент сохранял стабильный
-BOINC host id между перезапусками контейнера.
+По умолчанию проект не включает `one_result_per_host_per_wu`. Это позволяет
+replacement attempt вернуться на один из уже участвовавших узлов, что полезно
+для проверки отказов на двух клиентах.
 
-Из-за этой защиты для схемы `2 из 3` нужны минимум 3 BOINC host'а. Если есть
-только 2 клиента, оба сразу получат первые две attempts. После ошибки третью
-attempt нельзя выдать ни одному из них, потому что каждый уже пробовал этот
-workunit. Для проверки восстановления на двух клиентах используй, например:
+Если нужно строго запретить выдачу двух attempts одного workunit одному BOINC
+host, добавь в серверный `/project/<PROJECT_NAME>/config.xml` внутри секции
+`<config>`:
 
-```bash
-DISTRIBUTED_TARGET_NRESULTS=1
-DISTRIBUTED_MIN_QUORUM=1
-DISTRIBUTED_MAX_SUCCESS_RESULTS=1
-DISTRIBUTED_MAX_ERROR_RESULTS=2
-DISTRIBUTED_MAX_TOTAL_RESULTS=2
+```xml
+<one_result_per_host_per_wu/>
 ```
+
+После этого перезапусти BOINC daemons или перезапусти серверный контейнер. Для
+схемы `2 из 3` с этой опцией нужны минимум 3 BOINC host'а, иначе после ошибки
+третью attempt может быть некому выдать.
 
 Максимальное время на возврат результата задаёт:
 
