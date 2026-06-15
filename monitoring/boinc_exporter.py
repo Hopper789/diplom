@@ -24,6 +24,7 @@ CONFIG_MAX_ERROR_RESULTS = float(os.getenv("DISTRIBUTED_MAX_ERROR_RESULTS", "3")
 CONFIG_MAX_TOTAL_RESULTS = float(os.getenv("DISTRIBUTED_MAX_TOTAL_RESULTS", "3"))
 LOG_BOINC_RESULT_ERRORS = os.getenv("LOG_BOINC_RESULT_ERRORS", "1") != "0"
 LOGGED_ERROR_RESULT_IDS: set[int] = set()
+ERROR_OUTCOMES_SQL = "2, 3, 4, 6"
 
 # Availability
 boinc_db_up = Gauge("boinc_db_up", "MariaDB connection status: 1 if up, 0 if down")
@@ -159,7 +160,7 @@ boinc_config_task_seconds = Gauge(
 # If the schema does not expose elapsed_time yet, the exporter falls back to configured TASK_SECONDS.
 boinc_avg_compute_time_per_workunit_seconds = Gauge(
     "boinc_avg_compute_time_per_workunit_seconds",
-    "Average compute time per successful result/workunit",
+    "Average compute time per first-quorum successful result, excluding workunits with errors",
 )
 boinc_avg_overhead_time_per_workunit_seconds = Gauge(
     "boinc_avg_overhead_time_per_workunit_seconds",
@@ -188,7 +189,7 @@ boinc_current_workunits_error_percent = Gauge(
 )
 boinc_current_avg_compute_time_per_workunit_seconds = Gauge(
     "boinc_current_avg_compute_time_per_workunit_seconds",
-    "Average compute time for latest-experiment first-quorum successful results",
+    "Average compute time for latest-experiment first-quorum successful results, excluding workunits with errors",
 )
 boinc_current_useful_compute_percent = Gauge(
     "boinc_current_useful_compute_percent",
@@ -324,6 +325,18 @@ def useful_success_query(metric_expr: str, where_clause: str = "1 = 1") -> str:
             WHERE {where_clause}
         ) useful
         WHERE useful.success_rank <= GREATEST(COALESCE(NULLIF(useful.min_quorum, 0), 1), 1)
+    """
+
+
+def without_error_workunits_clause(where_clause: str = "1 = 1") -> str:
+    return f"""
+        {where_clause}
+        AND NOT EXISTS (
+            SELECT 1
+            FROM result error_result
+            WHERE error_result.workunitid = w.id
+              AND error_result.outcome IN ({ERROR_OUTCOMES_SQL})
+        )
     """
 
 
@@ -535,7 +548,7 @@ def update_current_experiment_metrics(cur, has_canonical_resultid: bool, has_cpu
 
     avg_compute_sql = useful_success_query(
         "COALESCE(AVG(CASE WHEN elapsed_time > 0 THEN elapsed_time END), 0)",
-        workunit_where,
+        without_error_workunits_clause(workunit_where),
     )
 
     try:
@@ -684,7 +697,8 @@ def update_db_metrics() -> None:
             boinc_estimated_remaining_seconds.set(estimated_remaining_seconds)
 
             avg_compute_sql = useful_success_query(
-                "COALESCE(AVG(CASE WHEN elapsed_time > 0 THEN elapsed_time END), 0)"
+                "COALESCE(AVG(CASE WHEN elapsed_time > 0 THEN elapsed_time END), 0)",
+                without_error_workunits_clause(),
             )
             avg_turnaround_sql = useful_success_query(
                 """
