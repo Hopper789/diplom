@@ -70,8 +70,8 @@ apps/python_task_runner/run_task.sh \
 ```
 
 `BOINC_SIMULATE_FAILURE_RATE` — доля attempts от `0` до `1`. Отказ зависит от
-`seed`, `task_id` и hostname клиента, поэтому разные реплики одного workunit могут
-дать разный результат.
+`seed`, `task_id`, hostname клиента и имени BOINC result, поэтому replacement
+attempt может отличаться от первой попытки даже на том же узле.
 
 ## Локальный запуск
 

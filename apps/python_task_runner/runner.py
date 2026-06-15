@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import os
+import re
 import socket
 import traceback
 from pathlib import Path
@@ -38,6 +39,19 @@ def parse_failure_rate() -> float:
     return rate
 
 
+def boinc_attempt_name() -> str:
+    init_path = Path("init_data.xml")
+    if not init_path.exists():
+        return ""
+
+    text = init_path.read_text(encoding="utf-8", errors="replace")
+    for tag in ("result_name", "result"):
+        match = re.search(rf"<{tag}>(.*?)</{tag}>", text, flags=re.S)
+        if match:
+            return match.group(1).strip()
+    return ""
+
+
 def maybe_simulate_failure(task_id: object) -> None:
     rate = parse_failure_rate()
     if rate <= 0:
@@ -45,14 +59,15 @@ def maybe_simulate_failure(task_id: object) -> None:
 
     seed = os.getenv("BOINC_SIMULATE_FAILURE_SEED", "default")
     host = socket.gethostname()
-    key = f"{seed}:{task_id}:{host}"
+    attempt = boinc_attempt_name()
+    key = f"{seed}:{task_id}:{host}:{attempt}"
     digest = hashlib.sha256(key.encode("utf-8")).hexdigest()
     value = int(digest[:16], 16) / 0xFFFFFFFFFFFFFFFF
 
     if value < rate:
         raise RuntimeError(
             "simulated BOINC attempt failure "
-            f"(rate={rate:.3f}, seed={seed}, task_id={task_id}, host={host})"
+            f"(rate={rate:.3f}, seed={seed}, task_id={task_id}, host={host}, attempt={attempt or 'local'})"
         )
 
 
