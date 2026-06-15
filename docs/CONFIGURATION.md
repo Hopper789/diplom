@@ -108,6 +108,19 @@ BOINC может создать больше result-записей, чем ун�
 одной attempt одного workunit. Для этого важно, чтобы клиент сохранял стабильный
 BOINC host id между перезапусками контейнера.
 
+Из-за этой защиты для схемы `2 из 3` нужны минимум 3 BOINC host'а. Если есть
+только 2 клиента, оба сразу получат первые две attempts. После ошибки третью
+attempt нельзя выдать ни одному из них, потому что каждый уже пробовал этот
+workunit. Для проверки восстановления на двух клиентах используй, например:
+
+```bash
+DISTRIBUTED_TARGET_NRESULTS=1
+DISTRIBUTED_MIN_QUORUM=1
+DISTRIBUTED_MAX_SUCCESS_RESULTS=1
+DISTRIBUTED_MAX_ERROR_RESULTS=2
+DISTRIBUTED_MAX_TOTAL_RESULTS=2
+```
+
 Максимальное время на возврат результата задаёт:
 
 ```bash

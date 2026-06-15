@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 ENV_FILE="$ROOT_DIR/config/generated.env"
+CLUSTER_CONFIG="$ROOT_DIR/config/cluster.yml"
 DISTRIBUTED_ENV_FILE="$ROOT_DIR/config/distributed.env"
 DISTRIBUTED_EXAMPLE_FILE="$ROOT_DIR/config/distributed.example.env"
 VAULT_PASS_FILE="$ROOT_DIR/ansible/.vault_pass"
@@ -182,8 +183,61 @@ if int("$DISTRIBUTED_MAX_TOTAL_RESULTS") < int("$DISTRIBUTED_TARGET_NRESULTS"):
 PY
 }
 
+warn_if_replication_cannot_recover() {
+  [[ -f "$CLUSTER_CONFIG" ]] || return 0
+
+  python3 - "$CLUSTER_CONFIG" <<PY
+import sys
+
+try:
+    import yaml
+except ImportError:
+    raise SystemExit(0)
+
+target = int("$DISTRIBUTED_TARGET_NRESULTS")
+min_quorum = int("$DISTRIBUTED_MIN_QUORUM")
+max_error = int("$DISTRIBUTED_MAX_ERROR_RESULTS")
+max_total = int("$DISTRIBUTED_MAX_TOTAL_RESULTS")
+
+with open(sys.argv[1], "r", encoding="utf-8") as handle:
+    config = yaml.safe_load(handle) or {}
+
+clients = config.get("clients") or []
+client_count = len(clients) if isinstance(clients, list) else 0
+
+if client_count <= 0:
+    raise SystemExit(0)
+
+if max_error > 0 and client_count <= min_quorum:
+    print(
+        "WARNING: replication cannot recover from a failed attempt with "
+        f"{client_count} BOINC clients, min_quorum={min_quorum}, "
+        "and one_result_per_host_per_wu enabled. "
+        "Add another client or lower min_quorum for failure tests.",
+        file=sys.stderr,
+    )
+elif max_total > client_count:
+    print(
+        "WARNING: DISTRIBUTED_MAX_TOTAL_RESULTS="
+        f"{max_total}, but cluster.yml has only {client_count} clients. "
+        "Because one_result_per_host_per_wu is enabled, replacement attempts "
+        "cannot be assigned after every configured host has already tried "
+        "that workunit.",
+        file=sys.stderr,
+    )
+
+if target >= client_count and max_total > target:
+    print(
+        "WARNING: target_nresults already uses all configured clients. "
+        "There is no spare host for a replacement replica after an error.",
+        file=sys.stderr,
+    )
+PY
+}
+
 generate_input_template() {
   validate_distributed_config
+  warn_if_replication_cannot_recover
 
   cat > "$TPL_IN" <<TEMPLATE_EOF
 <file_info>
