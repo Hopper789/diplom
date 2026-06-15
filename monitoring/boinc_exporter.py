@@ -191,6 +191,10 @@ boinc_current_avg_compute_time_per_workunit_seconds = Gauge(
     "boinc_current_avg_compute_time_per_workunit_seconds",
     "Average compute time for latest-experiment first-quorum successful results, excluding workunits with errors",
 )
+boinc_current_total_compute_time_seconds = Gauge(
+    "boinc_current_total_compute_time_seconds",
+    "Total compute time of finished latest-experiment attempts, including replicas and errors",
+)
 boinc_current_useful_compute_percent = Gauge(
     "boinc_current_useful_compute_percent",
     "Percent of latest-experiment executed compute time spent on the first successful attempt per workunit; replicas count as overhead",
@@ -473,6 +477,7 @@ def reset_current_experiment_metrics() -> None:
     boinc_current_estimated_remaining_seconds.set(0)
     boinc_current_workunits_error_percent.set(0)
     boinc_current_avg_compute_time_per_workunit_seconds.set(0)
+    boinc_current_total_compute_time_seconds.set(0)
     boinc_current_useful_compute_percent.set(0)
     boinc_current_issued_results_percent.set(0)
     boinc_current_actual_results_per_workunit.set(0)
@@ -570,6 +575,11 @@ def update_current_experiment_metrics(cur, has_canonical_resultid: bool, has_cpu
         "COALESCE(AVG(CASE WHEN elapsed_time > 0 THEN elapsed_time END), 0)",
         without_error_workunits_clause(workunit_where),
     )
+    total_compute_sql = f"""
+        SELECT COALESCE(SUM({compute_seconds_expr(has_cpu_time, "r.")}), 0)
+        {result_from}
+          AND r.outcome != 0
+    """
 
     try:
         useful_percent = useful_compute_percent_from_schedule(
@@ -584,6 +594,7 @@ def update_current_experiment_metrics(cur, has_canonical_resultid: bool, has_cpu
     avg_compute_time = float(safe_fetch_one(cur, avg_compute_sql, workunit_params, default=0))
     if avg_compute_time <= 0:
         avg_compute_time = CONFIG_TASK_SECONDS if current_success else 0
+    total_compute_time = float(safe_fetch_one(cur, total_compute_sql, workunit_params, default=0))
 
     boinc_current_hosts_active_recent_total.set(current_active_hosts)
     boinc_current_workunits_total.set(current_workunits)
@@ -596,6 +607,7 @@ def update_current_experiment_metrics(cur, has_canonical_resultid: bool, has_cpu
         (float(current_error_wu) / float(current_workunits) * 100.0) if current_workunits else 0
     )
     boinc_current_avg_compute_time_per_workunit_seconds.set(avg_compute_time)
+    boinc_current_total_compute_time_seconds.set(total_compute_time)
     boinc_current_useful_compute_percent.set(useful_percent)
     boinc_current_issued_results_percent.set(
         (float(current_assigned) / float(current_results) * 100.0) if current_results else 0
