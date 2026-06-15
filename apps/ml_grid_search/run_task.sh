@@ -70,7 +70,7 @@ run_boinc() {
   fi
 
   step "Submitting grid-search workunits..."
-  quiet_run_all "$PYTHON_RUNNER" --task "$MAIN_FILE" --params "$PARAMS_FILE" --device cpu
+  quiet_run_all "$PYTHON_RUNNER" --task "$MAIN_FILE" --params "$PARAMS_FILE" --device cpu --fail-on-error
 }
 
 run_local() {

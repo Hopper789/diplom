@@ -105,6 +105,45 @@ DISTRIBUTED_MAX_TOTAL_RESULTS=3
 - `Факт. репликация` — реально выполненные attempts на workunit;
 - `Полезная нагрузка` — доля полезного compute-time с учётом реальных накладных расходов; локальное ожидание заранее выданных задач на клиенте вычитается.
 
+## Проверка репликации ошибками
+
+Для проверки replacement attempts можно включить управляемые отказы. Обычный запуск не меняется:
+по умолчанию `BOINC_SIMULATE_FAILURE_RATE=0`.
+
+Пример: примерно 25% attempts падают, а BOINC может создать до 3 попыток на workunit:
+
+```bash
+cat > config/distributed.env <<'EOF'
+DISTRIBUTED_TARGET_NRESULTS=1
+DISTRIBUTED_MIN_QUORUM=1
+DISTRIBUTED_MAX_SUCCESS_RESULTS=1
+DISTRIBUTED_MAX_ERROR_RESULTS=2
+DISTRIBUTED_MAX_TOTAL_RESULTS=3
+EOF
+
+BOINC_SIMULATE_FAILURE_RATE=0.25 \
+BOINC_SIMULATE_FAILURE_SEED=replication-test \
+./scripts/run_experiment.sh --task determinant --submit-only
+
+./scripts/pump_clients.sh --debug
+```
+
+Для режима “2 успешных из максимум 3 attempts”:
+
+```bash
+cat > config/distributed.env <<'EOF'
+DISTRIBUTED_TARGET_NRESULTS=2
+DISTRIBUTED_MIN_QUORUM=2
+DISTRIBUTED_MAX_SUCCESS_RESULTS=2
+DISTRIBUTED_MAX_ERROR_RESULTS=1
+DISTRIBUTED_MAX_TOTAL_RESULTS=3
+EOF
+```
+
+Отказ считается детерминированно по `seed + task_id + hostname`, поэтому разные реплики
+одного workunit могут вести себя по-разному. Это лучше, чем специально ломать задачу по
+`task_id`: такая ошибка повторится во всех репликах и quorum не сможет восстановиться.
+
 ## Выгрузка результатов
 
 Пользовательский вывод функции `run(params)` лежит в загруженных `output.json`.

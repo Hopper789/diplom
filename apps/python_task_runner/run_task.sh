@@ -42,6 +42,8 @@ DISTRIBUTED_RSC_MEMORY_BOUND="${DISTRIBUTED_RSC_MEMORY_BOUND:-268435456}"
 DISTRIBUTED_RSC_DISK_BOUND="${DISTRIBUTED_RSC_DISK_BOUND:-104857600}"
 DISTRIBUTED_RSC_FPOPS_EST="${DISTRIBUTED_RSC_FPOPS_EST:-100000000000.0}"
 DISTRIBUTED_RSC_FPOPS_BOUND="${DISTRIBUTED_RSC_FPOPS_BOUND:-10000000000000.0}"
+BOINC_SIMULATE_FAILURE_RATE="${BOINC_SIMULATE_FAILURE_RATE:-0}"
+BOINC_SIMULATE_FAILURE_SEED="${BOINC_SIMULATE_FAILURE_SEED:-default}"
 
 ANSIBLE_EXTRA_ARGS="${ANSIBLE_EXTRA_ARGS:-}"
 
@@ -167,6 +169,10 @@ for name, value in {
     if parsed < 0:
         raise SystemExit(f"{name} должен быть >= 0")
 
+failure_rate = float("$BOINC_SIMULATE_FAILURE_RATE")
+if not 0 <= failure_rate <= 1:
+    raise SystemExit("BOINC_SIMULATE_FAILURE_RATE должен быть от 0 до 1")
+
 if int("$DISTRIBUTED_MIN_QUORUM") > int("$DISTRIBUTED_TARGET_NRESULTS"):
     raise SystemExit("DISTRIBUTED_MIN_QUORUM должен быть <= DISTRIBUTED_TARGET_NRESULTS")
 if int("$DISTRIBUTED_MAX_SUCCESS_RESULTS") < int("$DISTRIBUTED_MIN_QUORUM"):
@@ -284,15 +290,22 @@ generate_inputs() {
 write_launcher() {
   local launcher="$BUILD_DIR/$BIN_NAME"
   local fail_arg=""
+  local simulate_failure_rate_quoted
+  local simulate_failure_seed_quoted
 
   if [[ "$FAIL_ON_ERROR" == "1" ]]; then
     fail_arg=" --fail-on-error"
   fi
 
+  printf -v simulate_failure_rate_quoted '%q' "$BOINC_SIMULATE_FAILURE_RATE"
+  printf -v simulate_failure_seed_quoted '%q' "$BOINC_SIMULATE_FAILURE_SEED"
+
   cat > "$launcher" <<EOF
 #!/usr/bin/env bash
 set -uo pipefail
 SCRIPT_DIR="\$(cd "\$(dirname "\$0")" && pwd)"
+export BOINC_SIMULATE_FAILURE_RATE=$simulate_failure_rate_quoted
+export BOINC_SIMULATE_FAILURE_SEED=$simulate_failure_seed_quoted
 
 resolve_output_files() {
   python3 - <<'PY'

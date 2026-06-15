@@ -4,6 +4,9 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import os
+import socket
 import traceback
 from pathlib import Path
 
@@ -23,6 +26,36 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def parse_failure_rate() -> float:
+    value = os.getenv("BOINC_SIMULATE_FAILURE_RATE", "0").strip() or "0"
+    try:
+        rate = float(value)
+    except ValueError as exc:
+        raise ValueError("BOINC_SIMULATE_FAILURE_RATE должен быть числом от 0 до 1") from exc
+
+    if not 0 <= rate <= 1:
+        raise ValueError("BOINC_SIMULATE_FAILURE_RATE должен быть в диапазоне от 0 до 1")
+    return rate
+
+
+def maybe_simulate_failure(task_id: object) -> None:
+    rate = parse_failure_rate()
+    if rate <= 0:
+        return
+
+    seed = os.getenv("BOINC_SIMULATE_FAILURE_SEED", "default")
+    host = socket.gethostname()
+    key = f"{seed}:{task_id}:{host}"
+    digest = hashlib.sha256(key.encode("utf-8")).hexdigest()
+    value = int(digest[:16], 16) / 0xFFFFFFFFFFFFFFFF
+
+    if value < rate:
+        raise RuntimeError(
+            "simulated BOINC attempt failure "
+            f"(rate={rate:.3f}, seed={seed}, task_id={task_id}, host={host})"
+        )
+
+
 def main() -> int:
     args = parse_args()
     task_id = None
@@ -30,6 +63,7 @@ def main() -> int:
     try:
         input_data = load_input(args.input)
         task_id = input_data["task_id"]
+        maybe_simulate_failure(task_id)
         result, compute_seconds = measure_compute_seconds(args.task, input_data["params"])
 
         output_data = {

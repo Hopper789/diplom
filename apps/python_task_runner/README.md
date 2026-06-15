@@ -56,6 +56,23 @@ Runner превращает строки в файлы:
 
 Если `run(params)` падает, runner записывает `status: "error"` и текст ошибки. По умолчанию процесс завершается с кодом `0`, если `output.json` записан корректно. Для проверки отказов можно добавить `--fail-on-error`.
 
+## Симуляция отказов
+
+Для проверки BOINC-репликации можно включить искусственные ошибки attempts:
+
+```bash
+BOINC_SIMULATE_FAILURE_RATE=0.25 \
+BOINC_SIMULATE_FAILURE_SEED=replication-test \
+apps/python_task_runner/run_task.sh \
+  --task apps/user_task_template/user_task.py \
+  --params apps/user_task_template/params.jsonl \
+  --fail-on-error
+```
+
+`BOINC_SIMULATE_FAILURE_RATE` — доля attempts от `0` до `1`. Отказ зависит от
+`seed`, `task_id` и hostname клиента, поэтому разные реплики одного workunit могут
+дать разный результат.
+
 ## Локальный запуск
 
 Сначала создай один input:
