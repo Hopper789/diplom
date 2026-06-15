@@ -635,6 +635,36 @@ PY
   "
 }
 
+ensure_project_scheduler_config() {
+  quiet_run_all docker exec boinc-server bash -lc "
+    python3 - '/project/$PROJECT_NAME/config.xml' <<'PY'
+from pathlib import Path
+import re
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text(encoding='utf-8')
+
+def set_tag(body: str, tag: str, value: str) -> str:
+    pattern = rf'<{tag}>.*?</{tag}>'
+    replacement = f'<{tag}>{value}</{tag}>'
+    if re.search(pattern, body, flags=re.S):
+        return re.sub(pattern, replacement, body, flags=re.S)
+    return body.replace('</config>', f'        {replacement}\\n    </config>')
+
+def ensure_empty_tag(body: str, tag: str) -> str:
+    if re.search(rf'<{tag}\\s*/>|<{tag}>.*?</{tag}>', body, flags=re.S):
+        return body
+    return body.replace('</config>', f'        <{tag}/>\\n    </config>')
+
+text = set_tag(text, 'max_wus_to_send', '1')
+text = set_tag(text, 'min_sendwork_interval', '1')
+text = ensure_empty_tag(text, 'one_result_per_host_per_wu')
+path.write_text(text, encoding='utf-8')
+PY
+  "
+}
+
 deploy_app_to_server() {
   step "Deploying Python task runner..."
   if debug_enabled; then
@@ -643,6 +673,7 @@ deploy_app_to_server() {
     echo "  PLATFORM=$PLATFORM"
   fi
 
+  ensure_project_scheduler_config
   generate_input_template
   write_launcher
   write_version_xml
