@@ -126,7 +126,7 @@ boinc_estimated_remaining_seconds = Gauge(
 )
 boinc_useful_compute_percent = Gauge(
     "boinc_useful_compute_percent",
-    "Percent of executed compute time spent on first-quorum successful attempts",
+    "Percent of executed compute time spent on the first successful attempt per workunit; replicas count as overhead",
 )
 
 # Distributed-computing configuration loaded from config/distributed.env through monitoring/.env.
@@ -193,7 +193,7 @@ boinc_current_avg_compute_time_per_workunit_seconds = Gauge(
 )
 boinc_current_useful_compute_percent = Gauge(
     "boinc_current_useful_compute_percent",
-    "Percent of latest-experiment executed compute time spent on first-quorum successful attempts",
+    "Percent of latest-experiment executed compute time spent on the first successful attempt per workunit; replicas count as overhead",
 )
 boinc_current_issued_results_percent = Gauge(
     "boinc_current_issued_results_percent",
@@ -328,6 +328,26 @@ def useful_success_query(metric_expr: str, where_clause: str = "1 = 1") -> str:
     """
 
 
+def primary_success_query(metric_expr: str, where_clause: str = "1 = 1") -> str:
+    return f"""
+        SELECT {metric_expr}
+        FROM (
+            SELECT
+                r.*,
+                ROW_NUMBER() OVER (
+                    PARTITION BY r.workunitid
+                    ORDER BY r.received_time, r.id
+                ) AS success_rank
+            FROM workunit w
+            JOIN result r
+              ON r.workunitid = w.id
+             AND r.outcome = 1
+            WHERE {where_clause}
+        ) primary_success
+        WHERE primary_success.success_rank = 1
+    """
+
+
 def without_error_workunits_clause(where_clause: str = "1 = 1") -> str:
     return f"""
         {where_clause}
@@ -371,7 +391,7 @@ def useful_compute_percent_from_schedule(
     """
 
     params = params or ()
-    cur.execute(useful_success_query("id AS result_id", where_clause), params)
+    cur.execute(primary_success_query("id AS result_id", where_clause), params)
     useful_ids = {int(row["result_id"]) for row in cur.fetchall()}
 
     cur.execute(
