@@ -50,10 +50,16 @@ http://SERVER_IP:3000
 /d/boinc-cluster/boinc
 ```
 
-Dashboard ошибок:
+Логи BOINC-вычислений:
 
 ```text
-/d/boinc-errors/boinc-errors
+/d/boinc-logs/boinc-logs
+```
+
+Логи мониторинга и инфраструктуры:
+
+```text
+/d/monitoring-logs/monitoring-logs
 ```
 
 Dashboard можно смотреть без логина. Админский вход: `admin / admin`.
@@ -96,6 +102,32 @@ Loki собирает Docker JSON logs:
 
 ```logql
 {cluster="boinc", stream="stderr"} |= "ERROR"
+```
+
+## Log dashboards
+
+`BOINC Logs` показывает scheduler/feeder/transitioner/file upload логи, BOINC workunit/client ошибки и сообщения, связанные с вычислениями. Его используют для анализа задач, репликации, выдачи workunit'ов и ошибок клиентов.
+
+`Monitoring Logs` показывает Loki, Grafana, Promtail, Prometheus, Docker, Ansible и SSH. Его используют для диагностики инфраструктуры мониторинга и деплоя. Сообщения `context canceled`, `scheduler_processor.go`, `retry.go` и похожие записи обычно относятся к обработке запросов Loki/Grafana и не означают падение BOINC-задачи.
+
+После изменения dashboard'ов перезапустите мониторинг:
+
+```bash
+./scripts/monitoring_down.sh
+./scripts/monitoring_up.sh
+```
+
+Если Grafana уже запущена и нужно только перечитать provisioning:
+
+```bash
+docker restart boinc-grafana
+```
+
+Проверка:
+
+```text
+http://SERVER_IP:3000/d/boinc-logs/boinc-logs
+http://SERVER_IP:3000/d/monitoring-logs/monitoring-logs
 ```
 
 ## Проверка

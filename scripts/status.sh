@@ -470,10 +470,16 @@ PY
       echo "Grafana dashboard boinc-cluster: missing"
     fi
 
-    if curl_status -u admin:admin "http://$MONITORING_HOST:3000/api/dashboards/uid/boinc-errors" | grep -q '"uid":"boinc-errors"'; then
-      echo "Grafana dashboard boinc-errors: OK"
+    if curl_status -u admin:admin "http://$MONITORING_HOST:3000/api/dashboards/uid/boinc-logs" | grep -q '"uid":"boinc-logs"'; then
+      echo "Grafana dashboard boinc-logs: OK"
     else
-      echo "Grafana dashboard boinc-errors: missing"
+      echo "Grafana dashboard boinc-logs: missing"
+    fi
+
+    if curl_status -u admin:admin "http://$MONITORING_HOST:3000/api/dashboards/uid/monitoring-logs" | grep -q '"uid":"monitoring-logs"'; then
+      echo "Grafana dashboard monitoring-logs: OK"
+    else
+      echo "Grafana dashboard monitoring-logs: missing"
     fi
 
     if curl_status -u admin:admin \

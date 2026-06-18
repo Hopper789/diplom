@@ -1,0 +1,251 @@
+{
+  "uid": "boinc-logs",
+  "title": "BOINC Logs",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "tags": [
+    "boinc",
+    "logs",
+    "loki"
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "BOINC errors in last 5m",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "sum(count_over_time({cluster=\"boinc\", job=\"boinc-project-logs\"} |~ \"(?i)(error|failed|exception|traceback|fatal|panic|timeout|denied|refused|critical|bad WU template|no <file_info>|no <workunit>|platform.*not found|no tasks available|output file.*absent)\"[5m])) + sum(count_over_time({cluster=\"boinc\", node_role=\"client\"} |~ \"(?i)(error|failed|exception|traceback|fatal|panic|timeout|denied|refused|critical|output file.*absent|boinccmd|gui_rpc_auth|scheduler request failed|aborted|exit status)\"[5m]))",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      }
+    },
+    {
+      "id": 2,
+      "type": "logs",
+      "title": "BOINC server and scheduler logs",
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 18,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "{cluster=\"boinc\", job=\"boinc-project-logs\", node_role=\"server\"}",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        }
+      ],
+      "options": {
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      }
+    },
+    {
+      "id": 3,
+      "type": "logs",
+      "title": "BOINC server errors",
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "expr": "{cluster=\"boinc\", job=\"boinc-project-logs\", node_role=\"server\"} |~ \"(?i)(error|failed|exception|traceback|fatal|panic|timeout|denied|refused|critical|bad WU template|no <file_info>|no <workunit>|platform.*not found|no tasks available|output file.*absent)\"",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        }
+      ],
+      "options": {
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      }
+    },
+    {
+      "id": 4,
+      "type": "logs",
+      "title": "BOINC client logs",
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "expr": "{cluster=\"boinc\", node_role=\"client\"}",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        }
+      ],
+      "options": {
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      }
+    },
+    {
+      "id": 5,
+      "type": "logs",
+      "title": "BOINC client errors",
+      "gridPos": {
+        "x": 0,
+        "y": 18,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "expr": "{cluster=\"boinc\", node_role=\"client\"} |~ \"(?i)(error|failed|exception|traceback|fatal|panic|timeout|denied|refused|critical|output file.*absent|boinccmd|gui_rpc_auth|scheduler request failed|computation for task|aborted|exit status)\"",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        }
+      ],
+      "options": {
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      }
+    },
+    {
+      "id": 6,
+      "type": "logs",
+      "title": "BOINC output file absent",
+      "gridPos": {
+        "x": 12,
+        "y": 18,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "expr": "{cluster=\"boinc\"} |~ \"(?i)(output file.*absent)\"",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        }
+      ],
+      "options": {
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      }
+    },
+    {
+      "id": 7,
+      "type": "logs",
+      "title": "BOINC no tasks / platform problems",
+      "gridPos": {
+        "x": 0,
+        "y": 28,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "{cluster=\"boinc\", job=\"boinc-project-logs\"} |~ \"(?i)(platform.*not found|doesn't support computers|no tasks available|Sending reply.*0 results)\"",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        }
+      ],
+      "options": {
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      }
+    }
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  }
+}

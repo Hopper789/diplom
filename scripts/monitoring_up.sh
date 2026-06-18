@@ -486,6 +486,7 @@ echo
 echo "Grafana:"
 echo "  Для просмотра dashboard логин не требуется."
 echo "  Для администрирования: admin / admin"
-echo "  Ошибки и логи: http://$SERVER_IP:3000/d/boinc-errors/boinc-errors"
+echo "  BOINC logs:       http://$SERVER_IP:3000/d/boinc-logs/boinc-logs"
+echo "  Monitoring logs:  http://$SERVER_IP:3000/d/monitoring-logs/monitoring-logs"
 echo
 echo "If Grafana works on the server but not from your browser, check firewall/security-group access to TCP 3000."
