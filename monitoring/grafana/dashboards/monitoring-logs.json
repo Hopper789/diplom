@@ -3,8 +3,8 @@
   "title": "Monitoring Logs",
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 1,
-  "refresh": "10s",
+  "version": 5,
+  "refresh": "30s",
   "tags": [
     "monitoring",
     "logs",
