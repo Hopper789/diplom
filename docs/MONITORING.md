@@ -110,6 +110,8 @@ Loki собирает Docker JSON logs:
 
 `Monitoring Logs` показывает Loki, Grafana, Promtail, Prometheus, Docker, Ansible и SSH. Его используют для диагностики инфраструктуры мониторинга и деплоя. Числовая панель считает только существенные сбои вроде `failed to connect`, `unreachable`, `permission denied`, `pull access denied` и `statusCode=500`. Сообщения `context canceled`, `scheduler_processor.go`, `retry.go`, `EOF` и похожие записи обычно относятся к обработке запросов Loki/Grafana; они остаются в лог-панелях, но не считаются авариями мониторинга и не означают падение BOINC-задачи.
 
+Если Loki пишет строку вида `retry.go ... query="...permission denied..." err="context canceled"`, это отменённый Grafana/Loki-запрос. Слова внутри `query="..."` являются текстом фильтра, а не найденной ошибкой в системе.
+
 После изменения dashboard'ов перезапустите мониторинг:
 
 ```bash

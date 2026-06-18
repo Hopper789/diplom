@@ -129,7 +129,7 @@
       },
       "targets": [
         {
-          "expr": "{cluster=\"boinc\", job=\"docker\"} |~ \"(?i)(promtail|tailer|filetarget|positions|permission denied|no such file|error)\"",
+          "expr": "{cluster=\"boinc\", job=\"docker\"} |~ \"(?i)(promtail|tailer|filetarget|positions)\" |~ \"(?i)(permission denied|no such file|error|failed|timeout)\" !~ \"(?i)(context canceled|scheduler_processor.go|retry.go|finished query|error processing request|error notifying scheduler|error notifying frontend|error health checking|grpc: the client connection is closing|use of closed network connection|EOF|user token not found)\"",
           "refId": "A",
           "datasource": {
             "type": "loki",
@@ -160,7 +160,7 @@
       },
       "targets": [
         {
-          "expr": "{cluster=\"boinc\", job=\"docker\"} |~ \"(?i)(grafana|tsdb.loki|datasource|dashboard|query error|statusCode=400|statusCode=500|parse error|bad_data)\"",
+          "expr": "{cluster=\"boinc\", job=\"docker\"} |~ \"(?i)(grafana|tsdb.loki|datasource|dashboard|query error|statusCode=400|statusCode=500|parse error|bad_data)\" !~ \"(?i)(context canceled|scheduler_processor.go|retry.go|finished query|error processing request|error notifying scheduler|error notifying frontend|error health checking|grpc: the client connection is closing|use of closed network connection|EOF|user token not found)\"",
           "refId": "A",
           "datasource": {
             "type": "loki",
@@ -222,7 +222,7 @@
       },
       "targets": [
         {
-          "expr": "{cluster=\"boinc\", job=\"docker\"} |~ \"(?i)(docker.*error|no such container|cannot connect to docker|permission denied|denied|pull access denied|ansible|ssh|unreachable|host key verification|failed to connect)\"",
+          "expr": "{cluster=\"boinc\", job=\"docker\"} |~ \"(?i)(docker.*error|no such container|cannot connect to docker|permission denied|denied|pull access denied|ansible|ssh|unreachable|host key verification|failed to connect)\" !~ \"(?i)(context canceled|scheduler_processor.go|retry.go|finished query|error processing request|error notifying scheduler|error notifying frontend|error health checking|grpc: the client connection is closing|use of closed network connection|EOF|user token not found)\"",
           "refId": "A",
           "datasource": {
             "type": "loki",
