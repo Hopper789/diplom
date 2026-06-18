@@ -108,7 +108,7 @@ Loki собирает Docker JSON logs:
 
 `BOINC Logs` показывает scheduler/feeder/transitioner/file upload логи, BOINC workunit/client ошибки и сообщения, связанные с вычислениями. Его используют для анализа задач, репликации, выдачи workunit'ов и ошибок клиентов.
 
-`Monitoring Logs` показывает Loki, Grafana, Promtail, Prometheus, Docker, Ansible и SSH. Его используют для диагностики инфраструктуры мониторинга и деплоя. Сообщения `context canceled`, `scheduler_processor.go`, `retry.go` и похожие записи обычно относятся к обработке запросов Loki/Grafana и не означают падение BOINC-задачи.
+`Monitoring Logs` показывает Loki, Grafana, Promtail, Prometheus, Docker, Ansible и SSH. Его используют для диагностики инфраструктуры мониторинга и деплоя. Числовая панель считает только существенные сбои вроде `failed to connect`, `unreachable`, `permission denied`, `pull access denied` и `statusCode=500`. Сообщения `context canceled`, `scheduler_processor.go`, `retry.go`, `EOF` и похожие записи обычно относятся к обработке запросов Loki/Grafana; они остаются в лог-панелях, но не считаются авариями мониторинга и не означают падение BOINC-задачи.
 
 После изменения dashboard'ов перезапустите мониторинг:
 

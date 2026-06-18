@@ -14,7 +14,7 @@
     {
       "id": 1,
       "type": "stat",
-      "title": "Monitoring errors in last 5m",
+      "title": "Important monitoring errors in last 5m",
       "gridPos": {
         "x": 0,
         "y": 0,
@@ -23,7 +23,7 @@
       },
       "targets": [
         {
-          "expr": "sum(count_over_time({cluster=\"boinc\", job=\"docker\"} |~ \"(?i)(loki|grafana|promtail|prometheus|error|failed|exception|timeout|denied|refused|context canceled|scheduler_processor.go|retry.go)\"[5m]))",
+          "expr": "sum(count_over_time({cluster=\"boinc\", job=\"docker\"} |~ \"(?i)(level=error|fatal|panic|exception|permission denied|failed to connect|unreachable|pull access denied|statusCode=500|cannot connect to docker|host key verification|access denied|connection refused|TLS handshake timeout|i/o timeout)\" !~ \"(?i)(context canceled|scheduler_processor.go|retry.go|finished query|error notifying scheduler|error notifying frontend|error health checking|grpc: the client connection is closing|use of closed network connection|EOF|user token not found)\"[5m]))",
           "refId": "A",
           "datasource": {
             "type": "loki",
@@ -52,7 +52,8 @@
       "datasource": {
         "type": "loki",
         "uid": "loki"
-      }
+      },
+      "description": "Counts actionable monitoring/deploy failures. Loki/Grafana query-cancellation noise is shown in log panels but excluded here."
     },
     {
       "id": 2,
