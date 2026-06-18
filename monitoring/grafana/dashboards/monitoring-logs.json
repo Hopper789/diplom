@@ -89,7 +89,7 @@
     {
       "id": 3,
       "type": "logs",
-      "title": "Loki/Grafana query errors",
+      "title": "Loki/Grafana query failures",
       "gridPos": {
         "x": 0,
         "y": 8,
@@ -98,7 +98,7 @@
       },
       "targets": [
         {
-          "expr": "{cluster=\"boinc\", job=\"docker\"} |~ \"(?i)(loki|grafana|scheduler_processor.go|retry.go|context canceled|finished query|error notifying scheduler|error notifying frontend|error health checking|grpc: the client connection is closing|use of closed network connection|EOF)\"",
+          "expr": "{cluster=\"boinc\", job=\"docker\"} |~ \"(?i)(grafana|tsdb.loki|datasource|query error|statusCode=400|statusCode=500|parse error|bad_data|loki.*(failed|fatal|panic)|level=error)\" !~ \"(?i)(context canceled|scheduler_processor.go|retry.go|finished query|error processing request|error processing requests from scheduler|closing iterator|error notifying scheduler|error notifying frontend|error health checking|grpc: the client connection is closing|rpc error: code = Canceled|use of closed network connection|EOF|user token not found)\"",
           "refId": "A",
           "datasource": {
             "type": "loki",
@@ -115,7 +115,8 @@
       "datasource": {
         "type": "loki",
         "uid": "loki"
-      }
+      },
+      "description": "Actionable Loki/Grafana query failures. Query cancellations and closed-client noise are excluded."
     },
     {
       "id": 4,
@@ -182,7 +183,7 @@
     {
       "id": 6,
       "type": "logs",
-      "title": "Loki internal errors",
+      "title": "Loki internal failures",
       "gridPos": {
         "x": 12,
         "y": 18,
@@ -191,7 +192,7 @@
       },
       "targets": [
         {
-          "expr": "{cluster=\"boinc\", job=\"docker\"} |~ \"(?i)(loki|scheduler_processor.go|retry.go|context canceled|frontend|query_range|error notifying scheduler|error notifying frontend|EOF)\"",
+          "expr": "{cluster=\"boinc\", job=\"docker\"} |~ \"(?i)(loki|frontend|query_range|scheduler)\" |~ \"(?i)(fatal|panic|failed|statusCode=500|bad_data|parse error|permission denied|connection refused)\" !~ \"(?i)(context canceled|scheduler_processor.go|retry.go|finished query|error processing request|error processing requests from scheduler|closing iterator|error notifying scheduler|error notifying frontend|error health checking|grpc: the client connection is closing|rpc error: code = Canceled|use of closed network connection|EOF|user token not found)\"",
           "refId": "A",
           "datasource": {
             "type": "loki",
@@ -208,7 +209,8 @@
       "datasource": {
         "type": "loki",
         "uid": "loki"
-      }
+      },
+      "description": "Actionable Loki internal failures. Canceled Grafana queries are excluded."
     },
     {
       "id": 7,
