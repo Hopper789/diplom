@@ -11,7 +11,99 @@ nano config/cluster.yml
 
 - `server.ip` — IP управляющей машины;
 - `clients` — IP, пользователь и SSH-порт каждого клиента;
-- `boinc.project_name` и `boinc.project_url_base`.
+- `project.name` и `project.port`.
+
+Минимальный пример для сервера и двух клиентов в одной сети:
+
+```yaml
+project:
+  name: my_project
+  port: 8080
+
+server:
+  ip: 172.17.12.151
+
+clients:
+  - name: node1
+    ip: 172.17.12.152
+    user: auser
+  - name: node2
+    ip: 172.17.12.153
+    user: auser
+
+boinc:
+  client_rpc_password: auto
+
+account:
+  email: nodes@local.test
+  name: nodes
+  password: manual
+```
+
+Пример, если у всех клиентов нестандартный SSH-порт:
+
+```yaml
+project:
+  name: my_project
+  port: 8080
+
+server:
+  ip: 10.10.0.10
+
+clients_defaults:
+  port: 2222
+
+clients:
+  - name: node1
+    ip: 10.10.0.11
+    user: ubuntu
+  - name: node2
+    ip: 10.10.0.12
+    user: ubuntu
+  - name: node3
+    ip: 10.10.0.13
+    user: ubuntu
+
+boinc:
+  client_rpc_password: auto
+
+account:
+  email: nodes@local.test
+  name: nodes
+  password: manual
+```
+
+Пример, если SSH-порт отличается только у одного клиента:
+
+```yaml
+project:
+  name: my_project
+  port: 8080
+
+server:
+  ip: 192.168.1.10
+
+clients:
+  - name: node1
+    ip: 192.168.1.11
+    user: ubuntu
+  - name: node2
+    ip: 192.168.1.12
+    user: ubuntu
+    ssh_port: 2222
+
+boinc:
+  client_rpc_password: auto
+
+account:
+  email: nodes@local.test
+  name: nodes
+  password: manual
+```
+
+`server.ip` должен быть адресом, который видят клиенты. Если клиенты не могут
+достучаться до сервера, BOINC сможет зарегистрироваться не полностью или не
+будет скачивать задачи.
 
 ## 2. Подготовить систему
 
