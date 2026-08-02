@@ -62,6 +62,7 @@ Grafana открывается без логина. Админский вход:
 
 - [Быстрый старт](docs/QUICK_START.md)
 - [Конфигурация](docs/CONFIGURATION.md)
+- [Архитектура](docs/ARCHITECTURE.md)
 - [Эксперименты](docs/EXPERIMENTS.md)
 - [Мониторинг](docs/MONITORING.md)
 - [Диагностика](docs/TROUBLESHOOTING.md)
