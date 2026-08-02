@@ -24,6 +24,9 @@ TASK_FILE=""
 PARAMS_FILE=""
 DEVICE="cpu"
 FAIL_ON_ERROR=0
+EXTRA_INPUT_SOURCES=()
+EXTRA_INPUT_OPEN_NAMES=()
+EXTRA_INPUT_SERVER_NAMES=()
 
 APP_DIR="$ROOT_DIR/apps/python_task_runner"
 BUILD_DIR="$APP_DIR/build"
@@ -51,7 +54,7 @@ ANSIBLE_EXTRA_ARGS="${ANSIBLE_EXTRA_ARGS:-}"
 usage() {
   cat <<'USAGE'
 Использование:
-  apps/python_task_runner/run_task.sh --task PATH --params PATH [--device cpu|gpu] [--fail-on-error] [--debug]
+  apps/python_task_runner/run_task.sh --task PATH --params PATH [--device cpu|gpu] [--extra-input PATH[:OPEN_NAME]] [--fail-on-error] [--debug]
 
 Пример:
   apps/python_task_runner/run_task.sh \
@@ -72,6 +75,23 @@ while [[ $# -gt 0 ]]; do
       ;;
     --device)
       DEVICE="${2:-}"
+      shift 2
+      ;;
+    --extra-input)
+      extra_spec="${2:-}"
+      if [[ -z "$extra_spec" ]]; then
+        echo "--extra-input требует PATH[:OPEN_NAME]." >&2
+        exit 2
+      fi
+      if [[ "$extra_spec" == *:* ]]; then
+        extra_source="${extra_spec%%:*}"
+        extra_open_name="${extra_spec#*:}"
+      else
+        extra_source="$extra_spec"
+        extra_open_name="$(basename "$extra_source")"
+      fi
+      EXTRA_INPUT_SOURCES+=("$extra_source")
+      EXTRA_INPUT_OPEN_NAMES+=("$extra_open_name")
       shift 2
       ;;
     --fail-on-error)
@@ -112,6 +132,17 @@ if [[ ! -f "$PARAMS_FILE" ]]; then
   echo "Файл параметров не найден: $PARAMS_FILE" >&2
   exit 1
 fi
+
+for index in "${!EXTRA_INPUT_SOURCES[@]}"; do
+  if [[ ! -f "${EXTRA_INPUT_SOURCES[$index]}" ]]; then
+    echo "Дополнительный входной файл не найден: ${EXTRA_INPUT_SOURCES[$index]}" >&2
+    exit 1
+  fi
+  if [[ ! "${EXTRA_INPUT_OPEN_NAMES[$index]}" =~ ^[A-Za-z0-9._-]+$ ]]; then
+    echo "OPEN_NAME для --extra-input должен содержать только буквы, цифры, '.', '_' и '-'." >&2
+    exit 2
+  fi
+done
 
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "Не найден config/generated.env."
@@ -189,17 +220,41 @@ PY
 generate_input_template() {
   validate_distributed_config
 
-  cat > "$TPL_IN" <<TEMPLATE_EOF
+  {
+    cat <<TEMPLATE_EOF
 <file_info>
     <number>0</number>
 </file_info>
+TEMPLATE_EOF
 
+    for index in "${!EXTRA_INPUT_OPEN_NAMES[@]}"; do
+      cat <<TEMPLATE_EOF
+<file_info>
+    <number>$((index + 1))</number>
+</file_info>
+
+TEMPLATE_EOF
+    done
+
+    cat <<TEMPLATE_EOF
 <workunit>
     <file_ref>
         <file_number>0</file_number>
         <open_name>input.json</open_name>
     </file_ref>
+TEMPLATE_EOF
 
+    for index in "${!EXTRA_INPUT_OPEN_NAMES[@]}"; do
+      cat <<TEMPLATE_EOF
+    <file_ref>
+        <file_number>$((index + 1))</file_number>
+        <open_name>${EXTRA_INPUT_OPEN_NAMES[$index]}</open_name>
+    </file_ref>
+
+TEMPLATE_EOF
+    done
+
+    cat <<TEMPLATE_EOF
     <rsc_fpops_est>$DISTRIBUTED_RSC_FPOPS_EST</rsc_fpops_est>
     <rsc_fpops_bound>$DISTRIBUTED_RSC_FPOPS_BOUND</rsc_fpops_bound>
     <rsc_memory_bound>$DISTRIBUTED_RSC_MEMORY_BOUND</rsc_memory_bound>
@@ -213,6 +268,7 @@ generate_input_template() {
     <max_success_results>$DISTRIBUTED_MAX_SUCCESS_RESULTS</max_success_results>
 </workunit>
 TEMPLATE_EOF
+  } > "$TPL_IN"
 }
 
 ensure_server_running() {
@@ -737,12 +793,30 @@ create_workunits() {
   local input_name
   local task_number
   local wu_name
+  local extra_index
+  local extra_source
+  local extra_name
+  local create_args
 
   run_id="${PYTHON_TASK_RUN_ID:-$(date +%s)_$$}"
 
   if debug_enabled; then
     echo "Создание BOINC workunits..."
   fi
+
+  EXTRA_INPUT_SERVER_NAMES=()
+  for extra_index in "${!EXTRA_INPUT_SOURCES[@]}"; do
+    extra_source="${EXTRA_INPUT_SOURCES[$extra_index]}"
+    extra_name="extra_$((extra_index + 1))_$(basename "$extra_source")"
+    EXTRA_INPUT_SERVER_NAMES+=("$extra_name")
+
+    quiet_run docker cp "$extra_source" "boinc-server:/project/$PROJECT_NAME/work_inputs/$extra_name"
+    quiet_run docker exec boinc-server bash -lc "
+      cd '/project/$PROJECT_NAME'
+      ./bin/stage_file_native --copy 'work_inputs/$extra_name'
+    "
+  done
+
   for input_file in "$INPUT_DIR"/input_*.json; do
     [[ -e "$input_file" ]] || {
       echo "Не найдены input_*.json в $INPUT_DIR" >&2
@@ -755,10 +829,11 @@ create_workunits() {
     wu_name="py_${run_id}_${task_number}"
 
     quiet_run docker cp "$input_file" "boinc-server:/project/$PROJECT_NAME/work_inputs/$input_name"
+    create_args="$(printf " %q" "$input_name" "${EXTRA_INPUT_SERVER_NAMES[@]}")"
     quiet_run docker exec boinc-server bash -lc "
       cd '/project/$PROJECT_NAME'
       ./bin/stage_file_native --copy 'work_inputs/$input_name'
-      ./bin/create_work --appname '$APP_NAME' --wu_name '$wu_name' '$input_name'
+      ./bin/create_work --appname '$APP_NAME' --wu_name '$wu_name'$create_args
     "
   done
 

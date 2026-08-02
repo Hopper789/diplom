@@ -5,7 +5,7 @@ ridge-регрессии.
 
 Каждая workunit:
 
-- генерирует синтетический датасет по `seed`;
+- получает общий CSV-датасет, подготовленный на сервере;
 - считает ridge-регрессию для одного значения `lambda`;
 - повторяет этот расчёт несколько раз внутри одного workunit;
 - возвращает параметры выданной задачи, веса модели, loss и время выполнения.
@@ -27,13 +27,18 @@ apps/ml_grid_search/run_task.sh boinc
 ```
 
 У задачи нет внешних параметров запуска. Размер датасета, количество workunit,
-базовый seed и сетка lambda заданы в `apps/ml_grid_search/main.py`.
+seed датасета и сетка lambda заданы в `apps/ml_grid_search/main.py`.
+Перед отправкой задач `apps/ml_grid_search/prepare.py` создаёт
+`apps/ml_grid_search/build/dataset.csv`, а BOINC передаёт его клиентам вместе с
+JSON-параметрами workunit.
 
 Текущая стратегия:
 
 - `WORKUNITS = 20`;
 - `DATASET_SIZE = 50000`;
 - `REPEAT_COUNT = 60`;
+- `DATASET_FILE = "dataset.csv"`;
+- `DATASET_SEED = 1000`;
 - `LAMBDA_GRID = [0.0, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0]`.
 
 Будет создано 20 workunit независимо от числа клиентов. BOINC раздаёт их из

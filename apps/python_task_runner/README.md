@@ -139,6 +139,19 @@ apps/python_task_runner/run_task.sh \
 
 В этой версии реально поддержан CPU. Значение `resources.device` оставлено в формате входа для будущей маршрутизации GPU-задач.
 
+Если задаче нужны реальные входные данные, передай их как дополнительные
+BOINC-файлы:
+
+```bash
+apps/python_task_runner/run_task.sh \
+  --task apps/user_task_template/user_task.py \
+  --params apps/user_task_template/params.jsonl \
+  --extra-input data/train.csv:train.csv
+```
+
+На клиенте файл будет доступен в рабочей директории задачи как `train.csv`.
+JSONL при этом хранит только параметры workunit, а не сам датасет.
+
 ## Оптимизация
 
 Клиентский контейнер устанавливает `numpy` и `numba`. Пользовательские задачи могут использовать их напрямую, например для JIT-компиляции горячих циклов.

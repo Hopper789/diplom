@@ -12,6 +12,7 @@ set -- "${DEBUG_ARGS[@]}"
 DISTRIBUTED_ENV_FILE="$ROOT_DIR/config/distributed.env"
 BUILD_DIR="$ROOT_DIR/apps/ml_grid_search/build"
 PARAMS_FILE="$BUILD_DIR/params.jsonl"
+DATASET_FILE="$BUILD_DIR/dataset.csv"
 PREPARE_FILE="$ROOT_DIR/apps/ml_grid_search/prepare.py"
 MAIN_FILE="$ROOT_DIR/apps/ml_grid_search/main.py"
 PYTHON_RUNNER="$ROOT_DIR/apps/python_task_runner/run_task.sh"
@@ -33,8 +34,8 @@ usage() {
 Usage:
   apps/ml_grid_search/run_task.sh [--debug] [boinc|local]
 
-The workload computes one real ridge-regression point per workunit. The number
-of workunits and task parameters are defined by apps/ml_grid_search/main.py.
+The workload computes one real ridge-regression point per workunit. The shared
+dataset CSV, number of workunits, and task parameters are prepared on the server.
 USAGE
 }
 
@@ -45,14 +46,33 @@ prepare_task() {
     "$PREPARE_FILE"
     --main "$MAIN_FILE"
     --out "$PARAMS_FILE"
+    --dataset-out "$DATASET_FILE"
   )
 
   step "Preparing grid-search workunits..."
   quiet_run_all python3 "${args[@]}"
 }
 
+read_dataset_open_name() {
+  python3 - "$PARAMS_FILE" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], "r", encoding="utf-8") as handle:
+    for line in handle:
+        line = line.strip()
+        if line:
+            print(json.loads(line).get("dataset_file", "dataset.csv"))
+            raise SystemExit(0)
+
+raise SystemExit("params.jsonl is empty")
+PY
+}
+
 run_boinc() {
   prepare_task
+  local dataset_open_name
+  dataset_open_name="$(read_dataset_open_name)"
 
   export PYTHON_TASK_APP_NAME="${PYTHON_TASK_APP_NAME:-$APP_NAME}"
   export PYTHON_TASK_PLATFORM="${PYTHON_TASK_PLATFORM:-$PLATFORM}"
@@ -70,7 +90,12 @@ run_boinc() {
   fi
 
   step "Submitting grid-search workunits..."
-  quiet_run_all "$PYTHON_RUNNER" --task "$MAIN_FILE" --params "$PARAMS_FILE" --device cpu --fail-on-error
+  quiet_run_all "$PYTHON_RUNNER" \
+    --task "$MAIN_FILE" \
+    --params "$PARAMS_FILE" \
+    --extra-input "$DATASET_FILE:$dataset_open_name" \
+    --device cpu \
+    --fail-on-error
 }
 
 run_local() {

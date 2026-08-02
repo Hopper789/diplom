@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-import math
+import hashlib
 import platform
 import time
+from pathlib import Path
 from typing import Any
 
 try:
@@ -21,28 +22,9 @@ except ModuleNotFoundError as exc:  # pragma: no cover - validated on client ima
 WORKUNITS = 20
 DATASET_SIZE = 50_000
 REPEAT_COUNT = 60
-SEED_BASE = 1000
+DATASET_FILE = "dataset.csv"
+DATASET_SEED = 1000
 LAMBDA_GRID = [0.0, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0]
-
-
-@njit
-def _noise(index: int, seed: int) -> float:
-    value = math.sin((seed + 1) * (index + 1) * 12.9898) * 43758.5453
-    return value - math.floor(value) - 0.5
-
-
-@njit
-def _build_dataset(n: int, seed: int) -> tuple[np.ndarray, np.ndarray]:
-    xs = np.empty(n, dtype=np.float64)
-    ys = np.empty(n, dtype=np.float64)
-
-    denominator = max(1, n - 1)
-    for index in range(n):
-        x = -5.0 + 10.0 * index / denominator
-        xs[index] = x
-        ys[index] = 1.25 + 2.75 * x + 0.35 * _noise(index, seed)
-
-    return xs, ys
 
 
 @njit
@@ -87,8 +69,52 @@ def _as_int(params: dict[str, Any], key: str, default: int) -> int:
     return int(params.get(key, default))
 
 
+def _resolve_dataset_path(params: dict[str, Any]) -> Path:
+    file_name = str(params.get("dataset_file") or params.get("dataset") or DATASET_FILE)
+    candidates = [Path(file_name)]
+
+    dataset_path = params.get("dataset_path")
+    if dataset_path:
+        candidates.append(Path(str(dataset_path)))
+
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+
+    checked = ", ".join(str(candidate) for candidate in candidates)
+    raise FileNotFoundError(f"Dataset CSV not found. Checked: {checked}")
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _load_dataset(params: dict[str, Any]) -> tuple[np.ndarray, np.ndarray, Path]:
+    dataset_path = _resolve_dataset_path(params)
+    expected_sha256 = str(params.get("dataset_sha256") or "")
+    if expected_sha256 and _sha256_file(dataset_path) != expected_sha256:
+        raise ValueError(f"Dataset CSV checksum mismatch: {dataset_path}")
+
+    data = np.loadtxt(dataset_path, delimiter=",", skiprows=1, dtype=np.float64)
+
+    if data.ndim != 2 or data.shape[1] < 2:
+        raise ValueError(f"Dataset CSV must contain at least two columns: {dataset_path}")
+
+    xs = np.ascontiguousarray(data[:, 0], dtype=np.float64)
+    ys = np.ascontiguousarray(data[:, 1], dtype=np.float64)
+    if xs.size < 2:
+        raise ValueError(f"Dataset CSV must contain at least two rows: {dataset_path}")
+
+    return xs, ys, dataset_path
+
+
 def _warm_up_numba() -> None:
-    xs, ys = _build_dataset(8, 1)
+    xs = np.linspace(-1.0, 1.0, 8, dtype=np.float64)
+    ys = 1.25 + 2.75 * xs
     intercept, slope = _ridge_fit(xs, ys, 0.1)
     _mean_squared_error(xs, ys, intercept, slope)
 
@@ -98,10 +124,9 @@ def run(params: dict[str, Any]) -> dict[str, Any]:
 
     task_id = _as_int(params, "task_id", 0)
     regularization = float(params.get("lambda", params.get("regularization", 0.0)))
-    seed = _as_int(params, "seed", SEED_BASE + task_id)
-    dataset_size = max(2, _as_int(params, "n", DATASET_SIZE))
     repeat_count = max(1, _as_int(params, "repeats", REPEAT_COUNT))
 
+    xs, ys, dataset_path = _load_dataset(params)
     _warm_up_numba()
 
     started = time.perf_counter()
@@ -110,7 +135,6 @@ def run(params: dict[str, Any]) -> dict[str, Any]:
     loss_total = 0.0
 
     for repeat_index in range(repeat_count):
-        xs, ys = _build_dataset(dataset_size, seed + repeat_index)
         intercept, slope = _ridge_fit(xs, ys, regularization)
         loss_total += _mean_squared_error(xs, ys, intercept, slope)
 
@@ -120,8 +144,8 @@ def run(params: dict[str, Any]) -> dict[str, Any]:
     return {
         "task_id": task_id,
         "lambda": regularization,
-        "seed": seed,
-        "n": dataset_size,
+        "dataset_file": dataset_path.name,
+        "n": int(xs.size),
         "repeats": repeat_count,
         "weights": {
             "intercept": intercept,
