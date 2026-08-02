@@ -66,18 +66,4 @@ Grafana открывается без логина. Админский вход:
 - [Эксперименты](docs/EXPERIMENTS.md)
 - [Мониторинг](docs/MONITORING.md)
 - [Диагностика](docs/TROUBLESHOOTING.md)
-
-## Что не коммитится
-
-В Git не должны попадать локальные конфиги, секреты и runtime:
-
-- `config/cluster.yml`
-- `config/generated.env`
-- `config/distributed.env`
-- `ansible/inventory.ini`
-- `ansible/group_vars/all/main.yml`
-- `ansible/group_vars/all/vault.yml`
-- `ansible/.vault_pass`
-- `server/project/`
-- `server/mariadb-data/`
-- `monitoring/.env`
+- [Разработка и структура](docs/DEVELOPMENT.md)
